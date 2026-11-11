@@ -92,7 +92,11 @@ El motor es un `<script>` clásico (engine.html:337). `const MODULES` va al inic
 
 - `trip/stations.mjs`: **solo datos**, en ESM. `build.mjs` lo importa en Node y lo escribe como `var TRIP_STATIONS = <JSON.stringify>;` en el ancla `/*__TRIP__*/`. Es un patrón nuevo: `expand()` genera literales dentro de `MODULES` y no sirve aquí. Cada estación guarda `id`, `name`, `topics` y `kp: [{ topic, index, expect }]`, donde `expect` es un fragmento corto del `keyPoint` esperado. Así `validate.mjs` detecta si alguien reordena los keyPoints.
 - `trip/flow.js`: máquina de estados sin Three.js, escrita como `var TripFlow = (function () { … return { create: create }; })(); if (typeof module !== 'undefined' && module.exports) module.exports = TripFlow;`. `create(deps)` recibe `{ stations, questionsByTopic, rnd, onStation, onAsk, onResult, onLayer, onSummary }`. No hay bus de eventos: son callbacks directos. Expone `start()`, `ask()` (lo dispara "Ver pregunta"), `answer(k)`, `next()` y `state()`. `onResult` devuelve `gain` (§4).
-- `trip/scene.js`: Three.js, escrito como `var TripScene = (function () { … return { create: create }; })();`. `create(THREE, canvas, stations, opts)` devuelve una promesa (ver `compileAsync`, §6) de `{ goTo(i), setLayers(n), lost(), resize(), setPaused(reason, on), dispose() }`. No hace `import`: recibe `THREE` como parámetro.
+- `trip/scene.js`: Three.js, escrito como `var TripScene = (function () { … return { create: create }; })();`. `create(THREE, canvas, stations, opts)` devuelve una promesa (ver `compileAsync`, §6) de `{ goTo(i), setLayers(n), lost(), look(dx, dy), resize(), setPaused(reason, on), dispose() }`. Detalles del contrato:
+  - `goTo(i)` devuelve una promesa que se resuelve **cuando la cámara llega**. Con reduced-motion se resuelve al instante. La hoja de la estación se muestra solo después de esa promesa (estado "viajando"), así que mientras viaja el bucle corre sin el motivo `'sheet'`.
+  - `look(dx, dy)` gira la cámara (flechas del teclado).
+  - `resize()` redibuja un cuadro aunque esté en pausa.
+  - `dispose()` cancela primero el único rAF pendiente y después libera los recursos. No hace `import`: recibe `THREE` como parámetro.
 - `vendor/three.module.min.js`: **Three.js r169 (0.169.0)** con versión fija y su encabezado de licencia MIT. A partir de r171 el archivo importa `./three.core.min.js`, y una ruta relativa no se resuelve desde un `blob:`, así que **no se actualiza** sin rediseñar la carga.
 
 ### Build (`build.mjs`)
@@ -178,7 +182,7 @@ Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos
 
 ## 8. Validación (`validate.mjs`)
 
-- Antes de las reglas del motor (`<img`, `fetch(`, `new Image`, URLs externas; líneas 28-29 y 38) se **recorta** el bloque entre `VENDOR:THREE START/END`. Three contiene `fetch(` y `http://www.w3.org/1999/xhtml` de forma legítima.
+- Antes de la lista de palabras prohibidas (línea 23) y de las reglas del motor (`<img`, `fetch(`, `new Image`, URLs externas; líneas 28-29 y 38) se **recorta** el bloque entre `VENDOR:THREE START/END`. Three contiene de forma legítima `fetch(`, `http://www.w3.org/1999/xhtml` y `palegoldenrod`, que coincide con `/LEGO/i`.
 - El vendor se valida aparte: existe, declara la versión `169`, no contiene `</script` ni imports relativos.
 - La regla de crecimiento (línea 30, ≤ 90 KB frente a la versión publicada) se calcula **sin el bloque vendor**. Así sigue protegiendo el código propio.
 - Estaciones: cada tema de `TRIP_STATIONS` existe en M08, los 15 temas están cubiertos y cada `kp` apunta a un índice que existe y cuyo texto incluye su `expect`.

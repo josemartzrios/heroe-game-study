@@ -69,7 +69,7 @@ Son entradas que el spec implica pero que ninguna prueba principal cubre. Cada u
 - [ ] **Paso 1: comitear el arreglo de charset pendiente**
 
 ```bash
-cd /home/josma/myprojects/juego && git add engine.html juego_estudio.html && git commit -m "Declarar charset UTF-8, doctype y viewport" -m "Co-Authored-By: ..."
+cd /home/josma/myprojects/juego && git add engine.html juego_estudio.html && git commit -m "Declarar charset UTF-8, doctype y viewport" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 - [ ] **Paso 2: correr la suite como línea base.** Debe salir verde (ver Restricciones globales).
 - [ ] **Paso 3: extraer la función.** En `finalize()`, la línea 844 `R.xp += gain; S.xp += gain;` queda como `R.xp += gain;` y las líneas 845-856 se reemplazan por `recordAnswer(q, ok, assisted, gain);`. El resto de `finalize` (incluidos `touch()` en la 831, la batalla, `R.log`, `checkVirtues()` y `save()`) no cambia. Define `recordAnswer` justo antes de `function finalize`.
@@ -183,7 +183,7 @@ cd /home/josma/myprojects/juego && git add engine.html juego_estudio.html && git
 ```bash
 D=/tmp/claude-1000/three169 && mkdir -p "$D" && cd "$D" && npm pack three@0.169.0 && tar xzf three-0.169.0.tgz && mkdir -p /home/josma/myprojects/juego/vendor && cp package/build/three.module.min.js /home/josma/myprojects/juego/vendor/ && grep -c 'from"\./\|from '"'"'\./' /home/josma/myprojects/juego/vendor/three.module.min.js
 ```
-Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es el comentario `@license`.
+Se espera que imprima `0`, sin imports relativos. `grep -c` sale con código 1 cuando no hay coincidencias, y aquí eso es lo correcto. Pesa unos 687 KB y la primera línea es el comentario `@license`.
 
 - [ ] **Paso 2: escribir `tests/build_vendor.cjs`, que debe fallar.**
   - Con `child_process.spawnSync('node', ['build.mjs'], { cwd: raíz, env: { ...process.env, THREE_VENDOR: tmp } })`, donde `tmp` es un archivo temporal:
@@ -198,9 +198,13 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
     - Lanza `Error('vendor: import relativo')` si `/from\s*["']\.\//` coincide.
     - Reemplaza `<!--__THREE__-->` por el bloque **con función**.
   - En `validate.mjs`:
-    - Define `const vend = html.match(/<!-- VENDOR:THREE START -->[\s\S]*?<!-- VENDOR:THREE END -->/)`. Si no está, `bad('Falta el bloque VENDOR:THREE')`.
-    - Define `const htmlNoV = html.replace(vend[0], '')`.
-    - Usa `htmlNoV` en lugar de `html` para el recorte `eng` (línea 28), la regex de URLs externas (línea 38) y el cálculo de crecimiento (línea 30: `Buffer.byteLength(htmlNoV)`).
+    - Define `const vend = html.match(/<!-- VENDOR:THREE START -->[\s\S]*?<!-- VENDOR:THREE END -->/)` **justo después de leer `html` (línea 4), antes de la línea 23**. Si no está, `bad('Falta el bloque VENDOR:THREE')`.
+    - Define `const htmlNoV = vend ? html.replace(vend[0], '') : html`.
+    - Usa `htmlNoV` en lugar de `html` para:
+      - el bucle de palabras prohibidas (línea 23). **Es obligatorio:** Three r169 contiene `palegoldenrod`, que coincide con `/LEGO/i`;
+      - el recorte `eng` (línea 28);
+      - la regex de URLs externas (línea 38);
+      - el cálculo de crecimiento (línea 30: `Buffer.byteLength(htmlNoV)`).
     - Valida aparte que el bloque contiene `data-version="0.169.0"`, que no contiene `</script` interno (solo el de cierre) y que no tiene imports relativos.
 - [ ] **Paso 4: suite verde.** `node validate.mjs` → `VALIDACIÓN OK`. `ls -l juego_estudio.html` muestra unos 1.6 MB.
 - [ ] **Paso 5: commit.** Incluye `vendor/`. Mensaje: `feat(trip): Three.js r169 incrustado como texto inerte`.
@@ -220,11 +224,23 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
   - `function dynImport(u)` y `function loadThree()`: exactamente el código del §5 "Carga diferida".
   - `function tripStart()`, `function tripStop()`, `function tripFallback()` y `function tripExit()`. `tripExit()` hace `go('module', { mod: 'M08' })`.
   - `TD = { gen, canvas, scene, flow, onLost, answered }`.
-- Contrato de escena, la fábrica que usará la Tarea 7: `F.create(THREE, canvas, stations, opts)` → `Promise<{ goTo(i), setLayers(n), lost(), resize(), setPaused(reason, on), dispose() }>`, con `opts = { reducedMotion: boolean }`. `dispose()` libera geometrías, materiales y renderer y llama a `renderer.forceContextLoss()`.
+- Contrato de escena, la fábrica que usará la Tarea 7: `F.create(THREE, canvas, stations, opts)` → `Promise<api>`, con `opts = { reducedMotion: boolean }`. `api` tiene estos métodos:
+  - `goTo(i)` → `Promise` que se resuelve **cuando la cámara llega** a la estación `i`. Con `reducedMotion` se resuelve en el siguiente microtask. Mientras viaja, el bucle debe estar corriendo (sin el motivo `'sheet'`).
+  - `setLayers(n)`.
+  - `lost()`.
+  - `look(dx, dy)`: gira la cámara en grados; lo usan las flechas del teclado.
+  - `resize()`: hace `setSize(w, h, false)`, ajusta el aspect y **dibuja un cuadro aunque esté en pausa**.
+  - `setPaused(reason, on)`.
+  - `dispose()`: primero `cancelAnimationFrame` del único rAF pendiente y marca `disposed`; después libera geometrías y materiales, `renderer.dispose()` y `renderer.forceContextLoss()`. Después de `dispose()` no se agenda ningún rAF.
+- `reducedMotion` se calcula en `tripStart` con el patrón protegido de engine.html:1133 (`try { … matchMedia('(prefers-reduced-motion: reduce)').matches } catch (e) { false }`). jsdom no tiene `matchMedia`.
+- **Estructura de `#trip-root` en esta tarea**:
+  - Mientras carga: `<p role="status">Preparando el viaje…</p>` y el botón `tripquit`.
+  - Con la escena creada: `<canvas id="trip-cv" aria-hidden="true"></canvas><div id="trip-ui"><button class="btn sm ghost trip-quit" data-act="tripquit" aria-label="Salir del viaje">Salir</button></div>`.
+  - El flujo (TripFlow) **no arranca en esta tarea**: la Tarea 6 llena `#trip-ui` y conserva ese botón.
 - La fábrica se resuelve como `window.__TRIP_SCENE__ || (typeof TripScene !== 'undefined' ? TripScene : null)`. Si es `null`, se muestra el respaldo.
 
 - [ ] **Paso 1: escribir `tests/trip_engine.cjs`, que debe fallar.**
-  - Copia `boot()` de `tests/record.cjs` y agrégale opciones para definir en `beforeParse`:
+  - **Copia** de `tests/record.cjs` las funciones `boot`, `norm`, `allQs`, `click`, `modBtn`, `btn`, `findQ`, `correctText` y `optBtn`. **No uses `require('./record.cjs')`**: ejecuta su suite y termina con `process.exit`. En `beforeParse` agrega siempre `w.Element.prototype.scrollIntoView = function () {}`, porque jsdom no lo trae. Además, agrégale opciones para definir en `beforeParse`:
     - `w.__TRIP_IMPORT__`: una función que cuenta llamadas y devuelve una promesa controlable.
     - `w.__TRIP_SCENE__`: una fábrica falsa cuyo `create` cuenta llamadas y devuelve una promesa de un objeto que registra cada método llamado.
     - `w.URL.createObjectURL = () => 'blob:x'` y `w.URL.revokeObjectURL = () => {}`.
@@ -234,7 +250,9 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
     - (a) El botón "Viaja como paquete" existe en M08 y **no** en M01.
     - (b) Al entrar: `#trip-root` sin `hidden`, contiene "Preparando el viaje…" con `role="status"` y un `[data-act="tripquit"]`; `#app` queda vacío y `body` tiene las clases `game` y `trip-on`.
     - (c) Si `__TRIP_IMPORT__` rechaza: aparece "Tu navegador no pudo abrir el viaje 3D." con `[data-act="tripround"]` y `[data-act="tripback"]`. "Volver" lleva a M08 (`.head h1` = "Redes informáticas"). "Hacer ronda de M08" abre una ronda (`.prompt` existe).
-    - (d) Sin simular `createObjectURL` (`delete w.URL.createObjectURL`): aparece el respaldo y `errors` queda vacío.
+    - (d) Sin definir `w.URL.createObjectURL` (jsdom no lo trae): aparece el respaldo y `errors` queda vacío.
+    - (e2) Tras un import exitoso: `#three-src` ya no existe y `revokeObjectURL` se llamó 1 vez.
+    - (f2) La escena falsa despacha `webglcontextlost` sobre su canvas **dentro de su propio `dispose()`**. Al salir normal no aparece el respaldo y `dispose` se llama 1 sola vez.
     - (e) **Caché:** entrar, que se cree la escena, `tripquit`, volver a entrar → `__TRIP_IMPORT__` se llamó 1 vez y `create` 2 veces.
     - (f) Salir con la escena creada: se llamó `dispose()` y `#trip-root` queda `hidden` y con `innerHTML === ''`.
     - (g) Después de salir, despachar `webglcontextlost` sobre el canvas viejo no muestra el respaldo; `#app` sigue en M08.
@@ -249,7 +267,7 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
 - [ ] **Paso 3: implementar.**
   - HTML: `<div id="trip-root" hidden></div>` justo después de `<div class="shell" id="app"></div>` (engine.html:336).
   - CSS: `#trip-root{position:fixed; inset:0; height:100dvh; z-index:50; background:var(--bg)}`, `#trip-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}` y `body.trip-on{overflow:hidden}`.
-  - `vModule()`: si `m.id === 'M08'`, agrega `<button class="btn sm" data-act="trip">Viaja como paquete</button>` en el mismo `<div>` donde va el botón de región.
+  - `vModule()` (engine.html:977): justo **después** del ternario `(REGIONS[m.id] ? … : '')`, concatena `+ (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '')`. `REGIONS` solo tiene M01, así que M08 no tiene `<div>` de región donde reutilizar.
   - Delegado de `#app`: `else if (a === 'trip') go('trip');`.
   - `render()`:
     - `tripStop()` después de `worldStop()`.
@@ -261,7 +279,7 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
   - Segundo delegado `tripRoot.addEventListener('click', …)`, registrado una vez, filtrado por `V.name === 'trip'`: en esta tarea maneja `tripquit` (sin respuestas sale directo con `tripExit()`), `tripround` y `tripback`.
   - `keydown` propio del viaje: Esc → mismo comportamiento que `tripquit`.
   - `resize` y `visibilitychange` registrados una vez con `if (TD && TD.scene)`. `visibilitychange` llama a `TD.scene.setPaused('hidden', document.hidden)`.
-  - `tripround`: `tripStop()` y luego el mismo `startRound` que `data-act="start"` con `kind: 'quiz'`, `mid: 'M08'` y `back: { name: 'module', mod: 'M08' }`, con `itemsFor('quiz', mod('M08'), null)`. Si `quizPool` sin tema no sirve, usa `sample(ofType(mod('M08'),'mcq'), 8)`.
+  - `tripround`: `tripStop()` y luego `startRound({ kind: 'quiz', title: 'Quiz', mid: 'M08', back: { name: 'module', mod: 'M08' } }, itemsFor('quiz', mod('M08'), null))`. Siempre devuelve 8 preguntas, porque `ofType` acepta `tid` nulo.
 - [ ] **Paso 4: verificar.** `for i in $(seq 5); do node tests/trip_engine.cjs || echo FALLO; done` y suite verde.
 - [ ] **Paso 5: commit.** Mensaje: `feat(trip): vista trip, carga diferida y respaldo`.
 
@@ -290,18 +308,31 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
     - `summary`: aciertos por estación, XP, botón `tripend` "Terminar" (`.btn primary`, con foco) y botón `tripreplay` "Repasar lo que fallé" solo si hay fallos.
   - `#trip-confirm`: el `.banner` de §3, con `tripconfirm` y `tripcancel` y foco en "Seguir".
 - `N = i + 1` en todos los textos.
-- `setPaused('sheet', true)` cuando la hoja muestra keyPoint o pregunta, y `false` solo mientras se viaja de una estación a otra. `scene.goTo(i)` va en `onStation` y `scene.setLayers(n)` en `onLayer`.
+- **Estado "viajando":** el `onStation(i)` del motor hace lo siguiente:
+  1. Cierra la hoja (`#trip-sheet` vacío y `hidden`).
+  2. Mueve el foco al botón `tripquit`, para que no se pierda en `body`.
+  3. `setPaused('sheet', false)`.
+  4. `var g = tripGen; TD.scene.goTo(i).then(function () { if (g !== tripGen || !TD) return; … })`.
+
+  Dentro de ese `then`: actualiza HUD y barra, escribe "Estación N: nombre" en `#trip-live`, muestra la hoja `arrive`, hace `setPaused('sheet', true)` y pone el foco en "Ver pregunta". La hoja sigue abierta en `ask` y `result`.
+- `scene.setLayers(n)` va en `onLayer`, y `scene.lost()` en `onResult` cuando `!ok`.
+- `#trip-live` se crea **vacío una sola vez**, junto con `#trip-ui`, y nunca contiene el resultado.
+- Las flechas del teclado llaman a `TD.scene.look(±10, 0)` o `look(0, ±10)`. Con `#trip-confirm` visible o en la fase `arrive`, las teclas 1-9 y Enter se ignoran.
+- Las opciones usan **el mismo marcado que vPlay** (engine.html:1066): `<button class="opt" data-act="tripopt" data-k="i"><span class="key mono">i+1</span><span>fmt(label)</span></button>`.
+- El keyPoint mostrado es `fmt(mod('M08').tById[kp.topic].keyPoints[kp.index])`, **no** `expect`.
 
 - [ ] **Paso 1: agregar los casos a `tests/trip_engine.cjs`, que deben fallar.** Usan la escena falsa:
-  - (n) Tras crear la escena: `.pill` = "Estación 1 de 10" y `#trip-live` contiene "Estación 1:". `[data-act="tripask"]` existe y tiene el foco.
+  - (n0) **Viajando:** la escena falsa devuelve en `goTo` una promesa controlable. Antes de resolverla, `[data-act="tripask"]` no existe y la escena recibió `setPaused('sheet', false)` sin ningún `setPaused('sheet', true)` posterior. Después de resolverla aparece la hoja.
+  - (n) Tras resolver `goTo(0)`: `.pill` = "Estación 1 de 10" y `#trip-live` contiene "Estación 1:". `[data-act="tripask"]` existe y tiene el foco.
   - (o) Clic en `tripask` → `.prompt` y `.opt[data-act="tripopt"]`, sin `.timer`. Responder la correcta (usa `findQ` y `optBtn` de `record.cjs`) → `.fb.good` con "Correcto". En `localStorage`, `topics['M08:'+q.topic]` termina en `1`, `xp` subió en `10*q.difficulty` y `session` se actualizó.
   - (p) Responder mal → `.fb.bad` con "Paquete perdido: retransmitiendo" y `qs[q.id].q === true`. `tripnext` → otra pregunta del mismo tema.
   - (q) Dos clics seguidos en una opción registran un solo intento (`qs[q.id].a === 1`).
   - (r) Teclas: `1` responde; Enter con el foco en el body continúa; Enter con el foco en un botón no hace nada extra.
-  - (s) `tripquit` después de responder abre la confirmación con el texto exacto; el foco queda en "Seguir". Esc la cierra y el foco vuelve a "Salir". `tripconfirm` lleva a M08.
+  - (s) `tripquit` después de responder abre la confirmación con el texto exacto; el foco queda en "Seguir". Esc la cierra y el foco vuelve a `[data-act="tripquit"]` del HUD. Con la confirmación abierta, la tecla `1` no responde. `tripconfirm` lleva a M08.
   - (t) Recorrido completo acertando todo (bucle: `tripask` si existe, si no responde la correcta y luego `tripnext`) → el resumen muestra la XP igual a `S.xp` final menos la inicial. `tripreplay` no aparece. `tripend` lleva a M08 sin confirmación.
-  - (u) Recorrido fallando la primera pregunta → `tripreplay` aparece y abre una ronda cuyo `.chip` dice "Repaso de fallos" (`kind: 'replay'`).
-  - (v) **(Foco de revisión 1)** Cuando sale una pregunta `tf` en el viaje, no hay `.timer` y, tras esperar 13 s simulados (sustituye `w.performance.now`), no aparece `.fb`.
+  - (u) Recorrido fallando solo la primera pregunta → `tripreplay` aparece y abre una ronda cuya `.pill` dice `1 / 1`. El `.chip` muestra el tipo de pregunta, no "Repaso de fallos"; ese título solo sale en `.eyebrow` de resultados (engine.html:1097). Al responderla, la pantalla de resultados muestra `.eyebrow` "Repaso de fallos".
+  - (p2) Al fallar, la escena falsa recibió `lost()`.
+  - (v) **(Foco de revisión 1)** Siembra `w.Math.random` en `beforeParse` y recorre el viaje hasta que salga una pregunta `tf`. Comprueba que no hay `.timer`. Adelanta `w.performance.now` 13 s y **espera ≥ 250 ms reales**, porque el temporizador de rondas es un `setInterval` de 100 ms (engine.html:794). No debe aparecer `.fb`.
   - (w) **(Foco de revisión 2)** `boot()` sin `seed`: entrar al viaje y responder crea `estudio_isw_v1` con `topics['M08:…']`.
   - (x) `S.boss` no cambia en todo el recorrido.
 - [ ] **Paso 2:** los casos nuevos fallan.
@@ -325,7 +356,7 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
 
 **Interfaces:**
 - Produce `var TripScene = (function () { … return { create: create, buildWorld: buildWorld, Pauser: Pauser }; })(); if (typeof module !== 'undefined' && module.exports) module.exports = TripScene;`.
-- `create(THREE, canvas, stations, opts)` → `Promise<{ goTo, setLayers, lost, resize, setPaused, dispose }>`, con el contrato de la Tarea 5.
+- `create(THREE, canvas, stations, opts)` → `Promise<api>`, con el contrato de la Tarea 5 (incluye `goTo` con promesa, `look`, `resize` que redibuja y el `dispose` ordenado). `opts` admite, solo para pruebas, `renderer`, `raf` y `caf`. Si faltan, se usan `new THREE.WebGLRenderer(...)`, `requestAnimationFrame` y `cancelAnimationFrame` de `window`. Hay **un solo rAF pendiente a la vez**: `setPaused(…, false)` no agenda otro si ya hay uno.
 - `buildWorld(THREE, stations)` → `{ scene, camera, curve, stops, packet, rings, dispose }`:
   - `curve`: `THREE.CatmullRomCurve3`.
   - `stops`: 10 valores `t ∈ [0,1]`, uno por estación, crecientes.
@@ -347,14 +378,20 @@ Se espera `0` (sin imports relativos). Pesa unos 687 KB y la primera línea es e
   - Si `location.search` incluye `fps=1`, se muestra un `<div>` con fps y `renderer.info.render.calls`.
 
 - [ ] **Paso 1: escribir `tests/scene.cjs`, que debe fallar.**
-  - Usa `const THREE = await import(pathToFileURL('vendor/three.module.min.js'))`, `require('../trip/scene.js')` y las estaciones de `trip/stations.mjs`.
+  - Usa `const THREE = await import(pathToFileURL(path.join(__dirname, '..', 'vendor', 'three.module.min.js')).href)`, `require('../trip/scene.js')` y las estaciones de `trip/stations.mjs`. No hay WebGL: `new WebGLRenderer()` lanza error en Node, así que nunca se crea en `scene.cjs`.
   - Casos:
     - (a) `buildWorld` devuelve 10 `stops` crecientes en `[0,1]`.
-    - (b) Al recorrer `scene` con `traverse`, la suma de triángulos (`index.count/3` o `position.count/3`, multiplicada por `count` en las `InstancedMesh`) es ≤ 30000.
-    - (c) El número de `Mesh` más `InstancedMesh` visibles es ≤ 100, como estimación de draw calls.
+    - (b) Con `rings.forEach(r => r.visible = true)`, recorre con `traverseVisible`. La suma de triángulos (`index.count/3` o `position.count/3`, multiplicada por `count` en las `InstancedMesh`) es ≤ 30000.
+    - (c) Con los anillos visibles, cuenta con `traverseVisible` los objetos con `o.isMesh || o.isLine || o.isPoints` (cada `InstancedMesh` cuenta **1 vez**, porque también es `isMesh`). El total es ≤ 100.
+    - (c2) Hay ≥ 1 `InstancedMesh` (`o.isInstancedMesh`).
     - (d) No hay ningún material con `map`; todos son `MeshLambertMaterial` o `MeshBasicMaterial`.
     - (e) Hay como mucho 8 materiales únicos.
-    - (f) `dispose()` llama a `dispose` de cada geometría y material (espía `THREE.BufferGeometry.prototype.dispose`).
+    - (f) Antes de `dispose()`, junta con `traverse` las geometrías y materiales. Espía `THREE.BufferGeometry.prototype.dispose` y `THREE.Material.prototype.dispose`. Después de `dispose()`, todos fueron liberados, **incluida la geometría de cada `InstancedMesh`**, que `InstancedMesh.dispose()` no libera sola.
+    - (f2) `create()` con `opts = { reducedMotion: true, renderer: falso, raf: falso, caf: falso }` y un canvas falso `{ clientWidth: 400, clientHeight: 800, addEventListener(){}, removeEventListener(){} }`.
+      - El renderer falso registra `setPixelRatio`, `setSize`, `render`, `compileAsync` (que devuelve `Promise.resolve()`), `dispose` y `forceContextLoss`, y trae `info: { render: { calls: 0 } }`.
+      - Comprueba: resuelve; `goTo(3)` resuelve; `resize()` con `setPaused('sheet', true)` llama a `render` 1 vez.
+      - `dispose()` llama a `caf`, `renderer.dispose` y `forceContextLoss`, y después ningún `setPaused(…, false)` llama a `raf`.
+      - Dos `setPaused('x', false)` seguidos agendan 1 solo rAF.
     - (g) **(Foco de revisión 5)** `Pauser`: con `set('sheet', true)` y luego `set('hidden', true)`, después `set('hidden', false)`, `running()` sigue en `false`; con `set('sheet', false)` pasa a `true`.
     - (h) `tick(1000)` y luego `tick(5000)` devuelven `dt = 50`.
     - (i) Después de reanudar, el primer `tick` devuelve 16.
