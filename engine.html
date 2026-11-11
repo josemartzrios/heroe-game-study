@@ -480,6 +480,34 @@ const MODULES = [
     if (typeof o.world.at !== 'string') o.world.at = 'hub';
     if (!o.world.beaten || typeof o.world.beaten !== 'object') o.world.beaten = {};
     o.world.run = !!o.world.run;
+    /* normalización de tipos: un estado corrupto nunca debe impedir arrancar ni congelar una respuesta */
+    function num(x, d) { return (typeof x === 'number' && isFinite(x) && x >= 0) ? x : d; }
+    function plainObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+    function hex(x) { return typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x); }
+    o.xp = num(o.xp, 0); o.session = Math.floor(num(o.session, 0)); o.lastActive = num(o.lastActive, 0);
+    if (!plainObj(o.days)) o.days = { last: null, count: 0 };
+    if (typeof o.days.last !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(o.days.last)) o.days.last = null;
+    o.days.count = Math.floor(num(o.days.count, 0));
+    if (!plainObj(o.topics)) o.topics = {};
+    Object.keys(o.topics).forEach(function (k) {
+      var h = o.topics[k];
+      if (!Array.isArray(h)) { delete o.topics[k]; return; }
+      o.topics[k] = h.filter(function (x) { return typeof x === 'number' && isFinite(x) && x >= 0 && x <= 1; }).slice(-10);
+    });
+    if (!plainObj(o.qs)) o.qs = {};
+    Object.keys(o.qs).forEach(function (k) {
+      var r = o.qs[k];
+      if (!plainObj(r)) { delete o.qs[k]; return; }
+      var a = Math.floor(num(r.a, 0)), c = Math.floor(num(r.c, 0));
+      o.qs[k] = { a: a, c: Math.min(c, a), q: r.q === true, g: Math.floor(num(r.g, 0)), gs: (typeof r.gs === 'number' && isFinite(r.gs)) ? r.gs : -1 };
+    });
+    if (!plainObj(o.boss)) o.boss = {};
+    Object.keys(o.boss).forEach(function (k) { if (!plainObj(o.boss[k])) delete o.boss[k]; });
+    o.stats.cleared = Math.floor(num(o.stats.cleared, 0)); o.stats.roundsNoPower = Math.floor(num(o.stats.roundsNoPower, 0));
+    Object.keys(o.hero.look).forEach(function (k) {
+      if (k === 'hc' || k === 'capec') { if (!hex(o.hero.look[k])) delete o.hero.look[k]; }
+      else o.hero.look[k] = Math.floor(num(o.hero.look[k], 0));
+    });
     return o;
   }
   function load() {
@@ -489,7 +517,15 @@ const MODULES = [
     } catch (e) {}
     return null;
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { saveWarn(); } }
+  function saveWarn() {
+    try {
+      if (document.getElementById('savewarn')) return;
+      var d = document.createElement('div'); d.id = 'savewarn'; d.className = 'banner'; d.setAttribute('role', 'alert');
+      d.textContent = 'No se pudo guardar tu progreso: el almacenamiento del navegador está lleno.';
+      document.body.insertBefore(d, document.body.firstChild);
+    } catch (e) {}
+  }
   var S = load() || brandNew();
   var PEND = [];
 
@@ -514,7 +550,7 @@ const MODULES = [
     if (!S.lastActive || n - S.lastActive > GAP) S.session++;
     S.lastActive = n;
     var t = today();
-    if (S.days.last !== t) { S.days.count = (S.days.last === yesterday()) ? S.days.count + 1 : 1; S.days.last = t; }
+    if (S.days.last !== t && !(S.days.last && t < S.days.last)) { S.days.count = (S.days.last === yesterday()) ? S.days.count + 1 : 1; S.days.last = t; }
     if (streak() >= 3) earn('constancia');
   }
   function streak() { return (S.days.last === today() || S.days.last === yesterday()) ? S.days.count : 0; }
