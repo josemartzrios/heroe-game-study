@@ -1,6 +1,6 @@
 # Diseño: "Viaja como paquete", piloto 3D de M08 Redes
 
-Fecha: 2026-11-11 · Estado: borrador v3, corregido tras dos revisiones (`/review`) y una verificación
+Fecha: 2026-11-11 · Estado: borrador v4, corregido tras tres revisiones (`/review`)
 
 ## 1. Propósito y alcance
 
@@ -57,7 +57,9 @@ Ciclo por estación:
    - Si un tema se queda sin preguntas nuevas, se reutiliza una ya vista en este viaje.
    - Desde el primer toque las opciones quedan desactivadas hasta la siguiente pregunta, para que un doble toque no registre dos veces.
 
-**Resumen final:** el camino recorrido con el paquete completo, aciertos por estación, XP ganada y el botón "Repasar lo que fallé". Ese botón abre `startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fallosDelViaje))`, con el mismo patrón que `data-act="replay"` (engine.html:2108). No usa `kind: 'review'`, que abriría la cola global de todos los módulos. Si el viaje no tuvo fallos, el botón no se muestra (`startRound` no hace nada con una lista vacía, engine.html:777).
+**Resumen final:** el camino recorrido con el paquete completo, aciertos por estación y XP ganada. Tiene dos botones:
+- **"Terminar"** (`tripend`, `.btn primary`, recibe el foco): vuelve a M08 sin confirmación.
+- **"Repasar lo que fallé"** (`tripreplay`): abre `startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fallosDelViaje))`, con el mismo patrón que `data-act="replay"` (engine.html:2108). No usa `kind: 'review'`, que abriría la cola global de todos los módulos. Si el viaje no tuvo fallos, el botón no se muestra (`startRound` no hace nada con una lista vacía, engine.html:777).
 
 **Salir a medias:** "Salir" siempre visible. Si ya hubo respuestas, pide una confirmación breve: "¿Salir del viaje? Lo que respondiste ya quedó guardado." El siguiente viaje empieza desde el principio, porque el estado del viaje no se guarda.
 
@@ -102,8 +104,17 @@ El motor es un `<script>` clásico dentro de una IIFE (engine.html:337-2151). No
 - Vista nueva `trip`. `render()` llama a `tripStop()` al inicio, junto a `worldStop()`, y a `tripStart()` después del `innerHTML` cuando `V.name === 'trip'`. Así cualquier `go()` libera la escena.
 - El canvas del viaje vive en un contenedor propio **fuera de `#app`** (`#trip-root`, hijo de `body`). Durante el viaje **nunca** se llama a `render()`: la capa de preguntas y el HUD se actualizan en sus propios contenedores.
 - `#trip-root` cubre toda la pantalla, **incluido el header**. Durante el viaje solo se sale con "Salir" o Esc (las dos pasan por la confirmación del §3) o cuando falla la carga. No hay atajo por el header que se salte la confirmación.
-- **Eventos:** el delegado de clics actual solo escucha en `#app` (engine.html:2078) y no ve `#trip-root`. Al iniciar el motor se registra **una sola vez** un segundo delegado `tripRoot.addEventListener('click', …)` que atiende `tripopt`, `tripnext`, `tripquit` y `tripconfirm` y no hace nada si `TD` es null.
-- Acciones propias: `tripopt`, `tripnext`, `tripquit` y `tripconfirm`. No se reutilizan `opt`, `next`, `quit` ni `back`, que operan sobre la ronda `R` y regresarían a la última ronda jugada. Al salir siempre se vuelve a `{ name: 'module', mod: 'M08' }`.
+- **Eventos:** el delegado de clics actual solo escucha en `#app` (engine.html:2078) y no ve `#trip-root`. Al iniciar el motor se registra **una sola vez** un segundo delegado `tripRoot.addEventListener('click', …)` que atiende las acciones del viaje (lista abajo). **Filtra por `V.name === 'trip'`, no por `TD`**: así "Salir", Esc y los botones del respaldo funcionan mientras carga, si la carga falla y tras `webglcontextlost`, porque en esos tres estados `TD` es null. Solo `tripopt` y `tripnext`, que tocan la escena y el flujo, exigen además `TD`.
+- Acciones propias, todas atendidas por el delegado de `#trip-root`:
+  - `tripopt` / `tripnext`: responder y continuar.
+  - `tripquit`: pide confirmación si hubo respuestas; si no, sale directo.
+  - `tripconfirm`: confirma la salida.
+  - `tripend`: botón "Terminar" del resumen, sale sin confirmación.
+  - `tripreplay`: "Repasar lo que fallé", con los fallos que guarda `flow`, no `R.log`.
+  - `tripround`: respaldo "Hacer ronda de M08", hace `tripStop()` y luego `startRound` del quiz de M08.
+  - `tripback`: respaldo "Volver", sale sin confirmación.
+
+  No se reutilizan `opt`, `next`, `quit` ni `back`, que operan sobre la ronda `R` y regresarían a la última ronda jugada. Al salir siempre se vuelve a `{ name: 'module', mod: 'M08' }`.
 - Botón "Viaja como paquete" en la pantalla de M08, desactivado mientras carga.
 - `trip` se agrega al `toggle('game', …)` de `render()` (engine.html:1186) para que la tarjeta use los estilos de `body.game .qcard`.
 - `<meta name="viewport">` gana `viewport-fit=cover`.
@@ -128,12 +139,12 @@ Así el módulo no se duplica en memoria al reentrar. Si falla, se puede volver 
 ### Ciclo de vida de la escena
 - **Token de generación** `tripGen` (entero): `tripStop()` lo incrementa siempre, y `tripStart()` lo incrementa y guarda su valor en `gen`.
 - `tripStart()`: muestra "Preparando el viaje…" y espera `loadThree()`. Cuando resuelve, si `gen !== tripGen || V.name !== 'trip'`, **aborta sin crear nada**: el jugador salió mientras cargaba. Si no, crea `TripScene` y `TripFlow` y arranca. Si la carga falla con el mismo `gen`, muestra el respaldo.
-- `tripStop()`: incrementa `tripGen`, `cancelAnimationFrame`, `dispose()` de geometrías, materiales y renderer, `renderer.forceContextLoss()`, quitar el canvas y dejar `TD = null`. Si no hay escena, solo incrementa `tripGen`.
-- Los listeners globales `resize`, `visibilitychange` y `keydown` se registran **una sola vez** al iniciar el motor y verifican `if (TD)`, igual que el mundo con `WD` (engine.html:2074). Tras un resize se dibuja un cuadro aunque el bucle esté en pausa.
+- `tripStop()`: incrementa `tripGen`. Si hay escena, hace `cancelAnimationFrame`, `dispose()` de geometrías, materiales y renderer, `renderer.forceContextLoss()`, quita el canvas y deja `TD = null`. **Siempre** termina con `tripRoot.hidden = true; tripRoot.innerHTML = ''`, para que el HUD, la hoja, el resumen o el respaldo no sigan tapando la app. `tripStart()` hace `tripRoot.hidden = false`.
+- Los listeners globales `resize` y `visibilitychange` se registran **una sola vez** al iniciar el motor y verifican `if (TD)`. El de `keydown` del viaje filtra por `V.name === 'trip'`, como el delegado de clics, para que Esc funcione también mientras carga y en el respaldo. Todos siguen el patrón igual que el mundo con `WD` (engine.html:2074). Tras un resize se dibuja un cuadro aunque el bucle esté en pausa.
 - `webglcontextlost` en el canvas muestra el aviso de respaldo y llama a `tripStop()`. Lo respondido ya quedó guardado.
 
 ### Sin WebGL o si la carga falla
-Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos `.btn`: "Hacer ronda de M08" (quiz normal del módulo) y "Volver". El resto del juego sigue funcionando.
+Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos `.btn` dentro de `#trip-root`: "Hacer ronda de M08" (`tripround`, quiz normal del módulo) y "Volver" (`tripback`). Los dos funcionan con `TD` en null. El resto del juego sigue funcionando.
 
 ## 6. Rendimiento
 
@@ -179,7 +190,10 @@ Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos
   - Con los dos ganchos (cargador falso que cuenta llamadas y escena falsa que registra llamadas): se responde una estación y en `localStorage` cambian `S.topics`, `S.qs`, `S.xp` y `S.session` según §4.
   - Salir con "Salir", con confirmación, llama a `dispose()` y vuelve a M08.
   - Volver a entrar llama al cargador **otra vez**, porque el gancho reemplaza a `loadThree()` y no pasa por el caché. Que se importe una sola vez se prueba aparte, comprobando que `loadThree()` devuelve la misma promesa en dos llamadas, con `URL.createObjectURL` simulado y el `import` del motor encapsulado en `function dynImport(u) { return import(u); }`, que la prueba sustituye vía `window.__TRIP_IMPORT__`.
-  - **Salir mientras carga** (cargador falso con una promesa que se resuelve después): la escena falsa nunca se crea.
+  - **Salir mientras carga** (cargador falso con una promesa que se resuelve después): la escena falsa nunca se crea. "Salir" y Esc responden con `TD` en null.
+  - Después de cualquier salida (Salir, Terminar, respaldo, `go()`), `#trip-root` queda `hidden` y vacío, y `#app` muestra M08.
+  - Respaldo: "Hacer ronda de M08" abre el quiz de M08 y "Volver" regresa a M08, con `TD` en null.
+  - "Terminar" en el resumen sale sin confirmación.
   - Los clics en `#trip-root` (`tripopt`/`tripnext`) llegan al flujo.
   - "Repasar lo que fallé" abre `replay` con los fallos del viaje y no aparece si no hubo fallos.
 - `build.mjs` falla con un vendor que tenga `</script` o un import relativo (prueba con un archivo falso).
