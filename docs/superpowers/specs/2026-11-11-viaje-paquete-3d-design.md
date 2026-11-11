@@ -157,12 +157,38 @@ Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos
 ## 6. Rendimiento
 
 - ≥ 30 fps en gama media, ≤ ~30k triángulos y **≤ 100 draw calls** (`renderer.info.render.calls`, que también se muestra con `?fps=1`). En móvil, el costo de CPU por malla pesa más que los triángulos. Las piezas repetidas (dispositivos, postes, nodos) usan `InstancedMesh`, que está en el núcleo de r169. `mergeGeometries` no está: es un addon.
-- **Toda la escena se construye al entrar**, sin cargar estaciones por tramos. Hay unos 8 materiales compartidos por color y se hace `await renderer.compileAsync(scene, camera)` (existe en r169) antes del primer cuadro, para que no haya tirones al llegar a una estación ni se congele "Preparando el viaje…".
-- Sin sombras en tiempo real ni texturas. Colores planos, 1 luz direccional y 1 ambiental.
+- **Toda la escena se construye al entrar**, sin cargar estaciones por tramos. Hay como mucho 12 materiales compartidos (por color y tipo) y se hace `await renderer.compileAsync(scene, camera)` (existe en r169) antes del primer cuadro, para que no haya tirones al llegar a una estación ni se congele "Preparando el viaje…".
+- Sin sombras en tiempo real, sin texturas, sin postprocesado y **sin luces**: todo usa materiales "unlit" (`MeshBasicMaterial`, `LineBasicMaterial`, `PointsMaterial`), que es el estilo holograma y además el más barato. El brillo se finge con `AdditiveBlending`.
 - `antialias: false` y `setPixelRatio(Math.min(devicePixelRatio, 1.5))`.
 - **Pausa con motivos:** `setPaused(reason, on)` lleva un conjunto de motivos (`'sheet'` cuando la hoja con keyPoint o pregunta está abierta, `'hidden'` con `document.hidden`). El bucle corre **solo si el conjunto está vacío**. Así, volver de otra app con una pregunta abierta no lo reanuda. `dt = last ? Math.min(50, ts - last) : 16` (el tope de 50 ms es el de engine.html:1759). Además, **nuevo respecto al mundo 2D**, al reanudar se pone `last = 0`, para que la cámara no salte estaciones al volver de otra app. La posición en el riel viene del estado de `flow`, no del reloj absoluto.
 - Medidor de fps opcional con `?fps=1`.
 - Tamaño estimado: ~0.9 MB hoy → ~1.6 MB.
+
+### Estilo visual: holograma técnico
+
+Es la versión en 3D del "papel de plano técnico" que ya usa el juego. La escena siempre usa la paleta oscura del juego, sin importar el tema de la página, para que el holograma se lea bien.
+
+- **Paleta** (tomada de los tokens de modo oscuro de `engine.html`):
+  - fondo `#0b1220`;
+  - rejilla `#1d2b47`;
+  - líneas `#7da2ff`;
+  - acento cian `#5ce1ff`;
+  - acierto `#5fd39b`;
+  - pérdida `#ff8f84`;
+  - núcleo del paquete `#f2b04a`.
+- **Ambiente:**
+  - `scene.background` en el color de fondo y `THREE.Fog` del mismo color, para que lo lejano se desvanezca;
+  - suelo con `GridHelper` (1 draw call) semitransparente: el cuadriculado del plano.
+- **Objetos:**
+  - Cada dispositivo (teléfono, router, servidor, nodos) es su contorno en líneas (`EdgesGeometry` + `LineSegments`) más un relleno translúcido (`MeshBasicMaterial`, `opacity` 0.08-0.15, `FrontSide`, `depthWrite: false`). Se ven como piezas de un plano flotando.
+  - Los paneles de capa son planos translúcidos con borde de líneas, sin texto. El texto va en el HUD HTML.
+- **Riel y datos:**
+  - El cable es una `Line` sobre la curva.
+  - Encima fluyen ~200 partículas de datos (`Points`, `PointsMaterial` aditivo, 1 draw call) que avanzan por la curva.
+- **Paquete:** un icosaedro en líneas cian, con un núcleo pequeño ámbar que pulsa (opacidad senoidal). Los 4 anillos de encapsulación son toros translúcidos de distinto color que se ensamblan con easing (escala de 0 a 1 en ~400 ms) y se desarman en el servidor.
+- **Cámara:** las transiciones entre estaciones duran ~2.5 s con easing de entrada y salida.
+- **`lost()`:** durante ~600 ms, el paquete y las partículas cercanas se tiñen del color de pérdida.
+- **Con `prefers-reduced-motion`:** nada rota ni pulsa, las partículas quedan quietas, la cámara corta y los anillos aparecen sin animación.
 
 ## 7. Interfaz móvil y accesibilidad
 

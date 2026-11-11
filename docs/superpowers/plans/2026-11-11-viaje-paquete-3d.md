@@ -453,8 +453,18 @@ TD.flow.start();
   - Al pasar de pausado a corriendo, `last = 0`.
 - Valores fijos del §6:
   - `setPixelRatio(Math.min(opts.pixelRatio, 1.5))` y `setSize(canvas.clientWidth, canvas.clientHeight, false)`.
-  - 1 `DirectionalLight` y 1 `AmbientLight`.
-  - Unos 8 `MeshLambertMaterial` compartidos, sin texturas ni sombras.
+  - **Estilo holograma técnico (spec §6 "Estilo visual")**:
+    - sin luces;
+    - solo `MeshBasicMaterial`, `LineBasicMaterial` y `PointsMaterial`, como mucho 12 únicos y compartidos;
+    - sin texturas, sombras ni postprocesado.
+  - Paleta exacta: `BG=0x0b1220`, `GRID=0x1d2b47`, `LINE=0x7da2ff`, `CYAN=0x5ce1ff`, `GOOD=0x5fd39b`, `LOST=0xff8f84`, `CORE=0xf2b04a`.
+  - `scene.background = new THREE.Color(BG)`, `scene.fog = new THREE.Fog(BG, 8, 40)`, y el suelo es un `GridHelper(80, 40, LINE, GRID)` con material `transparent`, `opacity 0.35`.
+  - Dispositivos: `LineSegments(new EdgesGeometry(geo), lineMat)` más un relleno `Mesh(geo, fillMat)`. `fillMat` es `MeshBasicMaterial` con `transparent: true`, `opacity: 0.12`, `side: FrontSide` y `depthWrite: false`.
+  - Partículas: `Points`, con 200 posiciones en un `BufferAttribute` que se actualiza en cada cuadro avanzando sobre `curve` (`needsUpdate = true`). Usan `PointsMaterial({ color: CYAN, size: 0.08, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })`.
+  - Paquete: `LineSegments(new EdgesGeometry(new IcosahedronGeometry(0.3, 0)))` cian más un núcleo `Mesh(IcosahedronGeometry(0.12, 0))` color `CORE`, cuya opacidad pulsa entre 0.6 y 1 a ~1 Hz.
+  - Anillos: 4 `TorusGeometry(r, 0.02, 6, 32)` con `MeshBasicMaterial` translúcido de 4 colores (`CYAN`, `LINE`, `GOOD`, `CORE`). `setLayers(n)` los anima con escala 0→1 en 400 ms (easeOutCubic).
+  - `goTo(i)`: la cámara recorre el riel desde la posición actual hasta `stops[i]` en 2500 ms (easeInOutCubic) y resuelve al llegar. `lost()`: el paquete y las partículas se tiñen de `LOST` durante 600 ms y luego vuelven a su color.
+  - Con `reducedMotion` no hay rotación, pulso ni flujo de partículas, la cámara corta y los anillos aparecen sin animar.
   - Piezas repetidas con `InstancedMesh`.
   - `await renderer.compileAsync(scene, camera)` antes de resolver.
   - Con `opts.reducedMotion`, `goTo` coloca la cámara directamente en `stops[i]`, sin animar.
@@ -469,8 +479,10 @@ TD.flow.start();
     - (c) Con los anillos visibles, cuenta con `traverseVisible` los objetos con `o.isMesh || o.isLine || o.isPoints` (cada `InstancedMesh` cuenta **1 vez**, porque también es `isMesh`). El total es ≤ 100.
     - (c2) Hay ≥ 1 `InstancedMesh` (`o.isInstancedMesh`).
     - (c3) Ningún objeto dibujable tiene `Array.isArray(o.material)`, ni un material con `transparent && side === THREE.DoubleSide`.
-    - (d) No hay ningún material con `map`; todos son `MeshLambertMaterial` o `MeshBasicMaterial`.
-    - (e) Hay como mucho 8 materiales únicos.
+    - (d) No hay ningún material con `map`. Todos son `MeshBasicMaterial`, `LineBasicMaterial` o `PointsMaterial` (`GridHelper` usa `LineBasicMaterial`). No hay ninguna `Light` en la escena.
+    - (d2) `scene.background` es un `Color` con valor `0x0b1220` y `scene.fog` es un `Fog`.
+    - (d3) Hay exactamente 1 `Points` con 200 vértices y `material.blending === THREE.AdditiveBlending`. Hay ≥ 3 `LineSegments` cuya geometría es `EdgesGeometry`, que corresponden a teléfono, router y servidor.
+    - (e) Hay como mucho 12 materiales únicos.
     - (f) Antes de `dispose()`, junta con `traverse` las geometrías y materiales. Espía `THREE.BufferGeometry.prototype.dispose` y `THREE.Material.prototype.dispose`. Después de `dispose()`, todos fueron liberados, **incluida la geometría de cada `InstancedMesh`**, que `InstancedMesh.dispose()` no libera sola.
     - (f2) Prepara `create()` con lo siguiente:
       - `opts = { reducedMotion: true, renderer: falso, raf: falso, caf: falso, pixelRatio: 3, search: '' }`;
@@ -492,10 +504,12 @@ TD.flow.start();
     - (i) Después de reanudar, el primer `tick` devuelve 16.
 - [ ] **Paso 2:** `node tests/scene.cjs` falla con `Cannot find module`.
 - [ ] **Paso 3: implementar `trip/scene.js`.**
-  - Escenario por estación (§2): un nodo o plataforma por estación sobre el riel.
-  - Dispositivos: teléfono en la 1, router en la 6 y servidor en la 8. Las piezas repetidas son nodos de "Internet" en la 7 y torres o postes en la 5.
-  - El paquete es un cubo con hasta 4 anillos visibles según `setLayers(n)`.
-  - `lost()` hace un parpadeo rojo del paquete durante 600 ms, sin sacudidas con `reducedMotion`.
+  - Escenario por estación (§2), todo en estilo holograma:
+    - una plataforma translúcida con borde de líneas en cada `stops[i]`;
+    - dispositivos en contorno más relleno: teléfono en la 1, router en la 6 y servidor en la 8;
+    - las piezas repetidas van en `InstancedMesh` de relleno con sus contornos en un solo `LineSegments` combinado: nodos de "Internet" en la 7, y antenas u ondas en la 5 (anillos de onda translúcidos).
+  - El paquete y los anillos siguen los valores fijos de arriba.
+  - `lost()` usa un `setTimeout` de 600 ms para restaurar los colores y llama a `requestFrame()` al empezar y al terminar. Así se ve aunque la hoja esté abierta. `dispose()` cancela ese timeout.
   - En `build.mjs`, inserta `scene.js` después de `flow.js`.
 - [ ] **Paso 4: verificar.** `node tests/scene.cjs` y suite verde. `trip_engine.cjs` sigue pasando porque usa la escena falsa.
 - [ ] **Paso 5: commit.** Mensaje: `feat(trip): escena 3D low-poly`.
