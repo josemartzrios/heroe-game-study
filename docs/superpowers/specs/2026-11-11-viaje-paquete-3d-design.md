@@ -1,6 +1,6 @@
 # Diseño: "Viaja como paquete", piloto 3D de M08 Redes
 
-Fecha: 2026-11-11 · Estado: borrador v2, corregido tras dos revisiones (`/review`)
+Fecha: 2026-11-11 · Estado: borrador v3, corregido tras dos revisiones (`/review`) y una verificación
 
 ## 1. Propósito y alcance
 
@@ -57,7 +57,7 @@ Ciclo por estación:
    - Si un tema se queda sin preguntas nuevas, se reutiliza una ya vista en este viaje.
    - Desde el primer toque las opciones quedan desactivadas hasta la siguiente pregunta, para que un doble toque no registre dos veces.
 
-**Resumen final:** el camino recorrido con el paquete completo, aciertos por estación, XP ganada y el botón "Repasar lo que fallé". Ese botón abre `startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fallosDelViaje))`, con el mismo patrón que `data-act="replay"` (engine.html:2108). No usa `kind: 'review'`, que abriría la cola global de todos los módulos.
+**Resumen final:** el camino recorrido con el paquete completo, aciertos por estación, XP ganada y el botón "Repasar lo que fallé". Ese botón abre `startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fallosDelViaje))`, con el mismo patrón que `data-act="replay"` (engine.html:2108). No usa `kind: 'review'`, que abriría la cola global de todos los módulos. Si el viaje no tuvo fallos, el botón no se muestra (`startRound` no hace nada con una lista vacía, engine.html:777).
 
 **Salir a medias:** "Salir" siempre visible. Si ya hubo respuestas, pide una confirmación breve: "¿Salir del viaje? Lo que respondiste ya quedó guardado." El siguiente viaje empieza desde el principio, porque el estado del viaje no se guarda.
 
@@ -76,8 +76,8 @@ function recordAnswer(q, ok, assisted, gain) {
 
 **Orden obligatorio para quien la llame:** `touch()` → calcular `gain` → `recordAnswer(...)` → `checkVirtues()` → `save()`. `touch()` va primero porque actualiza `S.session` (la graduación de la cola usa `r.gs !== S.session`) y la racha de días (de ella depende `passivePct()`, engine.html:802). Por eso `touch()` no va dentro de `recordAnswer`.
 
-- **`finalize()`** sigue calculando `gain` exactamente igual (racha `R.consec`, bono tf, ayudas, `passivePct()`, humildad en `review`) y mantiene `R.ok/R.xp/R.baseXp/R.assisted/R.log`, la batalla y el escudo. Solo reemplaza el bloque de líneas 844-856 por la llamada a `recordAnswer(q, ok, assisted, gain)`. Lo verifica `tests/record.cjs`, que debe pasar sin modificarse.
-- **El viaje** calcula `gain` con la misma fórmula base de una ronda sin poderes: `ok ? 10 * q.difficulty + (consecViaje >= 3 ? 5 : 0)`, más `passivePct()`. Usa su propio contador de aciertos seguidos, `assisted` siempre es `false` y no hay bono tf ni humildad (esa solo aplica en `review`).
+- **`finalize()`** sigue calculando `gain` exactamente igual (racha `R.consec`, bono tf, ayudas, `passivePct()`, humildad en `review`) y mantiene `R.ok/R.xp/R.baseXp/R.assisted/R.log`, la batalla y el escudo. De la línea 844 (`R.xp += gain; S.xp += gain;`) **conserva** `R.xp += gain`. Solo `S.xp += gain` y las líneas 845-856 pasan a `recordAnswer(q, ok, assisted, gain)`. Lo verifica `tests/record.cjs`, que debe pasar sin modificarse.
+- **El viaje** usa la misma fórmula que una ronda sin poderes (engine.html:833-839): `base = ok ? 10 * q.difficulty + (consecViaje >= 3 ? 5 : 0) : 0` y `gain = base + Math.floor(base * passivePct() / 100)`. `passivePct()` es un porcentaje, no una suma. Usa su propio contador de aciertos seguidos, `assisted` siempre es `false` y no hay bono tf ni humildad (esa solo aplica en `review`).
 - **El viaje no pasa por `finish()`**, así que no cuenta para `S.stats.roundsNoPower`, el bono de integridad ni la virtud enfoque. Es una decisión explícita: esas virtudes premian rondas, y el viaje no es una ronda.
 
 ## 5. Arquitectura e integración
@@ -99,8 +99,10 @@ El motor es un `<script>` clásico dentro de una IIFE (engine.html:337-2151). No
 
 ### Cambios en `engine.html`
 - `recordAnswer()` extraída (§4).
-- Vista nueva `trip`. `render()` llama a `tripStop()` al inicio, junto a `worldStop()`, y a `tripStart()` después del `innerHTML` cuando `V.name === 'trip'`. Así salir por cualquier camino (header `data-act="home"`, avatar, "Salir") libera la escena.
+- Vista nueva `trip`. `render()` llama a `tripStop()` al inicio, junto a `worldStop()`, y a `tripStart()` después del `innerHTML` cuando `V.name === 'trip'`. Así cualquier `go()` libera la escena.
 - El canvas del viaje vive en un contenedor propio **fuera de `#app`** (`#trip-root`, hijo de `body`). Durante el viaje **nunca** se llama a `render()`: la capa de preguntas y el HUD se actualizan en sus propios contenedores.
+- `#trip-root` cubre toda la pantalla, **incluido el header**. Durante el viaje solo se sale con "Salir" o Esc (las dos pasan por la confirmación del §3) o cuando falla la carga. No hay atajo por el header que se salte la confirmación.
+- **Eventos:** el delegado de clics actual solo escucha en `#app` (engine.html:2078) y no ve `#trip-root`. Al iniciar el motor se registra **una sola vez** un segundo delegado `tripRoot.addEventListener('click', …)` que atiende `tripopt`, `tripnext`, `tripquit` y `tripconfirm` y no hace nada si `TD` es null.
 - Acciones propias: `tripopt`, `tripnext`, `tripquit` y `tripconfirm`. No se reutilizan `opt`, `next`, `quit` ni `back`, que operan sobre la ronda `R` y regresarían a la última ronda jugada. Al salir siempre se vuelve a `{ name: 'module', mod: 'M08' }`.
 - Botón "Viaja como paquete" en la pantalla de M08, desactivado mientras carga.
 - `trip` se agrega al `toggle('game', …)` de `render()` (engine.html:1186) para que la tarjeta use los estilos de `body.game .qcard`.
@@ -109,11 +111,14 @@ El motor es un `<script>` clásico dentro de una IIFE (engine.html:337-2151). No
 ### Carga diferida (una sola vez por sesión)
 ```
 var threeP = null;
+function dynImport(u) { return (window.__TRIP_IMPORT__ || function (x) { return import(x); })(u); }
 function loadThree() {
   if (threeP) return threeP;
-  var el = document.getElementById('three-src');
-  var url = URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' }));
-  threeP = import(url).then(function (m) { URL.revokeObjectURL(url); el.remove(); return m; },
+  try {
+    var el = document.getElementById('three-src');
+    var url = URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' }));
+  } catch (e) { return Promise.reject(e); }   // sin Blob URL → respaldo, nunca un throw síncrono
+  threeP = dynImport(url).then(function (m) { URL.revokeObjectURL(url); el.remove(); return m; },
                            function (e) { URL.revokeObjectURL(url); threeP = null; throw e; });
   return threeP;
 }
@@ -121,8 +126,9 @@ function loadThree() {
 Así el módulo no se duplica en memoria al reentrar. Si falla, se puede volver a intentar.
 
 ### Ciclo de vida de la escena
-- `tripStart()`: muestra "Preparando el viaje…", espera `loadThree()`, crea `TripScene` y `TripFlow` y arranca.
-- `tripStop()`: `cancelAnimationFrame`, `dispose()` de geometrías, materiales y renderer, `renderer.forceContextLoss()`, quitar el canvas y dejar `TD = null`. Si no hay viaje activo, no hace nada.
+- **Token de generación** `tripGen` (entero): `tripStop()` lo incrementa siempre, y `tripStart()` lo incrementa y guarda su valor en `gen`.
+- `tripStart()`: muestra "Preparando el viaje…" y espera `loadThree()`. Cuando resuelve, si `gen !== tripGen || V.name !== 'trip'`, **aborta sin crear nada**: el jugador salió mientras cargaba. Si no, crea `TripScene` y `TripFlow` y arranca. Si la carga falla con el mismo `gen`, muestra el respaldo.
+- `tripStop()`: incrementa `tripGen`, `cancelAnimationFrame`, `dispose()` de geometrías, materiales y renderer, `renderer.forceContextLoss()`, quitar el canvas y dejar `TD = null`. Si no hay escena, solo incrementa `tripGen`.
 - Los listeners globales `resize`, `visibilitychange` y `keydown` se registran **una sola vez** al iniciar el motor y verifican `if (TD)`, igual que el mundo con `WD` (engine.html:2074). Tras un resize se dibuja un cuadro aunque el bucle esté en pausa.
 - `webglcontextlost` en el canvas muestra el aviso de respaldo y llama a `tripStop()`. Lo respondido ya quedó guardado.
 
@@ -135,7 +141,7 @@ Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos
 - **Toda la escena se construye al entrar**, sin cargar estaciones por tramos. Hay unos 8 materiales compartidos por color y se llama a `renderer.compile(scene, camera)` antes de arrancar, para que no haya tirones al llegar a una estación.
 - Sin sombras en tiempo real ni texturas. Colores planos, 1 luz direccional y 1 ambiental.
 - `antialias: false` y `setPixelRatio(Math.min(devicePixelRatio, 1.5))`.
-- El bucle se detiene del todo mientras hay una pregunta en pantalla y con `document.hidden`. `dt = Math.min(50, ts - last)`, y `last` se reinicia al reanudar (mismo patrón que engine.html:1759), para que la cámara no salte estaciones al volver de otra app. La posición en el riel viene del estado de `flow`, no del reloj absoluto.
+- El bucle se detiene del todo mientras hay una pregunta en pantalla y con `document.hidden`. `dt = last ? Math.min(50, ts - last) : 16` (el tope de 50 ms es el de engine.html:1759). Además, **nuevo respecto al mundo 2D**, `resume()` pone `last = 0`, para que la cámara no salte estaciones al volver de otra app. La posición en el riel viene del estado de `flow`, no del reloj absoluto.
 - Medidor de fps opcional con `?fps=1`.
 - Tamaño estimado: ~0.9 MB hoy → ~1.6 MB.
 
@@ -167,7 +173,15 @@ Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos
 
 - **`tests/record.cjs`** (ya existe, 56 comprobaciones): fija el comportamiento actual del registro. Debe pasar **sin modificarse** antes y después de extraer `recordAnswer`.
 - **`tests/trip.cjs`** (nuevo, unitario): hace `require('../trip/flow.js')` con dependencias falsas y un `rnd` con semilla. Casos: recorre todas las estaciones en orden; un acierto avanza; un error retransmite con otra pregunta del mismo tema; dos errores continúan; no se repiten preguntas mientras haya disponibles y se reutilizan cuando se agotan; `onLayer` sube y luego baja en el servidor; un doble `answer()` se ignora; salir a medias no deja estado. Se corre ≥ 10 veces.
-- **`tests/trip_engine.cjs`** (nuevo, integración en jsdom): sin WebGL, al entrar a `trip` aparece el respaldo sin errores de consola. Con `window.__TRIP_SCENE__` (un gancho solo para pruebas que reemplaza `TripScene` por un objeto falso) se responde una estación y se comprueba en `localStorage` que `S.topics`, `S.qs`, `S.xp` y `S.session` cambian según §4. Salir por el header llama a `dispose()`. Volver a entrar no vuelve a llamar a `import()`. "Repasar lo que fallé" abre `replay` con los fallos del viaje.
+- **Ganchos solo para pruebas** (jsdom no tiene `URL.createObjectURL`, y un `import()` dinámico aborta el proceso): si existe `window.__TRIP_LOAD__`, el motor lo usa en lugar de `loadThree()`. Si existe `window.__TRIP_SCENE__`, lo usa en lugar de `TripScene`. Las pruebas los definen en `beforeParse`. En producción no existen.
+- **`tests/trip_engine.cjs`** (nuevo, integración en jsdom):
+  - Con `__TRIP_LOAD__` rechazando: aparece el respaldo sin errores de consola.
+  - Con los dos ganchos (cargador falso que cuenta llamadas y escena falsa que registra llamadas): se responde una estación y en `localStorage` cambian `S.topics`, `S.qs`, `S.xp` y `S.session` según §4.
+  - Salir con "Salir", con confirmación, llama a `dispose()` y vuelve a M08.
+  - Volver a entrar llama al cargador **otra vez**, porque el gancho reemplaza a `loadThree()` y no pasa por el caché. Que se importe una sola vez se prueba aparte, comprobando que `loadThree()` devuelve la misma promesa en dos llamadas, con `URL.createObjectURL` simulado y el `import` del motor encapsulado en `function dynImport(u) { return import(u); }`, que la prueba sustituye vía `window.__TRIP_IMPORT__`.
+  - **Salir mientras carga** (cargador falso con una promesa que se resuelve después): la escena falsa nunca se crea.
+  - Los clics en `#trip-root` (`tripopt`/`tripnext`) llegan al flujo.
+  - "Repasar lo que fallé" abre `replay` con los fallos del viaje y no aparece si no hubo fallos.
 - `build.mjs` falla con un vendor que tenga `</script` o un import relativo (prueba con un archivo falso).
 - La suite existente (`smoke`, `hero`, `world`, `battle`, `m03`–`m10`) sigue pasando.
 - **Revisión manual en el teléfono:** fluidez a ≥ 30 fps con `?fps=1`, giro con el dedo sin que la página haga scroll, orientación horizontal, salir y volver a entrar 5 veces sin que crezca la memoria, y regresar de otra app a mitad del viaje.
