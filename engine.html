@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Estudio ISW</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Space+Grotesk:wght@500;700&family=Press+Start+2P&display=swap">
@@ -340,6 +340,16 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 .trip-quit{min-height:44px; min-width:44px}
 #trip-root .banner{background:var(--surface)}
 body.trip-on{overflow:hidden}
+.trip-hud{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left))}
+.trip-hud .bar{flex:1 1 100%}
+.trip-hud .chips{margin-left:auto}
+#trip-load{position:absolute; top:50%; left:0; right:0; text-align:center; font-weight:600}
+#trip-sheet,#trip-confirm{position:absolute; left:0; right:0; bottom:0; overflow:auto; padding:12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
+#trip-sheet{max-height:60dvh; background:var(--surface); border-top:2px solid var(--line)}
+#trip-sheet .qcard{margin-top:0}
+#trip-sheet ul{margin:0; padding-left:18px}
+#trip-confirm{z-index:2}
+@media (orientation:landscape){#trip-sheet{max-height:85dvh}}
 </style>
 <div class="shell" id="app"></div>
 <div id="trip-root" hidden></div>
@@ -1301,10 +1311,14 @@ const MODULES = [
   function tripStart() {
     var gen = ++tripGen, r = tripRootEl();
     r.hidden = false;
-    r.innerHTML = '<canvas id="trip-cv" aria-hidden="true"></canvas><div id="trip-ui"><p role="status" id="trip-load">Preparando el viaje…</p>' + TRIP_QUIT + '</div>';
+    r.innerHTML = '<canvas id="trip-cv" aria-hidden="true"></canvas><div id="trip-ui">' +
+      '<div class="trip-hud">' + TRIP_QUIT + '<span class="pill" id="trip-pill" hidden></span><div class="chips" id="trip-layers"></div>' +
+      '<div class="bar" id="trip-bar" role="img" hidden><i></i></div></div>' +
+      '<p role="status" id="trip-load">Preparando el viaje…</p><div id="trip-live" class="sronly" aria-live="polite"></div>' +
+      '<div id="trip-sheet" hidden></div><div id="trip-confirm" hidden></div></div>';
     var cv = document.getElementById('trip-cv');
     var onLost = function (ev) { if (TD && ev.target === TD.canvas) { tripStop(); tripFallback(); } };
-    TD = { gen: gen, canvas: cv, scene: null, flow: null, onLost: onLost, answered: false };
+    TD = { gen: gen, canvas: cv, scene: null, flow: null, onLost: onLost, answered: false, confirm: false, pendingArrive: null, layers: 0 };
     cv.addEventListener('webglcontextlost', onLost);
     var fail = function () { if (gen === tripGen) { tripStop(); tripFallback(); } };
     loadThree().then(function (THREE) {
@@ -1317,21 +1331,146 @@ const MODULES = [
         if (gen !== tripGen || V.name !== 'trip') { try { scene.dispose(); } catch (e) {} return; }
         TD.scene = scene;
         var ld = document.getElementById('trip-load'); if (ld) ld.remove();
+        TD.flow = TripFlow.create({
+          stations: TRIP_STATIONS, questionsByTopic: mod('M08').byTopic, prep: prep, rnd: Math.random,
+          onStation: tripOnStation, onAsk: tripOnAsk, onSummary: tripOnSummary,
+          onResult: function (r) { var g = tripRecord(r); if (!r.ok && TD && TD.scene) TD.scene.lost(); return g; },
+          onLayer: function (n) { if (TD && TD.scene) { TD.layers = n; TD.scene.setLayers(n); tripHud(); } }
+        });
+        TD.flow.start();
       });
     }).then(null, fail);
   }
-  function tripQuit() { tripExit(); }
+  /* --- juego dentro del viaje --- */
+  var TRIP_LAYERS = ['Datos', 'Puerto', 'IP', 'Trama'];
+  function tId(id) { return document.getElementById(id); }
+  function tFocus(el) { if (!el) return; try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } }
+  function tHudQuit() { return document.querySelector('#trip-ui [data-act="tripquit"]'); }
+  function tripRecord(r) {
+    touch();
+    var base = r.ok ? 10 * r.q.difficulty + (r.consec >= 3 ? 5 : 0) : 0;
+    var gain = base + Math.floor(base * passivePct() / 100);
+    recordAnswer(r.q, r.ok, false, gain);
+    checkVirtues(); save();
+    return gain;
+  }
+  function tripHud() {
+    var c = tId('trip-layers');
+    if (c && TD) c.innerHTML = TRIP_LAYERS.slice(0, TD.layers).map(function (n) { return '<span class="chip">' + esc(n) + '</span>'; }).join('');
+  }
+  function tripSheet(h) { var sh = tId('trip-sheet'); if (sh) { sh.innerHTML = h; sh.hidden = false; } return sh; }
+  function tripOnStation(i) {
+    if (!TD || !TD.scene) return;
+    var sh = tId('trip-sheet'); sh.hidden = true; sh.innerHTML = '';
+    tFocus(tHudQuit());
+    TD.scene.setPaused('sheet', false);
+    var g = tripGen;
+    var arrive = function () {
+      if (g !== tripGen || !TD || !TD.scene) return;
+      var st = TRIP_STATIONS[i], n = i + 1, tot = TRIP_STATIONS.length, label = 'Estación ' + n + ' de ' + tot;
+      var pill = tId('trip-pill'); pill.textContent = label; pill.hidden = false;
+      var bar = tId('trip-bar'); bar.hidden = false; bar.setAttribute('aria-label', label); bar.firstChild.style.width = (n / tot * 100) + '%';
+      tId('trip-live').textContent = 'Estación ' + n + ': ' + st.name;
+      var kp = st.kp[0];
+      var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">' + esc('Estación ' + n + ' · ' + st.name) + '</span></div>' +
+        '<p>' + fmt(mod('M08').tById[kp.topic].keyPoints[kp.index]) + '</p><button class="btn primary wide" data-act="tripask">Ver pregunta</button></article>');
+      TD.scene.setPaused('sheet', true);
+      tFocus(sheet.querySelector('[data-act="tripask"]'));
+    };
+    TD.scene.goTo(i).then(function () {
+      if (g !== tripGen || !TD) return;
+      if (TD.confirm) TD.pendingArrive = arrive; else arrive();
+    });
+  }
+  function tripOpts(item, picked) {
+    return '<div class="opts" role="group" aria-label="Opciones de respuesta">' + item.labels.map(function (l, i) {
+      var cls = 'opt' + (picked === null ? '' : (i === item.correct ? ' ok' : (i === picked ? ' bad' : ' dim')));
+      return '<button class="' + cls + '" data-act="tripopt" data-k="' + i + '"' + (picked === null ? '' : ' disabled') + '><span class="key mono">' + (i + 1) + '</span><span>' + fmt(l) + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function tripOnAsk(item) {
+    var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">' + esc(KIND_LABEL[item.q.type]) + '</span></div>' +
+      '<h2 class="prompt">' + fmt(item.q.prompt) + '</h2>' + tripOpts(item, null) + '</article>');
+    tFocus(sheet.querySelector('.opt'));
+  }
+  function tripShowResult(k) {
+    var st = TD.flow.state(), item = st.item, q = item.q, ok = st.lastOk;
+    var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">' + esc(KIND_LABEL[q.type]) + '</span></div>' +
+      '<h2 class="prompt">' + fmt(q.prompt) + '</h2>' + tripOpts(item, k) +
+      '<div class="fb ' + (ok ? 'good' : 'bad') + '" role="status"><strong><span class="fbt">' + (ok ? 'Correcto' : 'Paquete perdido: retransmitiendo') + '</span></strong>' +
+      (ok ? '' : '<p>Respuesta correcta: <b>' + fmt(item.labels[item.correct]) + '</b></p>') + '<p>' + fmt(q.explanation) + '</p></div>' +
+      '<button class="btn primary wide" data-act="tripnext">Continuar</button></article>');
+    var fb = sheet.querySelector('.fb');
+    if (fb && fb.scrollIntoView) { try { fb.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    tFocus(sheet.querySelector('[data-act="tripnext"]'));
+  }
+  function tripAnswer(k) {
+    if (!TD || !TD.flow || TD.confirm || TD.flow.state().phase !== 'ask') return;
+    TD.flow.answer(k);
+    TD.answered = true;
+    tripShowResult(k);
+  }
+  function tripOnSummary(sum) {
+    var rows = sum.perStation.map(function (p, i) { return '<li>' + esc(TRIP_STATIONS[i].name) + ': ' + p.ok + ' de ' + p.total + '</li>'; }).join('');
+    var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">Resumen del viaje</span></div><h2 class="prompt">Llegaste al servidor</h2>' +
+      '<ul>' + rows + '</ul><p>XP ganada: <b>' + sum.xp + '</b></p><div class="actions"><button class="btn primary" data-act="tripend">Terminar</button>' +
+      (sum.fails.length ? '<button class="btn" data-act="tripreplay">Repasar lo que fallé</button>' : '') + '</div></article>');
+    if (TD && TD.scene) TD.scene.setPaused('sheet', true);
+    tFocus(sheet.querySelector('[data-act="tripend"]'));
+  }
+  function tripOpenConfirm() {
+    var c = tId('trip-confirm'); if (!c || !TD) return;
+    c.innerHTML = '<div class="banner up"><p>¿Salir del viaje? Lo que respondiste ya quedó guardado.</p><div class="actions">' +
+      '<button class="btn" data-act="tripconfirm">Salir</button><button class="btn primary" data-act="tripcancel">Seguir</button></div></div>';
+    c.hidden = false; TD.confirm = true;
+    tFocus(c.querySelector('[data-act="tripcancel"]'));
+  }
+  function tripCloseConfirm() {
+    var c = tId('trip-confirm'); if (!c || !TD) return;
+    c.hidden = true; c.innerHTML = ''; TD.confirm = false;
+    tFocus(tHudQuit());
+    var f = TD.pendingArrive; TD.pendingArrive = null;
+    if (f) f();
+  }
+  function tripQuit() {
+    if (TD && TD.confirm) tripCloseConfirm();
+    else if (TD && TD.answered) tripOpenConfirm();
+    else tripExit();
+  }
   tripRootEl().addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]');
     if (!b || b.disabled || V.name !== 'trip') return;
     var a = b.dataset.act;
     if (a === 'tripquit') tripQuit();
-    else if (a === 'tripback') tripExit();
+    else if (a === 'tripback' || a === 'tripend' || a === 'tripconfirm') tripExit();
+    else if (a === 'tripcancel') tripCloseConfirm();
     else if (a === 'tripround') { tripStop(); startRound({ kind: 'quiz', title: 'Quiz', mid: 'M08', back: { name: 'module', mod: 'M08' } }, itemsFor('quiz', mod('M08'), null)); }
+    else if (a === 'tripask') { if (TD && TD.flow && !TD.confirm) TD.flow.ask(); }
+    else if (a === 'tripopt') tripAnswer(parseInt(b.dataset.k, 10));
+    else if (a === 'tripnext') { if (TD && TD.flow && !TD.confirm) TD.flow.next(); }
+    else if (a === 'tripreplay') {
+      if (!TD || !TD.flow) return;
+      var fails = TD.flow.state().fails.slice();
+      tripStop();
+      startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fails));
+    }
   });
+  var TRIP_LOOK = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 10], ArrowDown: [0, -10] };
   document.addEventListener('keydown', function (e) {
     if (V.name !== 'trip' || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === 'Escape') { e.preventDefault(); tripQuit(); }
+    if (e.key === 'Escape') { e.preventDefault(); tripQuit(); return; }
+    if (!TD) return;
+    if (TRIP_LOOK[e.key]) { if (TD.scene && !TD.confirm) { e.preventDefault(); TD.scene.look(TRIP_LOOK[e.key][0], TRIP_LOOK[e.key][1]); } return; }
+    if (TD.confirm || !TD.flow) return;
+    var st = TD.flow.state();
+    if (/^[1-9]$/.test(e.key)) {
+      var k = parseInt(e.key, 10) - 1;
+      if (st.phase === 'ask' && k < st.item.labels.length) { e.preventDefault(); tripAnswer(k); }
+    } else if (e.key === 'Enter') {
+      var el = document.activeElement;
+      if (el && el.tagName === 'BUTTON') return;
+      if (st.phase === 'result') { e.preventDefault(); TD.flow.next(); }
+    }
   });
   window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
   document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); });

@@ -13,13 +13,14 @@ function boot(opts = {}) {
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push('jsdomError: ' + (e.detail || e.message)));
   vc.on('error', (e) => errors.push('console.error: ' + e));
-  const st = { imports: 0, revokes: 0, creates: 0, disposed: 0, calls: [], scenes: [], canvases: [], lastOpts: null, resolveImport: null, resolveCreate: null, rejectImport: null, goToResolvers: [] };
+  const st = { pendingGoTo: !!opts.goToPending, imports: 0, revokes: 0, creates: 0, disposed: 0, calls: [], scenes: [], canvases: [], lastOpts: null, resolveImport: null, resolveCreate: null, rejectImport: null, goToResolvers: [] };
   const dom = new JSDOM(html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
       w.scrollTo = () => {};
       w.Element.prototype.scrollIntoView = function () {};
+      if (opts.rndSeed) { let a = opts.rndSeed; w.Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });
       if (opts.objUrl !== false) { w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => { st.revokes++; }; }
       if (opts.imp) {
@@ -35,7 +36,7 @@ function boot(opts = {}) {
           create(THREE, canvas, stations, o) {
             st.creates++; st.lastOpts = o; st.canvases.push(canvas);
             const api = {
-              goTo: (i) => { st.calls.push(['goTo', i]); if (opts.goToPending) return new Promise((r) => st.goToResolvers.push(r)); return Promise.resolve(); },
+              goTo: (i) => { st.calls.push(['goTo', i]); if (st.pendingGoTo) return new Promise((r) => st.goToResolvers.push(r)); return Promise.resolve(); },
               setLayers: (n) => st.calls.push(['setLayers', n]),
               lost: () => st.calls.push(['lost']),
               look: (dx, dy) => st.calls.push(['look', dx, dy]),
@@ -170,6 +171,166 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
   // (m) Esc mientras carga
   e = boot({ imp: 'pending' }); enter(e); key(e, 'Escape');
   ok('m Esc mientras carga lleva a M08', h1(e) === 'Redes informáticas' && root(e).hidden); e.w.close();
+
+  // ===================== Tarea 6: juego dentro del viaje =====================
+  const KEY = 'estudio_isw_v1';
+  const stored = (e) => { const raw = e.w.localStorage.getItem(KEY); return raw ? JSON.parse(raw) : { xp: 0, session: 0, topics: {}, qs: {}, boss: {} }; };
+  const opt0 = (e) => e.d.querySelector('.opt');
+  const answerRight = (e) => { const q = findQ(e.w, e.d); click(e.w, optBtn(e.d, correctText(q))); return q; };
+  const answerWrong = (e) => { const q = findQ(e.w, e.d); const ct = norm(correctText(q)); const b = [...e.d.querySelectorAll('.opt')].find((x) => norm(x.querySelector('span:last-child').textContent) !== ct); click(e.w, b); return q; };
+  async function toQuestion(opts) { const e = boot(Object.assign({ imp: 'ok' }, opts || {})); enter(e); await tick(); click(e.w, btn(e.d, 'tripask')); return e; }
+  async function runTrip(e, rightPolicy) {
+    let n = 0;
+    for (let g = 0; g < 300; g++) {
+      if (btn(e.d, 'tripend')) return n;
+      const ask = btn(e.d, 'tripask');
+      if (ask) { click(e.w, ask); continue; }
+      if ([...e.d.querySelectorAll('.opt:not([disabled])')].length) { const q = findQ(e.w, e.d); (rightPolicy(n++, q) ? answerRight : answerWrong)(e); continue; }
+      const nx = btn(e.d, 'tripnext'); if (nx) { click(e.w, nx); await tick(3); continue; }
+      await tick(2);
+    }
+    return -1;
+  }
+
+  // (n0) viajando: antes de llegar no hay hoja y el foco está en Salir
+  e = boot({ imp: 'ok', goToPending: true }); enter(e); await tick();
+  ok('n0 viajando: no existe tripask', !btn(e.d, 'tripask'));
+  ok('n0 viajando: el foco está en tripquit', e.d.activeElement && e.d.activeElement.dataset.act === 'tripquit');
+  ok('n0 viajando: setPaused("sheet", false) y ningún "sheet", true', e.st.calls.some((c) => c[0] === 'setPaused' && c[1] === 'sheet' && c[2] === false) && !e.st.calls.some((c) => c[0] === 'setPaused' && c[1] === 'sheet' && c[2] === true));
+  e.st.goToResolvers[0](); await tick();
+  ok('n0 después de resolver goTo aparece la hoja', !!btn(e.d, 'tripask'));
+  // (n) HUD tras llegar
+  ok('n pill = "Estación 1 de 10"', e.d.getElementById('trip-pill').textContent === 'Estación 1 de 10');
+  ok('n .bar[aria-label] = "Estación 1 de 10"', e.d.querySelector('.bar[aria-label]').getAttribute('aria-label') === 'Estación 1 de 10');
+  ok('n #trip-live contiene "Estación 1:"', /Estación 1:/.test(e.d.getElementById('trip-live').textContent));
+  ok('n tripask tiene el foco', e.d.activeElement === btn(e.d, 'tripask'));
+  ok('n setPaused("sheet", true) al mostrar la hoja', e.st.calls.some((c) => c[0] === 'setPaused' && c[1] === 'sheet' && c[2] === true));
+  ok('y meta viewport con viewport-fit=cover', /viewport-fit=cover/.test(e.d.querySelector('meta[name=viewport]').content)); e.w.close();
+
+  // (o) pregunta y acierto, (w) estado nuevo
+  e = await toQuestion();
+  ok('o hay .prompt y .opt[data-act=tripopt], sin .timer', !!e.d.querySelector('.prompt') && !!e.d.querySelector('.opt[data-act="tripopt"]') && !e.d.querySelector('.timer'));
+  ok('o el foco está en la primera .opt', e.d.activeElement === opt0(e));
+  const xp0 = stored(e).xp;
+  { const q = answerRight(e); const s1 = stored(e), h = s1.topics['M08:' + q.topic] || [];
+    ok('o .fb.good con "Correcto" y foco en tripnext', !!e.d.querySelector('.fb.good') && /Correcto/.test(e.d.querySelector('.fb').textContent) && e.d.activeElement === btn(e.d, 'tripnext'));
+    ok('o historial del tema termina en 1', h[h.length - 1] === 1, JSON.stringify(h));
+    ok('o xp subió en 10×dificultad', s1.xp - xp0 === 10 * q.difficulty, 'xp ' + xp0 + '→' + s1.xp + ' dif=' + q.difficulty);
+    ok('o session se actualizó', s1.session >= 1);
+    ok('o #trip-live no contiene "Correcto"', !/Correcto/.test(e.d.getElementById('trip-live').textContent));
+    ok('w estado nuevo: se creó estudio_isw_v1 con topics M08', Object.keys(s1.topics).some((k) => k.indexOf('M08:') === 0)); }
+  e.w.close();
+
+  // (p) fallo, (p2) lost(), retransmisión
+  e = await toQuestion();
+  { const q = answerWrong(e), fb = e.d.querySelector('.fb.bad');
+    ok('p .fb.bad con "Paquete perdido: retransmitiendo" y "Respuesta correcta:"', !!fb && /Paquete perdido: retransmitiendo/.test(fb.textContent) && /Respuesta correcta:/.test(fb.textContent));
+    ok('p qs[q.id].q === true', stored(e).qs[q.id] && stored(e).qs[q.id].q === true);
+    ok('p #trip-live no contiene "Paquete perdido"', !/Paquete perdido/.test(e.d.getElementById('trip-live').textContent));
+    ok('p2 la escena recibió lost()', e.st.calls.some((c) => c[0] === 'lost'));
+    click(e.w, btn(e.d, 'tripnext'));
+    const q2 = findQ(e.w, e.d);
+    ok('p tripnext → otra pregunta del mismo tema', q2 && q2.topic === q.topic && q2.id !== q.id, q2 && q2.topic + '/' + q.topic); }
+  e.w.close();
+
+  // (q) doble clic registra un solo intento
+  e = await toQuestion();
+  { const q = findQ(e.w, e.d), b = optBtn(e.d, correctText(q));
+    click(e.w, b); click(e.w, b); click(e.w, optBtn(e.d, correctText(q)));
+    ok('q dos o tres clics registran un solo intento (a === 1)', stored(e).qs[q.id] && stored(e).qs[q.id].a === 1, JSON.stringify(stored(e).qs[q.id])); }
+  e.w.close();
+
+  // (r) teclas
+  e = await toQuestion();
+  e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: '1', bubbles: true }));
+  ok('r la tecla 1 responde', !!e.d.querySelector('.fb'));
+  e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  ok('r Enter con el foco en un botón no avanza', !!e.d.querySelector('.fb'));
+  e.d.activeElement.blur(); e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  ok('r Enter con el foco en body continúa', !e.d.querySelector('.fb'));
+  e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+  ok('r flecha izquierda llama a look(-10, 0)', e.st.calls.some((c) => c[0] === 'look' && c[1] === -10 && c[2] === 0)); e.w.close();
+
+  // (s) confirmación de salida
+  e = await toQuestion(); answerWrong(e); click(e.w, btn(e.d, 'tripnext'));       // fase ask otra vez (retransmisión)
+  click(e.w, e.d.querySelector('#trip-ui [data-act="tripquit"]'));
+  { const c = e.d.getElementById('trip-confirm');
+    ok('s tripquit tras responder abre la confirmación con el texto exacto', !c.hidden && /¿Salir del viaje\? Lo que respondiste ya quedó guardado\./.test(c.textContent));
+    ok('s el foco está en "Seguir"', e.d.activeElement && e.d.activeElement.dataset.act === 'tripcancel');
+    e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: '1', bubbles: true }));
+    ok('s con la confirmación abierta la tecla 1 no responde', !e.d.querySelector('.fb'));
+    key(e, 'Escape');
+    ok('s Esc cierra la confirmación y el foco vuelve a tripquit', c.hidden && e.d.activeElement && e.d.activeElement.dataset.act === 'tripquit' && h1(e) === '');
+    click(e.w, e.d.querySelector('#trip-ui [data-act="tripquit"]')); click(e.w, btn(e.d, 'tripcancel'));
+    ok('s clic en "Seguir" cierra y devuelve el foco a tripquit', c.hidden && e.d.activeElement.dataset.act === 'tripquit');
+    click(e.w, e.d.querySelector('#trip-ui [data-act="tripquit"]')); click(e.w, btn(e.d, 'tripconfirm'));
+    ok('s tripconfirm lleva a M08, dispose() y #trip-root hidden y vacío', h1(e) === 'Redes informáticas' && e.st.disposed === 1 && root(e).hidden && root(e).innerHTML === ''); }
+  e.w.close();
+
+  // (s2) confirmación mientras viaja
+  e = await toQuestion(); answerRight(e); e.st.pendingGoTo = true; click(e.w, btn(e.d, 'tripnext')); await tick();
+  ok('s2 viajando: no hay tripask', !btn(e.d, 'tripask'));
+  click(e.w, e.d.querySelector('#trip-ui [data-act="tripquit"]'));
+  ok('s2 tripquit durante el viaje abre la confirmación', !e.d.getElementById('trip-confirm').hidden);
+  e.st.goToResolvers[e.st.goToResolvers.length - 1](); await tick();
+  ok('s2 al resolverse goTo el foco sigue en "Seguir" y no aparece tripask', e.d.activeElement.dataset.act === 'tripcancel' && !btn(e.d, 'tripask'));
+  click(e.w, btn(e.d, 'tripcancel'));
+  ok('s2 tripcancel → aparece la hoja arrive con el foco en "Ver pregunta"', !!btn(e.d, 'tripask') && e.d.activeElement === btn(e.d, 'tripask'));
+  ok('s2 la hoja arrive es de la estación 2', e.d.getElementById('trip-pill').textContent === 'Estación 2 de 10'); e.w.close();
+
+  // (l ampliado) resize con una pregunta abierta
+  e = await toQuestion();
+  { const n0 = e.st.calls.length; e.w.dispatchEvent(new e.w.Event('resize'));
+    const after = e.st.calls.slice(n0);
+    ok('l resize con pregunta abierta: resize() y ningún setPaused("sheet", false)', after.some((c) => c[0] === 'resize') && !after.some((c) => c[0] === 'setPaused' && c[1] === 'sheet' && c[2] === false)); }
+  e.w.close();
+
+  // (t) recorrido completo acertando todo + (x) S.boss sin cambios
+  e = boot({ imp: 'ok' }); enter(e); await tick();
+  { const n = await runTrip(e, () => true);
+    ok('t el recorrido llega al resumen con 18 respuestas', n === 18 && !!btn(e.d, 'tripend'), 'n=' + n);
+    ok('t .pill y .bar[aria-label] dicen "Estación 10 de 10"', e.d.getElementById('trip-pill').textContent === 'Estación 10 de 10' && e.d.querySelector('.bar[aria-label]').getAttribute('aria-label') === 'Estación 10 de 10');
+    const m = e.d.getElementById('trip-sheet').textContent.match(/XP ganada: (\d+)/);
+    ok('t el resumen muestra la XP igual a S.xp', !!m && Number(m[1]) === stored(e).xp && stored(e).xp > 0, (m && m[1]) + ' vs ' + stored(e).xp);
+    ok('t el foco está en tripend y no hay tripreplay', e.d.activeElement === btn(e.d, 'tripend') && !btn(e.d, 'tripreplay'));
+    ok('t el resumen lista 10 estaciones', e.d.querySelectorAll('#trip-sheet li').length === 10);
+    ok('x S.boss sin cambios', JSON.stringify(stored(e).boss) === '{}');
+    ok('t recorrido completo sin errores de consola', !e.errors.length, e.errors.join(' | '));
+    click(e.w, btn(e.d, 'tripend'));
+    ok('t tripend sale sin confirmación, dispose() y #trip-root hidden y vacío', h1(e) === 'Redes informáticas' && e.st.disposed === 1 && root(e).hidden && root(e).innerHTML === ''); }
+  e.w.close();
+
+  // (u) fallar solo la primera pregunta → repaso de fallos
+  e = boot({ imp: 'ok' }); enter(e); await tick();
+  { const n = await runTrip(e, (i) => i !== 0);
+    ok('u el viaje termina (19 respuestas) y aparece tripreplay', n === 19 && !!btn(e.d, 'tripreplay'), 'n=' + n);
+    click(e.w, btn(e.d, 'tripreplay'));
+    ok('u el repaso abre una ronda con .pill "1 / 1" y #trip-root hidden', e.d.querySelector('.pill') && e.d.querySelector('.pill').textContent.trim() === '1 / 1' && root(e).hidden, e.d.querySelector('.pill') && e.d.querySelector('.pill').textContent);
+    ok('u el .chip no dice "Repaso de fallos"', !/Repaso de fallos/.test(e.d.querySelector('.chip').textContent));
+    answerRight(e); click(e.w, e.d.getElementById('nextbtn'));
+    ok('u resultados: .eyebrow "Repaso de fallos"', !!e.d.querySelector('.eyebrow') && /Repaso de fallos/.test(e.d.querySelector('.eyebrow').textContent)); }
+  e.w.close();
+
+  // (v) pregunta tf: sin temporizador
+  e = boot({ imp: 'ok', rndSeed: 12345 }); enter(e); await tick();
+  { let tf = false;
+    for (let g = 0; g < 300 && !btn(e.d, 'tripend'); g++) {
+      const ask = btn(e.d, 'tripask'); if (ask) { click(e.w, ask); continue; }
+      if (e.d.querySelectorAll('.opt:not([disabled])').length) {
+        const labels = [...e.d.querySelectorAll('.opt')].map((b) => norm(b.querySelector('span:last-child').textContent));
+        if (labels.length === 2 && labels[0] === 'Verdadero' && labels[1] === 'Falso') { tf = true; break; }
+        answerRight(e); continue;
+      }
+      const nx = btn(e.d, 'tripnext'); if (nx) { click(e.w, nx); await tick(3); continue; }
+      await tick(2);
+    }
+    ok('v salió una pregunta tf', tf);
+    ok('v la tf no tiene .timer', !e.d.querySelector('.timer'));
+    const real = e.w.performance.now.bind(e.w.performance); e.w.performance.now = () => real() + 13000;
+    await new Promise((r) => setTimeout(r, 300));
+    ok('v tras 13 s simulados y 300 ms reales no hay .fb', !e.d.querySelector('.fb')); }
+  e.w.close();
+
 
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
