@@ -332,8 +332,17 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 .vface{display:grid; place-items:center; background:#27306a}
 .vface .bspr{width:40px; height:44px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important} body.game .opt.zap{opacity:.4}}
+/* viaje 3D: capa a pantalla completa fuera de #app */
+#trip-root{position:fixed; inset:0; height:100dvh; z-index:50; background:var(--bg)}
+#trip-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}
+#trip-ui{position:absolute; inset:0; pointer-events:none}
+#trip-ui > *{pointer-events:auto}
+.trip-quit{min-height:44px; min-width:44px}
+#trip-root .banner{background:var(--surface)}
+body.trip-on{overflow:hidden}
 </style>
 <div class="shell" id="app"></div>
+<div id="trip-root" hidden></div>
 <!--__THREE__-->
 <script>
 const MODULES = [
@@ -1017,7 +1026,7 @@ const MODULES = [
     var h = header() + '<main><div class="crumb"><button class="btn sm ghost" data-act="home">← Módulos</button></div>' +
       '<div class="head"><span class="tag">' + esc(m.id) + '</span><h1>' + esc(m.title) + '</h1>' +
       '<div class="bar" role="img" aria-label="' + dominio(m) + ' por ciento de dominio"><i style="width:' + dominio(m) + '%"></i></div>' +
-      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (REGIONS[m.id] ? '<div><button class="btn sm" data-act="world" data-id="' + esc(m.id) + '">Explorar esta región</button></div>' : '') + '</div>' +
+      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (REGIONS[m.id] ? '<div><button class="btn sm" data-act="world" data-id="' + esc(m.id) + '">Explorar esta región</button></div>' : '') + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
       '<h2 class="h2">Modos del módulo</h2><div class="modes">' +
       modeBtn('tf', 'Relámpago', '10 afirmaciones, 12 s cada una', true) +
       modeBtn('scenario', '¿Qué usarías?', 'Decisiones de diseño en casos reales', true) +
@@ -1226,7 +1235,8 @@ const MODULES = [
   function render() {
     var h = '';
     worldStop();
-    try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results'); } catch (e) {}
+    tripStop();
+    try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results' || V.name === 'trip'); document.body.classList.toggle('trip-on', V.name === 'trip'); } catch (e) {}
     if (V.name === 'home') h = vHome();
     else if (V.name === 'module') h = vModule();
     else if (V.name === 'topic') h = vTopic();
@@ -1237,6 +1247,7 @@ const MODULES = [
     else if (V.name === 'world') h = vWorld();
     app.innerHTML = h;
     if (V.name === 'world') worldStart();
+    if (V.name === 'trip') tripStart();
     if (R) R.fx = null;
     paintSprites();
     if (V.name === 'results') xpCount();
@@ -1247,6 +1258,84 @@ const MODULES = [
   /* ---------- modo aventura: datos ---------- */
   var TS = 16, WD = null, SPR = {}, MAPS = {};
   /*__TRIP__*/
+  /* ---------- viaje 3D "Viaja como paquete": ciclo de vida (escena, carga diferida, respaldo) ---------- */
+  var TD = null, tripGen = 0, threeP = null;
+  var TRIP_QUIT = '<button class="btn sm ghost trip-quit" data-act="tripquit" aria-label="Salir del viaje">Salir</button>';
+  function tripRootEl() { return document.getElementById('trip-root'); }
+  function dynImport(u) { var h = window.__TRIP_IMPORT__; return (typeof h === 'function') ? h(u) : import(u); }
+  function loadThree() {
+    if (threeP) return threeP;
+    var el, url, p;
+    try {
+      el = document.getElementById('three-src');
+      url = URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' }));
+    } catch (e) { return Promise.reject(e); }
+    try { p = dynImport(url); } catch (e2) { URL.revokeObjectURL(url); return Promise.reject(e2); }
+    threeP = p.then(function (m) { URL.revokeObjectURL(url); el.remove(); return m; },
+      function (e3) { URL.revokeObjectURL(url); threeP = null; throw e3; });
+    return threeP;
+  }
+  function tripScenePath() {
+    var f = window.__TRIP_SCENE__;
+    if (f && typeof f.create === 'function') return f;
+    return (typeof TripScene !== 'undefined') ? TripScene : null;
+  }
+  function tripExit() { go('module', { mod: 'M08' }); }
+  function tripFallback() {
+    var r = tripRootEl(); r.hidden = false;
+    r.innerHTML = '<div class="banner up" role="alert"><p>Tu navegador no pudo abrir el viaje 3D.</p><div class="actions">' +
+      '<button class="btn" data-act="tripround">Hacer ronda de M08</button><button class="btn primary" data-act="tripback">Volver</button></div></div>';
+    var b = r.querySelector('[data-act="tripback"]');
+    if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } }
+  }
+  function tripStop() {
+    tripGen++;
+    var td = TD; TD = null;
+    if (td) {
+      if (td.canvas && td.onLost) td.canvas.removeEventListener('webglcontextlost', td.onLost);
+      if (td.scene) { try { td.scene.dispose(); } catch (e) {} }
+    }
+    var r = tripRootEl();
+    if (r) { r.hidden = true; r.innerHTML = ''; }
+  }
+  function tripStart() {
+    var gen = ++tripGen, r = tripRootEl();
+    r.hidden = false;
+    r.innerHTML = '<canvas id="trip-cv" aria-hidden="true"></canvas><div id="trip-ui"><p role="status" id="trip-load">Preparando el viaje…</p>' + TRIP_QUIT + '</div>';
+    var cv = document.getElementById('trip-cv');
+    var onLost = function (ev) { if (TD && ev.target === TD.canvas) { tripStop(); tripFallback(); } };
+    TD = { gen: gen, canvas: cv, scene: null, flow: null, onLost: onLost, answered: false };
+    cv.addEventListener('webglcontextlost', onLost);
+    var fail = function () { if (gen === tripGen) { tripStop(); tripFallback(); } };
+    loadThree().then(function (THREE) {
+      if (gen !== tripGen || V.name !== 'trip') return;
+      var F = tripScenePath();
+      if (!F) throw new Error('sin escena');
+      var rm = false;
+      try { rm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+      return Promise.resolve(F.create(THREE, cv, TRIP_STATIONS, { reducedMotion: rm })).then(function (scene) {
+        if (gen !== tripGen || V.name !== 'trip') { try { scene.dispose(); } catch (e) {} return; }
+        TD.scene = scene;
+        var ld = document.getElementById('trip-load'); if (ld) ld.remove();
+      });
+    }).then(null, fail);
+  }
+  function tripQuit() { tripExit(); }
+  tripRootEl().addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b || b.disabled || V.name !== 'trip') return;
+    var a = b.dataset.act;
+    if (a === 'tripquit') tripQuit();
+    else if (a === 'tripback') tripExit();
+    else if (a === 'tripround') { tripStop(); startRound({ kind: 'quiz', title: 'Quiz', mid: 'M08', back: { name: 'module', mod: 'M08' } }, itemsFor('quiz', mod('M08'), null)); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (V.name !== 'trip' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { e.preventDefault(); tripQuit(); }
+  });
+  window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
+  document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); });
+
   var MNAMES = ['Ana', 'Bruno', 'Carla', 'Diego', 'Elena', 'Fermín', 'Gala', 'Héctor', 'Inés', 'Joaquín', 'Karla', 'Luis', 'Marta', 'Nico', 'Olga', 'Pablo', 'Rosa', 'Sergio', 'Tere', 'Víctor'];
   var MFEM = { Ana: 1, Carla: 1, Elena: 1, Gala: 1, 'Inés': 1, Karla: 1, Marta: 1, Olga: 1, Rosa: 1, Tere: 1 };
   var MHAIR = ['#3b2a20', '#1f1a17', '#6b4423', '#8a5a2b', '#b9772f', '#5a5f6b'];
@@ -2126,6 +2215,7 @@ const MODULES = [
     if (a === 'home') go('home');
     else if (a === 'world') go('world', { to: d.id || null });
     else if (a === 'w') worldAct(d.w, d);
+    else if (a === 'trip') go('trip');
     else if (a === 'hero') go('hero');
     else if (a === 'mod') go('module', { mod: d.id });
     else if (a === 'topic') go('topic', { mod: V.mod, topic: d.id });
