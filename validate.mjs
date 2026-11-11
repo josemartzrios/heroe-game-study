@@ -286,5 +286,31 @@ console.log('Por tema M10:', JSON.stringify(r10.perTopic));
 
 
 console.log('Por tema M02:', JSON.stringify(r2.perTopic));
+
+// ---------- Viaje 3D: estaciones (TRIP_STATIONS) ----------
+{
+  const mt = html.match(/var TRIP_STATIONS = (\[[\s\S]*?\]);/);
+  if (!mt) bad('Falta TRIP_STATIONS');
+  else {
+    const st = vm.runInNewContext(mt[1]);
+    const m8 = MODULES.find((m) => m.id === 'M08');
+    const byId = Object.fromEntries(m8.topics.map((t) => [t.id, t]));
+    if (st.length !== 10) bad('TRIP_STATIONS debe tener 10 estaciones');
+    const union = new Set();
+    for (const s of st) {
+      for (const t of s.topics) { if (!byId[t]) bad(`${s.id}: tema ${t} no existe en M08`); union.add(t); }
+      if (s.ask !== 1 && s.ask !== 2) bad(`${s.id}: ask debe ser 1 o 2`);
+      if (!Array.isArray(s.kp) || s.kp.length !== 1) bad(`${s.id}: kp debe tener 1 elemento`);
+      else {
+        const k = s.kp[0], t = byId[k.topic];
+        if (!t || !Number.isInteger(k.index) || k.index < 0 || k.index >= t.keyPoints.length || !t.keyPoints[k.index].includes(k.expect)) bad('kp desalineado en ' + s.id);
+        if (typeof k.expect !== 'string' || k.expect.length < 15 || k.expect.length > 40) bad(`${s.id}: expect debe medir de 15 a 40 caracteres`);
+        if (!s.topics.includes(k.topic)) bad(`${s.id}: kp.topic no está en topics`);
+      }
+    }
+    if (m8.topics.some((t) => !union.has(t.id))) bad('TRIP_STATIONS no cubre los 15 temas de M08');
+    if (st.reduce((n, s) => n + s.ask, 0) !== 18) bad('La suma de ask debe ser 18');
+  }
+}
 if (errs.length) { console.log('ERRORES:\n- ' + errs.join('\n- ')); process.exit(1); }
 console.log('VALIDACIÓN OK');

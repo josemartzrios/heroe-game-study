@@ -9,6 +9,7 @@ import * as c7 from './content_m07.mjs';
 import * as c8 from './content_m08.mjs';
 import * as c9 from './content_m09.mjs';
 import * as c10 from './content_m10.mjs';
+import { stations as tripStations } from './trip/stations.mjs';
 
 const pad = (n) => String(n).padStart(3, '0');
 
@@ -68,9 +69,13 @@ const m10 = expand('M10', 'Ciberseguridad', c10);
 const tpl = fs.readFileSync(new URL('./engine.html', import.meta.url), 'utf8');
 const anchor = '/*__MODULES__*/\n  // === MODULE:M01 END ===';
 if (!tpl.includes(anchor)) throw new Error('falta el ancla del motor');
-const out = tpl.replace(
+let out = tpl.replace(
   anchor,
   `${m1}\n  // === MODULE:M01 END ===\n  // === MODULE:M02 START ===\n${m2}\n  // === MODULE:M02 END ===\n  // === MODULE:M03 START ===\n${m3}\n  // === MODULE:M03 END ===\n  // === MODULE:M04 START ===\n${m4}\n  // === MODULE:M04 END ===\n  // === MODULE:M05 START ===\n${m5}\n  // === MODULE:M05 END ===\n  // === MODULE:M06 START ===\n${m6}\n  // === MODULE:M06 END ===\n  // === MODULE:M07 START ===\n${m7}\n  // === MODULE:M07 END ===\n  // === MODULE:M08 START ===\n${m8}\n  // === MODULE:M08 END ===\n  // === MODULE:M09 START ===\n${m9}\n  // === MODULE:M09 END ===\n  // === MODULE:M10 START ===\n${m10}\n  // === MODULE:M10 END ===`
 );
+// Viaje 3D: datos de estaciones y ancla para el código del viaje (flow.js / scene.js)
+if (!out.includes('/*__TRIP__*/')) throw new Error('falta el ancla /*__TRIP__*/ del motor');
+out = out.replace('/*__TRIP__*/', () => 'var TRIP_STATIONS = ' + JSON.stringify(tripStations) + ';\n  /*__TRIP_CODE__*/');
+out = out.split('/*__TRIP_CODE__*/').join('');
 fs.writeFileSync(new URL('./juego_estudio.html', import.meta.url), out);
 console.log('OK');
