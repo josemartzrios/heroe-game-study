@@ -214,6 +214,11 @@ Se usa un `.banner` con el texto "Tu navegador no pudo abrir el viaje 3D." y dos
 - La suite existente (`smoke`, `hero`, `world`, `battle`, `m03`–`m10`) sigue pasando.
 - **Revisión manual en el teléfono:** fluidez a ≥ 30 fps con `?fps=1`, giro con el dedo sin que la página haga scroll, orientación horizontal, salir y volver a entrar 5 veces sin que crezca la memoria, y regresar de otra app a mitad del viaje.
 
+## 9b. Endurecimiento previo y despliegue
+
+- Antes del refactor de `recordAnswer`, `migrate()` normaliza los tipos del estado guardado. Los ataques de `tests/adv/attacks.cjs` mostraron que un `estudio_isw_v1` corrupto impedía arrancar o congelaba `finalize()`. También se endurece `touch()` contra el reloj que retrocede, se avisa cuando `save()` falla y se validan los colores del héroe (self-XSS). El detalle está en la Tarea 0 del plan.
+- Se agrega `_headers` con una CSP compatible con el `import()` desde `blob:`, para cuando se despliegue en Netlify.
+
 ## 10. Fuera de alcance
 
 - Escenas 3D para otros módulos.
