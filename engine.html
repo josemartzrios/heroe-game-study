@@ -856,6 +856,23 @@ const MODULES = [
     var k = R.st.pend; R.st.pend = null; finalize(k);
   }
 
+  /* Registro de progreso de una respuesta: solo escribe en S (XP, historial del tema, cola de repaso).
+     Quien la llame debe hacer antes touch() y calcular gain, y después checkVirtues() y save(). */
+  function recordAnswer(q, ok, assisted, gain) {
+    S.xp += gain;
+    var hk = qmap[q.id].m.id + ':' + q.topic;
+    var h = (S.topics[hk] || []).concat(ok ? (assisted ? 0.5 : 1) : 0); S.topics[hk] = h.slice(-10);
+    var r = S.qs[q.id] || (S.qs[q.id] = { a: 0, c: 0, q: false, g: 0, gs: -1 });
+    r.a++;
+    if (ok) {
+      r.c++;
+      if (assisted) { if (!r.q) { r.q = true; r.g = 0; r.gs = -1; } }
+      else if (r.q) {
+        if (r.gs !== S.session) { r.g++; r.gs = S.session; }
+        if (r.g >= 2) { r.q = false; r.g = 0; r.gs = -1; S.stats.cleared++; }
+      }
+    } else { r.q = true; r.g = 0; r.gs = -1; }
+  }
   function finalize(k) {
     clearTimer();
     var p = R.cur, q = p.q, info = qmap[q.id], st = R.st, ok = k === p.correct;
@@ -877,19 +894,8 @@ const MODULES = [
       }
     } else if (st.shield && R.pw.shield > 0) { R.pw.shield--; shielded = true; }
     else { R.consec = 0; }
-    R.xp += gain; S.xp += gain;
-    var hk = info.m.id + ':' + q.topic;
-    var h = (S.topics[hk] || []).concat(ok ? (assisted ? 0.5 : 1) : 0); S.topics[hk] = h.slice(-10);
-    var r = S.qs[q.id] || (S.qs[q.id] = { a: 0, c: 0, q: false, g: 0, gs: -1 });
-    r.a++;
-    if (ok) {
-      r.c++;
-      if (assisted) { if (!r.q) { r.q = true; r.g = 0; r.gs = -1; } }
-      else if (r.q) {
-        if (r.gs !== S.session) { r.g++; r.gs = S.session; }
-        if (r.g >= 2) { r.q = false; r.g = 0; r.gs = -1; S.stats.cleared++; }
-      }
-    } else { r.q = true; r.g = 0; r.gs = -1; }
+    R.xp += gain;
+    recordAnswer(q, ok, assisted, gain);
     if (R.battle) {
       var B = R.battle;
       if (ok) { B.hp = Math.max(0, B.hp - 1); B.fx = 'hit'; B.msg = 'Le quitaste 1 de vida a ' + R.cfg.villain.name + '.'; if (st.retry && B.en < 3) { B.en++; B.msg += ' Recuperaste 1 de energía.'; } }
