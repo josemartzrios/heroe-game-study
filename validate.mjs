@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html = fs.readFileSync(new URL('./juego_estudio.html', import.meta.url), 'utf8');
+// Three.js incrustado como texto inerte: se valida aparte y se excluye de las reglas del motor
+const vend = html.match(/<!-- VENDOR:THREE START -->[\s\S]*?<!-- VENDOR:THREE END -->/);
+const htmlNoV = vend ? html.replace(vend[0], '') : html;
 const backupPath = process.argv[2];
 const m = html.match(/const MODULES = (\[[\s\S]*?\n\]);/);
 if (!m) throw new Error('No se encontró MODULES');
@@ -20,14 +23,14 @@ if (backupPath) {
 }
 // Palabras prohibidas (IP ajena) en todo el archivo
 const forbidden = [/Marvel/i, /DC Comics/i, /LEGO/i, /Spider/i, /Batman/i, /Superman/i, /Cyclops/i, /Wolverine/i, /Hulk/i, /Iron Man/i, /\bThor\b/, /Wonder Woman/i, /\bFlash\b/, /Avengers/i, /X-Men/i];
-for (const re of forbidden) if (re.test(html)) bad('Palabra prohibida: ' + re);
+for (const re of forbidden) if (re.test(htmlNoV)) bad('Palabra prohibida: ' + re);
 if (MODULES.length !== 10 || MODULES.map((m) => m.id).join() !== 'M01,M02,M03,M04,M05,M06,M07,M08,M09,M10') bad('MODULES debe tener M01..M10 en ese orden');
 if (!html.includes("'estudio_isw_v1'")) bad('Falta la clave localStorage');
 // Etapa W1: modo aventura
 for (const s of ['function vWorld', 'function heroSprite', 'data-act="world"']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
-{ const eng = html.slice(0, html.indexOf('// === MODULE:M01 START ===')) + html.slice(html.indexOf('// === MODULE:M10 END ==='));
+{ const eng = htmlNoV.slice(0, htmlNoV.indexOf('// === MODULE:M01 START ===')) + htmlNoV.slice(htmlNoV.indexOf('// === MODULE:M10 END ==='));
   for (const re of [/<img/i, /fetch\(/, /new Image/]) if (re.test(eng)) bad('El motor usa un recurso no permitido: ' + re); }
-if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.argv[2]).length, grow = Buffer.byteLength(html) - oldLen; console.log('Crecimiento respecto a la versión publicada:', grow, 'bytes'); if (grow > 90 * 1024 && /v12/.test(process.argv[2])) bad('El archivo creció más de 90 KB respecto a la versión 12'); }
+if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.argv[2]).length, grow = Buffer.byteLength(htmlNoV) - oldLen; console.log('Crecimiento respecto a la versión publicada:', grow, 'bytes'); if (grow > 90 * 1024 && /v12/.test(process.argv[2])) bad('El archivo creció más de 90 KB respecto a la versión 12'); }
 // Etapa W2: villanos
 for (const s of ['function villainSprite', 'function vBattleHud', 'var VILLAINS = [']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
 { const seg = html.slice(html.indexOf('var VILLAINS = ['), html.indexOf('var VSPR'));
@@ -35,7 +38,7 @@ for (const s of ['function villainSprite', 'function vBattleHud', 'var VILLAINS 
   if ((seg.match(/id: '/g) || []).length !== 6) bad('Debe haber 6 villanos en M01');
   if (vt.length !== m1.length || new Set(vt).size !== vt.length || m1.some((t) => !vt.includes(t))) bad('Cada tema de M01 debe aparecer exactamente en un villano'); }
 for (const id of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10']) for (const s of ['START', 'END']) if (!html.includes(`// === MODULE:${id} ${s} ===`)) bad(`Falta marcador ${id} ${s}`);
-if (/https?:\/\/(?!fonts\.googleapis\.com|ejemplo\.com)/.test(html.replace(/<link[^>]*>/g, ''))) bad('Hay URLs externas en el cuerpo');
+if (/https?:\/\/(?!fonts\.googleapis\.com|ejemplo\.com)/.test(htmlNoV.replace(/<link[^>]*>/g, ''))) bad('Hay URLs externas en el cuerpo');
 
 // ---------- Validación genérica por módulo ----------
 function checkModule(mod, prefix, min, nTopics) {
@@ -287,6 +290,24 @@ console.log('Por tema M10:', JSON.stringify(r10.perTopic));
 
 console.log('Por tema M02:', JSON.stringify(r2.perTopic));
 
+// ---------- Viaje 3D: vendor Three.js ----------
+{
+  const THREE_SHA384 = '7827608db326fa37a423c7f269e099e0f9f2839938267e39c36aacde57e701de444b920ee2128e5cd8ac5414f25330ce';
+  if (!vend) bad('Falta el bloque VENDOR:THREE');
+  else {
+    const open = '<script type="text/plain" id="three-src" data-version="0.169.0">', close = '</script><!-- VENDOR:THREE END -->';
+    const a = vend[0].indexOf(open), z = vend[0].lastIndexOf(close);
+    if (a < 0) bad('vendor: falta data-version="0.169.0"');
+    else if (z < 0) bad('vendor: falta el cierre del bloque');
+    else {
+      const body = vend[0].slice(a + open.length, z);
+      if (/<\/script/i.test(body)) bad('vendor: contiene </script interno');
+      if (/<!--/.test(body)) bad('vendor: contiene <!-- interno');
+      if (/from\s*["']\.\//.test(body)) bad('vendor: import relativo');
+      if ((await import('node:crypto')).createHash('sha384').update(body).digest('hex') !== THREE_SHA384) bad('vendor: hash distinto');
+    }
+  }
+}
 // ---------- Viaje 3D: estaciones (TRIP_STATIONS) ----------
 {
   const mt = html.match(/var TRIP_STATIONS = (\[[\s\S]*?\]);/);

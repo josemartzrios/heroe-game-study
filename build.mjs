@@ -79,5 +79,13 @@ out = out.replace('/*__TRIP__*/', () => 'var TRIP_STATIONS = ' + JSON.stringify(
 const tripFlow = fs.readFileSync(new URL('./trip/flow.js', import.meta.url), 'utf8');
 out = out.replace('/*__TRIP_CODE__*/', () => tripFlow + '\n  /*__TRIP_CODE__*/');
 out = out.split('/*__TRIP_CODE__*/').join('');
+// Three.js r169 como texto inerte (se importa solo al entrar al viaje)
+const threePath = process.env.THREE_VENDOR || new URL('./vendor/three.module.min.js', import.meta.url);
+const threeSrc = fs.readFileSync(threePath, 'utf8');
+if (/<\/script/i.test(threeSrc)) throw new Error('vendor: contiene </script');
+if (/<!--/.test(threeSrc)) throw new Error('vendor: contiene <!--');
+if (/from\s*["']\.\//.test(threeSrc)) throw new Error('vendor: import relativo');
+if (!out.includes('<!--__THREE__-->')) throw new Error('falta el ancla <!--__THREE__--> del motor');
+out = out.replace('<!--__THREE__-->', () => '<!-- VENDOR:THREE START --><script type="text/plain" id="three-src" data-version="0.169.0">' + threeSrc + '</script><!-- VENDOR:THREE END -->');
 fs.writeFileSync(new URL('./juego_estudio.html', import.meta.url), out);
 console.log('OK');
