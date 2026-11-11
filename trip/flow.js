@@ -1,0 +1,67 @@
+/* Máquina de estados del viaje "Viaja como paquete". Sin DOM ni Three.js: se puede probar con require. */
+var TripFlow = (function () {
+  function create(deps) {
+    var stations = deps.stations, byTopic = deps.questionsByTopic, rnd = deps.rnd || Math.random;
+    var s = { phase: 'idle', station: 0, decision: 0, attempt: 0, item: null, lastOk: null, consec: 0, xp: 0, fails: [] };
+    var used = {}, perStation = [], i;
+    for (i = 0; i < stations.length; i++) perStation.push({ ok: 0, total: 0 });
+
+    function pick(topic, avoidId) {
+      var all = byTopic[topic] || [];
+      var fresh = all.filter(function (q) { return !used[q.id] && q.id !== avoidId; });
+      var pool = fresh.length ? fresh : all.filter(function (q) { return q.id !== avoidId; });
+      if (!pool.length) pool = all;
+      return pool[Math.floor(rnd() * pool.length)];
+    }
+    function present(topic, avoidId) {
+      var q = pick(topic, avoidId);
+      used[q.id] = true;
+      s.item = deps.prep(q);
+      s.phase = 'ask';
+      deps.onAsk(s.item);
+    }
+    function nextTopic() {
+      var t = stations[s.station].topics;
+      return t[Math.floor(rnd() * t.length)];
+    }
+    function start() {
+      s.phase = 'arrive';
+      deps.onStation(s.station);
+    }
+    function ask() {
+      if (s.phase !== 'arrive') return;
+      present(nextTopic(), null);
+    }
+    function answer(k) {
+      if (s.phase !== 'ask') return;
+      var q = s.item.q, ok = k === s.item.correct;
+      s.consec = ok ? s.consec + 1 : 0;
+      s.lastOk = ok;
+      if (!ok && !s.fails.some(function (f) { return f.id === q.id; })) s.fails.push(q);
+      var ps = perStation[s.station]; ps.total++; if (ok) ps.ok++;
+      s.phase = 'result';
+      s.xp += deps.onResult({ q: q, ok: ok, consec: s.consec }) || 0;
+    }
+    function next() {
+      if (s.phase !== 'result') return;
+      if (!s.lastOk && s.attempt === 0) { s.attempt = 1; present(s.item.q.topic, s.item.q.id); return; }
+      s.attempt = 0; s.decision++;
+      if (s.decision < stations[s.station].ask) { present(nextTopic(), null); return; }
+      deps.onLayer(stations[s.station].layers);
+      s.decision = 0;
+      if (s.station === stations.length - 1) {
+        s.phase = 'summary';
+        deps.onSummary({ xp: s.xp, fails: s.fails.slice(), perStation: perStation.map(function (p) { return { ok: p.ok, total: p.total }; }) });
+        return;
+      }
+      s.station++; s.phase = 'arrive';
+      deps.onStation(s.station);
+    }
+    function state() {
+      return { phase: s.phase, station: s.station, decision: s.decision, attempt: s.attempt, item: s.item, lastOk: s.lastOk, consec: s.consec, xp: s.xp, fails: s.fails.slice() };
+    }
+    return { start: start, ask: ask, answer: answer, next: next, state: state };
+  }
+  return { create: create };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = TripFlow;

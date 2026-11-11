@@ -76,6 +76,8 @@ let out = tpl.replace(
 // Viaje 3D: datos de estaciones y ancla para el código del viaje (flow.js / scene.js)
 if (!out.includes('/*__TRIP__*/')) throw new Error('falta el ancla /*__TRIP__*/ del motor');
 out = out.replace('/*__TRIP__*/', () => 'var TRIP_STATIONS = ' + JSON.stringify(tripStations) + ';\n  /*__TRIP_CODE__*/');
+const tripFlow = fs.readFileSync(new URL('./trip/flow.js', import.meta.url), 'utf8');
+out = out.replace('/*__TRIP_CODE__*/', () => tripFlow + '\n  /*__TRIP_CODE__*/');
 out = out.split('/*__TRIP_CODE__*/').join('');
 fs.writeFileSync(new URL('./juego_estudio.html', import.meta.url), out);
 console.log('OK');
