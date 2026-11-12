@@ -477,6 +477,7 @@ const MODULES = [
   function anyBossPassed() { return Object.keys(S.boss).some(function (k) { return S.boss[k].passed; }); }
 
   /* ---------- progreso (localStorage con respaldo en memoria) ---------- */
+  /*__CITY__*/
   function fresh() {
     return {
       v: 1, xp: 0, days: { last: null, count: 0 }, session: 0, lastActive: 0, topics: {}, qs: {}, boss: {},
@@ -1283,6 +1284,7 @@ const MODULES = [
   /* ---------- modo aventura: datos ---------- */
   var TS = 16, WD = null, SPR = {}, MAPS = {};
   /*__TRIP__*/
+  /*__CITY_VIEW__*/
   /* ---------- viaje 3D "Viaja como paquete": ciclo de vida (escena, carga diferida, respaldo) ---------- */
   var TD = null, tripGen = 0, threeP = null;
   var TRIP_QUIT = '<button class="btn sm ghost trip-quit" data-act="tripquit" aria-label="Salir del viaje">Salir</button>';

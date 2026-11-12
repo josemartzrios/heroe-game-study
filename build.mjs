@@ -10,6 +10,7 @@ import * as c8 from './content_m08.mjs';
 import * as c9 from './content_m09.mjs';
 import * as c10 from './content_m10.mjs';
 import { stations as tripStations } from './trip/stations.mjs';
+import { city as cityData } from './city/districts.mjs';
 
 const pad = (n) => String(n).padStart(3, '0');
 
@@ -81,6 +82,12 @@ const tripFlow = fs.readFileSync(new URL('./trip/flow.js', import.meta.url), 'ut
 const tripScene = fs.readFileSync(new URL('./trip/scene.js', import.meta.url), 'utf8');
 out = out.replace('/*__TRIP_CODE__*/', () => three3d + '\n' + tripFlow + '\n' + tripScene + '\n  /*__TRIP_CODE__*/');
 out = out.split('/*__TRIP_CODE__*/').join('');
+// Ciudad Núcleo: datos y anclas (CITY antes de fresh(); CITY_VIEW después del viaje)
+for (const a of ['/*__CITY__*/', '/*__CITY_VIEW__*/']) if (!out.includes(a)) throw new Error('falta el ancla ' + a + ' del motor');
+out = out.replace('/*__CITY__*/', () => 'var CITY_DATA = ' + JSON.stringify(cityData) + ';\n  /*__CITY_CODE__*/');
+out = out.replace('/*__CITY_VIEW__*/', () => '/*__CITY_VIEW_CODE__*/');
+out = out.split('/*__CITY_CODE__*/').join('').split('/*__CITY_VIEW_CODE__*/').join('');
+
 // Three.js r169 como texto inerte (se importa solo al entrar al viaje)
 const threePath = process.env.THREE_VENDOR || new URL('./vendor/three.module.min.js', import.meta.url);
 const threeSrc = fs.readFileSync(threePath, 'utf8');

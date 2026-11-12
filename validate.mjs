@@ -308,6 +308,75 @@ console.log('Por tema M02:', JSON.stringify(r2.perTopic));
     }
   }
 }
+// ---------- Ciudad Núcleo: CITY_DATA ----------
+{
+  const mt = htmlNoV.match(/var CITY_DATA = (\{[\s\S]*?\n?\});\n/);
+  if (!mt) bad('Falta CITY_DATA');
+  else {
+    const D = vm.runInNewContext('(' + mt[1] + ')');
+    const m2 = MODULES.find((m) => m.id === 'M02'), m1 = MODULES.find((m) => m.id === 'M01');
+    const dist = D.districts && D.districts.M02;
+    if (!dist) bad('CITY_DATA.districts.M02 no existe');
+    else {
+      const FORBID = new Set(['__proto__', 'constructor', 'prototype', ...Object.getOwnPropertyNames(Object.prototype)]);
+      const idOk = (id) => typeof id === 'string' && /^[a-z0-9_-]+$/.test(id) && !FORBID.has(id);
+      const topics = m2.topics.map((t) => t.id);
+      const count = (types, tid) => m2.questions.filter((q) => types.includes(q.type) && q.topic === tid).length;
+      const allIds = [];
+      const take = (arr, what) => arr.forEach((o) => { if (!idOk(o.id)) bad(`${what}: id inseguro ${o.id}`); allIds.push(o.id); });
+      // mentores
+      if (dist.mentors.length !== 23) bad('Debe haber 23 mentores');
+      if (new Set(dist.mentors.map((x) => x.topic)).size !== 23 || topics.some((t) => !dist.mentors.some((x) => x.topic === t))) bad('Los mentores deben cubrir T01–T23 una vez');
+      if (new Set(dist.mentors.map((x) => x.name)).size !== dist.mentors.length) bad('Nombres de mentor repetidos');
+      take(dist.mentors, 'mentor');
+      // criaturas
+      if (dist.creatures.length !== 6) bad('Debe haber 6 criaturas');
+      const seen = {};
+      for (const c of dist.creatures) {
+        for (const t of c.topics) seen[t] = (seen[t] || 0) + 1;
+        const n = c.topics.reduce((a, t) => a + count(['mcq', 'tf'], t), 0);
+        if (n < 8) bad(`${c.id}: solo ${n} preguntas mcq+tf`);
+      }
+      if (topics.some((t) => seen[t] !== 1)) bad('Las criaturas deben cubrir cada tema de M02 exactamente una vez');
+      take(dist.creatures, 'criatura');
+      // retos
+      if (dist.repairs.length !== 10) bad('Debe haber 10 retos');
+      if (new Set(dist.repairs.map((r) => r.topic)).size !== dist.repairs.length) bad('Los retos deben tener temas distintos');
+      for (const r of dist.repairs) if (count(['scenario', 'error'], r.topic) < 2) bad(`${r.id}: el tema ${r.topic} necesita >= 2 preguntas scenario+error`);
+      take(dist.repairs, 'reto');
+      // aprendices
+      if (dist.apprentices.length !== 12) bad('Debe haber 12 puestos de aprendiz');
+      if (new Set(dist.apprentices.map((a) => a.topic)).size !== 12) bad('Los aprendices deben tener temas distintos');
+      const mentorNames = new Set(dist.mentors.map((x) => x.name));
+      for (const a of dist.apprentices) {
+        if (!topics.includes(a.topic)) bad(`${a.id}: tema inexistente`);
+        if (a.mode !== 'explain' && a.mode !== 'correct') bad(`${a.id}: modo inválido`);
+        if (a.mode === 'correct' && count(['error'], a.topic) < 1) bad(`${a.id}: 'correct' necesita >= 1 pregunta error en ${a.topic}`);
+        if (mentorNames.has(a.name)) bad(`${a.id}: el nombre ${a.name} choca con un mentor`);
+      }
+      if (new Set(dist.apprentices.map((a) => a.name)).size !== 12) bad('Nombres de aprendiz repetidos');
+      take(dist.apprentices, 'aprendiz');
+      if (dist.need !== 8) bad('need debe ser 8');
+      if (new Set(allIds).size !== allIds.length) bad('Ids repetidos entre mentores, criaturas, retos y aprendices');
+      // palabras prohibidas en nombres y etiquetas
+      const names = [...dist.mentors, ...dist.creatures, ...dist.apprentices].map((x) => x.name).concat(dist.repairs.map((r) => r.label), [D.plaza.director.name]);
+      for (const n of names) for (const re of forbidden) if (re.test(n)) bad(`Palabra prohibida ${re} en "${n}"`);
+      // posiciones: dentro de los límites y de cada zona, y separadas >= 4 m
+      const B = D.bounds, inB = (o) => o.x >= B.minX && o.x <= B.maxX && o.z >= B.minZ && o.z <= B.maxZ;
+      const R = dist.rect, inR = (o) => o.x >= R.minX && o.x <= R.maxX && o.z >= R.minZ && o.z <= R.maxZ;
+      const pts = [...dist.mentors, ...dist.repairs, ...dist.apprentices, ...dist.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), dist.tower, dist.bridge];
+      for (const o of pts) { if (!inB(o)) bad(`${o.id}: fuera de los límites del mundo`); if (!inR(o)) bad(`${o.id}: fuera del rectángulo del distrito`); }
+      for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) if (Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z) < 4) bad(`${pts[i].id} y ${pts[j].id} están a menos de 4 m`);
+      for (const o of [D.plaza.director, D.plaza.mirror, D.spawn]) if (!inB(o)) bad(`${o.id || 'spawn'}: fuera de los límites`);
+      if (D.plaza.roads.length !== 10) bad('La plaza debe tener 10 muros');
+    }
+    // rangos y villanos de M01
+    const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];
+    if (JSON.stringify(D.ranks) !== JSON.stringify(want)) bad('La tabla de rangos no coincide con el spec');
+    const vt = (D.villainsM01 || []).flatMap((v) => v.topics);
+    if (vt.length !== m1.topics.length || new Set(vt).size !== vt.length || m1.topics.some((t) => !vt.includes(t.id))) bad('villainsM01 debe cubrir los temas de M01 exactamente una vez');
+  }
+}
 // ---------- Viaje 3D: estaciones (TRIP_STATIONS) ----------
 {
   const mt = html.match(/var TRIP_STATIONS = (\[[\s\S]*?\]);/);
