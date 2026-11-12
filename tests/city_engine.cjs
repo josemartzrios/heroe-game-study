@@ -22,6 +22,7 @@ function boot(opts = {}) {
       w.scrollTo = () => {};
       w.Element.prototype.scrollIntoView = function () {};
       if (!opts.noTest) w.__CITY_TEST__ = true;
+      if (opts.rndSeed) { let s = opts.rndSeed; w.Math.random = function () { s |= 0; s = (s + 0x6D2B79F5) | 0; let x = Math.imul(s ^ (s >>> 15), 1 | s); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
       if (opts.clock) { const RD = w.Date; class FD extends RD { constructor(...a) { if (a.length === 0) super(RD.now() + opts.clock.ms); else super(...a); } static now() { return RD.now() + opts.clock.ms; } } w.Date = FD; }
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });
       w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
@@ -186,7 +187,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (h) acción contextual junto a la directora, hoja, Esc y foco
-    e = boot({ seed: base() }); await enter(e);
+    e = boot({ seed: base({ city: { prologue: true } }) }); await enter(e);
     ok('(h) lejos de todo no hay acción', $(e, '#city-act').hidden);
     api(e).teleport(-6, -2.5);
     ok('(h) junto a Iris: #city-act dice "Hablar con Iris"', !$(e, '#city-act').hidden && $(e, '#city-act').textContent === 'Hablar con Iris', $(e, '#city-act').textContent);
@@ -207,7 +208,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (j) Lugares cercanos
-    e = boot({ seed: base() }); await enter(e);
+    e = boot({ seed: base({ city: { prologue: true } }) }); await enter(e);
     api(e).teleport(0, 0);
     click(e.w, $(e, '#city-pause'));
     click(e.w, btnText(e, /^Lugares cercanos$/, '#city-pausebox'));
@@ -340,6 +341,118 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       click(e3.w, $(e3, '[data-act="back"]')); await tick();
       ok('(p) con un fallo el reto sigue disponible', !(saved(e3.w).city.repairs || {}).r09 && (api(e3).teleport(r09.x, r09.z + 1), $(e3, '#city-act').textContent === 'Reparar ' + r09.label));
       e3.w.close(); }
+
+    // (q) enseñar, torre, restauración, puente, prólogo y objetivo
+    { const D4 = (await import('../city/districts.mjs')).city.districts.M02;
+      const M4 = (w) => w.eval('MODULES').find((m) => m.id === 'M02');
+      const six = (ids) => { const o = {}; ids.forEach((t) => { o['M02:' + t] = [1, 1, 1, 1, 1, 1]; }); return o; };
+      const allT = Array.from({ length: 23 }, (_, i) => 'T' + String(i + 1).padStart(2, '0'));
+      const ap = (id) => D4.apprentices.find((a) => a.id === id);
+      const near = (e, o, dz = 1) => api(e).teleport(o.x, o.z + dz);
+      const clean = (s) => s.replace(/`/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+      const pressed = (e) => [...e.d.querySelectorAll('#city-sheet [data-c="kp"][aria-pressed="true"]')];
+      const kps = (e) => [...e.d.querySelectorAll('#city-sheet [data-c="kp"]')];
+      const ownKp = (e, tid) => { const set = new Set(M4(e.w).topics.find((x) => x.id === tid).keyPoints.map(clean)); return (b) => set.has(clean(b.textContent.replace(/De otro tema/, ''))); };
+      const pick = (e, n, own, tid) => { const isOwn = ownKp(e, tid); for (let k = 0; k < n; k++) { const b = kps(e).find((x) => isOwn(x) === own && x.getAttribute('aria-pressed') === 'false'); click(e.w, b); } };
+      // aparición de aprendices
+      { const e4 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e4); near(e4, ap('a01'));
+        ok('(q) sin estrellas en T05 no aparece el aprendiz de T05', $(e4, '#city-act').hidden);
+        e4.w.close();
+        const e5 = boot({ seed: base({ city: { prologue: true }, topics: six(['T05']) }) }); await enter(e5); near(e5, ap('a01'));
+        ok('(q) con 1 estrella en T05 aparece: "Enseñar a Abril"', $(e5, '#city-act').textContent === 'Enseñar a Abril', $(e5, '#city-act').textContent);
+        e5.w.close(); }
+      // explicar
+      { const e4 = boot({ seed: base({ city: { prologue: true }, topics: six(['T05']) }), rndSeed: 12345 }); await enter(e4); const a1 = ap('a01'), T5 = M4(e4.w).topics.find((x) => x.id === 'T05');
+        near(e4, a1); click(e4.w, $(e4, '#city-act'));
+        const sh = () => $(e4, '#city-sheet');
+        ok('(q) explicar: "¿Me explicas {título}?" con 6 casillas y contador "0 de 3"', sh().textContent.includes('¿Me explicas ' + T5.title + '?') && kps(e4).length === 6 && /0 de 3/.test($(e4, '#city-count').textContent) && $(e4, '#city-count').getAttribute('aria-live') === 'polite');
+        ok('(q) 3 del tema y 3 de otros', kps(e4).filter(ownKp(e4, 'T05')).length === 3);
+        const exp = () => btnText(e4, /^Explicar$/, '#city-sheet');
+        pick(e4, 2, true, 'T05');
+        ok('(q) con 2 elegidos "Explicar" está desactivado', exp().disabled === true && /2 de 3/.test($(e4, '#city-count').textContent));
+        pick(e4, 1, false, 'T05'); // 3.ª (ajena) ya elegida: la 4.ª se bloquea
+        const before = pressed(e4).length; click(e4.w, kps(e4).find((b) => b.getAttribute('aria-pressed') === 'false'));
+        ok('(q) una 4.ª selección no cambia nada y el contador sigue en "3 de 3"', before === 3 && pressed(e4).length === 3 && /3 de 3/.test($(e4, '#city-count').textContent));
+        const set0 = kps(e4).map((b) => clean(b.textContent)).sort().join('|');
+        click(e4.w, exp());
+        ok('(q) al fallar se marca "De otro tema" en los ajenos con texto', /De otro tema/.test(sh().textContent) && !saved(e4.w).city.taught.a01);
+        click(e4.w, btnText(e4, /^Reintentar$/, '#city-sheet'));
+        const set1 = kps(e4).map((b) => clean(b.textContent)).sort().join('|');
+        ok('(q) Reintentar vuelve a sortear el conjunto de los 6', set0 !== set1 && pressed(e4).length === 0);
+        const xp0 = saved(e4.w).xp; pick(e4, 3, true, 'T05'); click(e4.w, exp());
+        ok('(q) con 3 correctos: +15 XP y taught.a01', saved(e4.w).xp === xp0 + 15 && saved(e4.w).city.taught.a01 === true, saved(e4.w).xp - xp0);
+        ok('(q) tras enseñar, el aprendiz se va', (click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')), near(e4, a1), $(e4, '#city-act').hidden));
+        e4.w.close(); }
+      // corregir
+      { const e4 = boot({ seed: base({ city: { prologue: true }, topics: six(['T06']) }) }); await enter(e4); near(e4, ap('a02'));
+        ok('(q) "Enseñar a Beto" (modo corregir)', $(e4, '#city-act').textContent === 'Enseñar a Beto');
+        click(e4.w, $(e4, '#city-act'));
+        ok('(q) corregir abre una ronda de error con el título "Enseñar"', !!$(e4, '.prompt') && /Enseñar/.test(e4.d.body.textContent) && root(e4).hidden);
+        const a0 = Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0);
+        answerRight(e4.w, e4.d);
+        click(e4.w, $(e4, '[data-act="back"]')); await tick();
+        ok('(q) si acierta queda en taught y la pregunta se registra', saved(e4.w).city.taught.a02 === true && Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0) === a0 + 1);
+        e4.w.close(); }
+      // torre bloqueada
+      { const e4 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e4);
+        const door = { x: D4.tower.x, z: D4.tower.z + D4.tower.d / 2 }; near(e4, door, 1.2);
+        ok('(q) torre: "Entrar a la torre"', $(e4, '#city-act').textContent === 'Entrar a la torre', $(e4, '#city-act').textContent);
+        click(e4.w, $(e4, '#city-act'));
+        ok('(q) torre bloqueada: "Te faltan N temas"', /Te faltan 23 temas/.test($(e4, '#city-sheet').textContent), $(e4, '#city-sheet').textContent.slice(0, 80));
+        e4.w.close(); }
+      // restauración al enseñar al 8.º
+      { const D5 = D4.apprentices.find((a) => a.topic === 'T09'); const taught = {}; D4.apprentices.filter((a) => a.id !== D5.id).slice(0, 7).forEach((a) => { taught[a.id] = true; });
+        const e4 = boot({ seed: base({ boss: { M02: { best: 20, passed: true } }, topics: six(['T09']), city: { prologue: true, taught } }), rndSeed: 7 }); await enter(e4);
+        ok('(q) 7 enseñados y jefe aprobado: aún Becario y sin restaurar', $(e4, '#city-rank').textContent === 'Becario' && e4.st.lastOpts.state().flags.restored === false);
+        near(e4, D5); click(e4.w, $(e4, '#city-act'));
+        if (D5.mode === 'explain') { pick(e4, 3, true, 'T09'); click(e4.w, btnText(e4, /^Explicar$/, '#city-sheet')); }
+        else { answerRight(e4.w, e4.d); click(e4.w, $(e4, '[data-act="back"]')); await tick(); }
+        ok('(q) enseñar al 8.º: celebración con Planos y Junior', /Planos/.test($(e4, '#city-sheet').textContent) && /Junior/.test($(e4, '#city-sheet').textContent), $(e4, '#city-sheet').textContent.slice(0, 100));
+        ok('(q) queda restored.M02, powers.planos y "Junior" en el HUD', saved(e4.w).city.restored.M02 === true && saved(e4.w).city.powers.planos === true && (click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')), $(e4, '#city-rank').textContent === 'Junior'));
+        ok('(q) con flags.restored el mundo recibe restored=true', e4.st.lastOpts.state().flags.restored === true);
+        // puente
+        const door = { x: D4.bridge.x, z: D4.bridge.z + D4.bridge.d / 2 }; near(e4, door, 1.2);
+        ok('(q) puente: "Cruzar el puente"', $(e4, '#city-act').textContent === 'Cruzar el puente');
+        click(e4.w, $(e4, '#city-act'));
+        ok('(q) "Próximamente" y bridgeSeen', /Próximamente/.test($(e4, '#city-sheet').textContent) && saved(e4.w).city.bridgeSeen === true);
+        click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet'));
+        ok('(q) tras cruzar el objetivo es "Capítulo completo"', /Capítulo completo/.test($(e4, '#city-obj').textContent), $(e4, '#city-obj').textContent);
+        e4.w.close(); }
+      // jefe aprobado al final con 8 enseñados
+      { const taught = {}; D4.apprentices.slice(0, 8).forEach((a) => { taught[a.id] = true; });
+        const e4 = boot({ seed: base({ topics: six(allT), city: { prologue: true, taught } }) }); await enter(e4);
+        near(e4, { x: D4.tower.x, z: D4.tower.z + D4.tower.d / 2 }, 1.2);
+        click(e4.w, $(e4, '#city-act'));
+        ok('(q) torre desbloqueada: empieza el jefe (ciudad suspendida)', !!$(e4, '.prompt') && root(e4).hidden && /Jefe final/.test(e4.d.body.textContent));
+        let g = 0; while ($(e4, '.prompt') && g++ < 30) { const q = findQ(e4.w, e4.d); click(e4.w, [...e4.d.querySelectorAll('.opt')].find((b) => norm(b.querySelector('span:last-child').textContent) === norm(correctText(q)))); }
+        click(e4.w, $(e4, '[data-act="back"]')); await tick();
+        ok('(q) aprobar el jefe y volver muestra la celebración', /Planos/.test($(e4, '#city-sheet').textContent) && saved(e4.w).city.restored.M02 === true);
+        e4.w.close(); }
+      // prólogo
+      { const e4 = boot({ seed: base() }); await enter(e4);
+        near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
+        ok('(q) prólogo: panel 1 con "Siguiente" y "Saltar"', /Ciudad Núcleo/.test($(e4, '#city-sheet').textContent) && !!btnText(e4, /^Siguiente$/, '#city-sheet') && !!btnText(e4, /^Saltar$/, '#city-sheet'));
+        click(e4.w, btnText(e4, /^Siguiente$/, '#city-sheet')); const p2 = $(e4, '#city-sheet').textContent;
+        click(e4.w, btnText(e4, /^Siguiente$/, '#city-sheet')); const p3 = $(e4, '#city-sheet').textContent;
+        ok('(q) tres paneles distintos y el último se cierra', /Maraña/.test(p2) && /Taller/.test(p3) && p2 !== p3 && !!btnText(e4, /^Cerrar$/, '#city-sheet'));
+        click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet'));
+        ok('(q) al terminar S.city.prologue = true y una sola vez', saved(e4.w).city.prologue === true && (click(e4.w, $(e4, '#city-act')), !/Siguiente/.test($(e4, '#city-sheet').textContent)));
+        e4.w.close();
+        const e5 = boot({ seed: base() }); await enter(e5); near(e5, { x: -6, z: -4 }); click(e5.w, $(e5, '#city-act')); click(e5.w, btnText(e5, /^Saltar$/, '#city-sheet'));
+        ok('(q) "Saltar" lo marca como visto', saved(e5.w).city.prologue === true && $(e5, '#city-sheet').hidden);
+        e5.w.close(); }
+      // guardado manipulado (foco de revisión 2)
+      { const junk = {}; for (let i = 0; i < 8; i++) junk['x' + i] = true;
+        const e4 = boot({ seed: base({ city: { prologue: true, taught: junk, powers: { planos: true }, restored: { M02: true } } }) }); await enter(e4);
+        ok('(q) 8 ids basura en taught y planos sin jefe: "Becario" y puente cerrado', $(e4, '#city-rank').textContent === 'Becario' && e4.st.lastOpts.state().flags.restored === false && (click(e4.w, $(e4, '#city-pause')), !saved(e4.w).city.powers.planos && !saved(e4.w).city.restored.M02));
+        e4.w.close(); }
+      // nombre malicioso
+      { const e4 = boot({ seed: base({ hero: { name: '<img id=pwn src=x>', look: { skin: 0, suit: 0, head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: true }, topics: six(['T01']), city: { prologue: true } }) }); await enter(e4);
+        near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
+        const m1 = D4.mentors[0]; click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')); near(e4, m1); click(e4.w, $(e4, '#city-act'));
+        ok('(q) nombre del héroe malicioso: sin #pwn en el HUD ni en las hojas', !e4.d.querySelector('#pwn') && e4.errors.length === 0, e4.errors.join('|'));
+        e4.w.close(); }
+    }
 
     // (n) el mundo 2D ya no existe
     { const e2 = boot({ seed: base() });

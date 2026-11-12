@@ -200,6 +200,7 @@ function cityResume() {
   CD.flags = cityFlags(); CD.objT = 1;
   if (CD.world) { CD.world.resize(); CD.world.setPaused('suspended', false); }
   cityHud(true); cityUpdateNear(true); cityRotateCheck(); cityAnnounce();
+  if (cityRestorePending) { cityRestorePending = false; cityCelebrate(''); }
 }
 function cityRotateCheck() {
   if (!CD || !CD.world || CD.suspended) return;
@@ -331,6 +332,91 @@ function cityPractice(id) {
   CD.sheet = false; CD.sheetFor = null;
   startRound({ kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'city' }, city: { kind: 'practice', id: id } }, itemsFor('quiz', mod('M02'), o.topic));
 }
+/* Prólogo: tres paneles; terminar o saltar lo marca como visto */
+var CITY_PROLOGUE = [
+  ['Ciudad Núcleo', 'Ciudad Núcleo funciona gracias a su software: semáforos, puertas, grúas y buzones. Todo depende del conocimiento de quienes lo cuidan.'],
+  ['La Maraña', 'La Maraña nace del código que nadie entiende y del conocimiento guardado por unos pocos. Apaga la ciudad distrito tras distrito.'],
+  ['Llegas al Taller', 'Llegas como Becario al Taller Comunal, el colectivo de ingenieros de la ciudad. Aprende, ponte a prueba y enseña a tus vecinos: así vuelve la luz.']
+];
+function cityPrologue(i) {
+  var p = CITY_PROLOGUE[i], last = i === CITY_PROLOGUE.length - 1;
+  var act = last ? '' : '<button class="btn primary" data-act="cx" data-c="pro-next" data-i="' + (i + 1) + '">Siguiente</button><button class="btn" data-act="cx" data-c="pro-skip">Saltar</button>';
+  var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Prólogo ' + (i + 1) + ' de 3') + '</span></div><h2 class="prompt">' + esc(p[0]) + '</h2><p>' + esc(p[1]) + '</p>' +
+    '<div class="actions">' + act + (last ? '<button class="btn primary" data-act="cx" data-c="pro-end">Cerrar</button>' : '') + '</div></article>';
+  var sh = cId('city-sheet');
+  if (CD && CD.sheet && sh) { sh.innerHTML = html; cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', 'iris');
+}
+function cityPrologueDone() { if (!S.city.prologue) { S.city.prologue = true; save(); } cityCloseSheet(); }
+
+/* Enseñar (explicar): el aprendiz pide explicación; hay que elegir los 3 puntos clave del tema entre 6 */
+function cityKpPool(o) {
+  var m = mod('M02'), own = shuffle(m.tById[o.topic].keyPoints).slice(0, 3).map(function (t) { return { t: t, own: true }; });
+  var others = []; m.topics.forEach(function (tp) { if (tp.id !== o.topic) tp.keyPoints.forEach(function (k) { others.push(k); }); });
+  var foreign = shuffle(others).slice(0, 3).map(function (t) { return { t: t, own: false }; });
+  return shuffle(own.concat(foreign));
+}
+function cityTeachExplain(o, fresh) {
+  if (!CD) return;
+  var m = mod('M02'), tp = m.tById[o.topic];
+  if (fresh || !CD.teach || CD.teach.id !== o.id) CD.teach = { id: o.id, o: o, items: cityKpPool(o), picked: {}, checked: false };
+  var T = CD.teach, n = Object.keys(T.picked).length;
+  var rows = T.items.map(function (it, i) {
+    var on = !!T.picked[i], bad = T.checked && on && !it.own;
+    return '<li><button class="btn kp' + (bad ? ' bad' : '') + '" data-act="cx" data-c="kp" data-i="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '"' + (T.checked ? ' disabled' : '') + '>' + fmt(it.t) + (bad ? ' <strong>De otro tema</strong>' : '') + '</button></li>';
+  }).join('');
+  var act = T.checked ? '<button class="btn primary" data-act="cx" data-c="retry-teach">Reintentar</button>' : '<button class="btn primary" data-act="cx" data-c="teach-go"' + (n === 3 ? '' : ' disabled') + '>Explicar</button>';
+  var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Enseñar a ' + o.name + ' · ' + tp.id) + '</span></div><h2 class="prompt">' + esc('¿Me explicas ' + tp.title + '?') + '</h2>' +
+    '<p class="meta" id="city-count" aria-live="polite">' + n + ' de 3</p><ul class="vlist">' + rows + '</ul><div class="actions">' + act + '<button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>';
+  var sh = cId('city-sheet');
+  if (CD.sheet && sh) { sh.innerHTML = html; cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', o.id);
+}
+function cityTeachPick(i) {
+  var T = CD && CD.teach; if (!T || T.checked || !T.items[i]) return;
+  if (T.picked[i]) delete T.picked[i]; else if (Object.keys(T.picked).length < 3) T.picked[i] = true; else return;
+  cityTeachExplain(T.o, false);
+}
+function cityTeachGo() {
+  var T = CD && CD.teach; if (!T || T.checked || Object.keys(T.picked).length !== 3) return;
+  var good = Object.keys(T.picked).every(function (i) { return T.items[i].own; });
+  if (!good) { T.checked = true; cityTeachExplain(T.o, false); return; }
+  touch();
+  S.xp += 15;
+  S.city.taught[T.o.id] = true;
+  var rs = CityStory.applyRestore(S.city, CITY_DATA, cityBossPassed());
+  checkVirtues(); save();
+  CD.teach = null;
+  if (rs.changed) { cityRestorePending = false; cityCelebrate('¡Gracias, ' + T.o.name + ' lo entendió!'); }
+  else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(T.o.name + ' lo entendió gracias a ti. +15 XP.') + '</p>'), '[data-c="sheetclose"]', T.o.id);
+}
+function cityTeachCorrect(o) {
+  var qs = shuffle(ofType(mod('M02'), 'error', o.topic));
+  if (!qs.length || !CD) return;
+  startRound({ kind: 'error', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: o.id } }, [qs[0]]);
+}
+function cityCelebrate(pre) {
+  cityOpenSheet(citySheetHtml('Capítulo 1', '¡Distrito restaurado!', '<p>' + esc((pre ? pre + ' ' : '') + 'El Taller Comunal vuelve a funcionar y ya no depende de una sola persona.') + '</p>' +
+    '<p><b>' + esc('Poder nuevo: Planos. Subes a ' + CityStory.rankOf(S.city, CITY_DATA) + '.') + '</b></p>'), '[data-c="sheetclose"]', 'celebracion');
+}
+function cityTower(o) {
+  var m = mod('M02');
+  if (bossUnlocked(m)) {
+    var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
+    CD.sheet = false;
+    startRound({ kind: 'boss', title: 'Jefe final', mid: 'M02', back: { name: 'city' }, city: { kind: 'boss', id: 'torre' } }, itemsFor('boss', m));
+    return;
+  }
+  var miss = m.topics.filter(function (t) { return starsOf(m, t.id) < 1; });
+  cityOpenSheet(citySheetHtml('Torre del Taller', 'Te faltan ' + miss.length + (miss.length === 1 ? ' tema' : ' temas'),
+    '<p>Consigue al menos una estrella en cada tema para enfrentar al jefe.</p><ul class="kp">' + miss.map(function (t) { return '<li>' + esc(t.id + ' ' + t.title) + '</li>'; }).join('') + '</ul>'), '[data-c="sheetclose"]', o.id);
+}
+function cityBridge(o) {
+  if (S.city.restored && S.city.restored.M02 === true) {
+    S.city.bridgeSeen = true; save();
+    cityOpenSheet(citySheetHtml('Puente al Archivo', 'Próximamente', '<p>El puente ya está construido. El siguiente distrito abrirá en el capítulo 2.</p>'), '[data-c="sheetclose"]', o.id);
+  } else {
+    cityOpenSheet(citySheetHtml('Puente', 'Cerrado por La Maraña', '<p>Restaura el Taller Comunal para que el puente se abra.</p>'), '[data-c="sheetclose"]', o.id);
+  }
+}
 /* Criatura: el mundo hace el encuentro y al resolver empieza la batalla; si el mundo ya no existe, no pasa nada */
 function cityEncounter(o) {
   var c = CD; if (!c || !c.world || c.busy) return;
@@ -346,13 +432,21 @@ function cityEncounter(o) {
 /* Punto de extensión: cada tarea posterior reemplaza la rama de su tipo (mentor, criatura, reparación, aprendiz, torre, puente). */
 function cityOpen(o) {
   if (!CD || !o) return;
-  if (o.kind === 'director') {
+  if (o.kind === 'director' && !S.city.prologue) {
+    cityPrologue(0);
+  } else if (o.kind === 'director') {
     var ob = cityObjective();
     cityOpenSheet(citySheetHtml('Directora', o.name, '<p>' + esc('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>' + (ob && ob.label ? '<p><b>' + esc(ob.label) + '</b></p>' : '')), '[data-c="sheetclose"]', o.id);
   } else if (o.kind === 'mirror') {
     citySave(); go('hero');
   } else if (o.kind === 'mentor') {
     cityLesson(o);
+  } else if (o.kind === 'apprentice') {
+    if (o.mode === 'correct') cityTeachCorrect(o); else cityTeachExplain(o, true);
+  } else if (o.kind === 'tower') {
+    cityTower(o);
+  } else if (o.kind === 'bridge') {
+    cityBridge(o);
   } else if (o.kind === 'creature') {
     cityEncounter(o);
   } else if (o.kind === 'repair') {
@@ -429,6 +523,11 @@ function cityAct(c, b) {
   else if (c === 'go') { var o = cityItem(b.dataset.id); if (CD && o) { cityClosePause(); cityOpen(o); } }
   else if (c === 'act') { if (CD && CD.world && !CD.sheet && !CD.paused && CD.nearId) { var n = cityItem(CD.nearId); if (n) cityOpen(n); } }
   else if (c === 'sheetclose') cityCloseSheet();
+  else if (c === 'pro-next') cityPrologue(parseInt(b.dataset.i, 10));
+  else if (c === 'pro-skip' || c === 'pro-end') cityPrologueDone();
+  else if (c === 'kp') cityTeachPick(parseInt(b.dataset.i, 10));
+  else if (c === 'teach-go') cityTeachGo();
+  else if (c === 'retry-teach') { if (CD && CD.teach) cityTeachExplain(CD.teach.o, true); }
   else if (c === 'practice') cityPractice(b.dataset.id);
   else if (c === 'lesson') { var lo = cityItem(b.dataset.id); if (CD && lo) { cityClosePause(); cityOpen(lo); } }
   else if (c === 'run') { S.city.run = !S.city.run; save(); b.setAttribute('aria-pressed', S.city.run ? 'true' : 'false'); }
