@@ -121,7 +121,9 @@ var TripScene = (function () {
     function fit() {
       var w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
       renderer.setSize(w, h, false);
-      W.camera.aspect = w / h; W.camera.updateProjectionMatrix();
+      W.camera.aspect = w / h;
+      W.camera.setViewOffset(w, h, 0, Math.round(h * 0.14), w, h);   // sube la imagen: la hoja inferior no tapa el paquete
+      W.camera.updateProjectionMatrix();
     }
     fit();
 
@@ -138,9 +140,9 @@ var TripScene = (function () {
     function applyCamera() {
       W.curve.getPoint(camT, P); W.curve.getTangent(camT, T);
       W.packet.position.copy(P);
-      Q.copy(P).addScaledVector(T, -3.2); Q.y += 1.3; Q.z += 0.4;
+      Q.copy(P).addScaledVector(T, -3.2); Q.y += 1.9; Q.z += 0.4;
       W.camera.position.copy(Q);
-      lookAt.copy(P).addScaledVector(T, 2.5); lookAt.y -= 0.2;
+      lookAt.copy(P).addScaledVector(T, 2.5); lookAt.y -= 1.1;   // el paquete queda en la mitad alta: la hoja inferior no lo tapa
       W.camera.lookAt(lookAt);
       W.camera.rotateY(-yaw * DEG); W.camera.rotateX(pitch * DEG);
     }
