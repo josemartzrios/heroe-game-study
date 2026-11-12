@@ -502,6 +502,27 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       ok('(u) caminando 7 s sí guarda', writes > 0, String(writes));
       e5.w.close(); }
 
+    // (v) Liderazgo: +5 XP al enseñar (solo si ya se tenía)
+    { const D6 = (await import('../city/districts.mjs')).city.districts.M02, a1 = D6.apprentices[0], a2 = D6.apprentices[1];
+      const six = (id) => ({ ['M02:' + id]: [1, 1, 1, 1, 1, 1] });
+      const clean = (s) => s.replace(/`/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+      const e6 = boot({ seed: base({ virtues: { liderazgo: 1700000000000 }, city: { prologue: true }, topics: six('T05') }), rndSeed: 99 }); await enter(e6);
+      api(e6).teleport(a1.x, a1.z + 1); click(e6.w, $(e6, '#city-act'));
+      const own = new Set(e6.w.eval('MODULES').find((m) => m.id === 'M02').topics.find((x) => x.id === 'T05').keyPoints.map(clean));
+      for (let k = 0; k < 3; k++) click(e6.w, [...e6.d.querySelectorAll('#city-sheet [data-c="kp"]')].find((b) => own.has(clean(b.textContent)) && b.getAttribute('aria-pressed') === 'false'));
+      const x0 = saved(e6.w).xp; click(e6.w, btnText(e6, /^Explicar$/, '#city-sheet'));
+      ok('(v) explicar con Liderazgo: +20 XP y la hoja dice "+20 XP"', saved(e6.w).xp === x0 + 20 && /\+20 XP/.test($(e6, '#city-sheet').textContent), (saved(e6.w).xp - x0) + ' ' + $(e6, '#city-sheet').textContent.slice(0, 60));
+      e6.w.close();
+      const e7 = boot({ seed: base({ virtues: { liderazgo: 1700000000000 }, city: { prologue: true }, topics: six('T06') }) }); await enter(e7);
+      api(e7).teleport(a2.x, a2.z + 1); const y0 = saved(e7.w).xp; click(e7.w, $(e7, '#city-act'));
+      answerRight(e7.w, e7.d);
+      ok('(v) corregir con Liderazgo: "Bono de Liderazgo: +5 XP" en resultados y XP mostrado = guardado', /Bono de Liderazgo: \+5 XP/.test($(e7, 'main').textContent) && Number($(e7, '#xpc').dataset.xp) === saved(e7.w).xp - y0, $(e7, 'main').textContent.slice(-120));
+      e7.w.close();
+      const e8 = boot({ seed: base({ city: { prologue: true }, topics: six('T06') }) }); await enter(e8);
+      api(e8).teleport(a2.x, a2.z + 1); click(e8.w, $(e8, '#city-act')); answerRight(e8.w, e8.d);
+      ok('(v) sin Liderazgo no hay bono al corregir', !/Bono de Liderazgo/.test($(e8, 'main').textContent));
+      e8.w.close(); }
+
     // (n) el mundo 2D ya no existe
     { const e2 = boot({ seed: base() });
       ok('(n) Inicio sin "Explora el mundo" y con una sola tarjeta de aventura', !/Explora el mundo/.test(e2.d.body.textContent) && e2.d.querySelectorAll('.card.adv').length === 1 && !e2.d.querySelector('[data-act="world"]'));

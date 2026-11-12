@@ -446,21 +446,21 @@ const MODULES = [
   function picon(id) { return '<svg viewBox="0 0 16 16" aria-hidden="true">' + PICON[id] + '</svg>'; }
 
   var VIRTUES = [
-    { id: 'constancia', n: 'Constancia', how: 'Estudia 3 días seguidos.', reward: 'Emblema 01 y +10 % de XP mientras tu racha sea de 3 días o más.', phrase: 'Un poco cada día pesa más que mucho un solo día.',
+    { id: 'constancia', n: 'Constancia', how: 'Estudia 3 días seguidos.', reward: '+10 % de XP mientras tu racha sea de 3 días o más.', phrase: 'Un poco cada día pesa más que mucho un solo día.',
       prog: function () { return { cur: Math.min(3, streak()), max: 3, u: 'días' }; } },
-    { id: 'curiosidad', n: 'Curiosidad', how: 'Abre Aprender en 10 temas distintos.', reward: 'Gafas de laboratorio y Mente detective con 2 usos por ronda.', phrase: 'Preguntar por qué abre más puertas que conocer la respuesta.',
+    { id: 'curiosidad', n: 'Curiosidad', how: 'Abre Aprender en 10 temas distintos.', reward: 'Mente detective con 2 usos por ronda.', phrase: 'Preguntar por qué abre más puertas que conocer la respuesta.',
       prog: function () { return { cur: Math.min(10, S.stats.learnTopics.length), max: 10, u: 'temas' }; } },
-    { id: 'humildad', n: 'Humildad', how: 'Saca 10 preguntas de la cola de repaso.', reward: 'Emblema engrane y +5 XP por cada acierto en Repaso.', phrase: 'Corregir un error es la forma más rápida de crecer.',
+    { id: 'humildad', n: 'Humildad', how: 'Saca 10 preguntas de la cola de repaso.', reward: '+5 XP por cada acierto en Repaso.', phrase: 'Corregir un error es la forma más rápida de crecer.',
       prog: function () { return { cur: Math.min(10, S.stats.cleared), max: 10, u: 'preguntas' }; } },
-    { id: 'valentia', n: 'Valentía', how: 'Intenta un Jefe final por primera vez.', reward: 'Capa con borde.', phrase: 'Probar el reto antes de sentirte listo ya es avanzar.',
+    { id: 'valentia', n: 'Valentía', how: 'Intenta un Jefe final por primera vez.', reward: 'Energía máxima 4 en las batallas contra criaturas.', phrase: 'Probar el reto antes de sentirte listo ya es avanzar.',
       prog: function () { return { cur: Object.keys(S.boss).length ? 1 : 0, max: 1, u: '' }; } },
-    { id: 'enfoque', n: 'Enfoque', how: 'Completa una ronda perfecta de 8 preguntas o más, sin respuestas asistidas.', reward: 'Visor dorado.', phrase: 'Una sola cosa bien hecha vale más que cinco a medias.', prog: null },
-    { id: 'integridad', n: 'Integridad', how: 'Completa 10 rondas sin usar poderes.', reward: 'Emblema escudo y +10 % de XP en las rondas sin poderes.', phrase: 'Ganar sin atajos se disfruta distinto.',
+    { id: 'enfoque', n: 'Enfoque', how: 'Completa una ronda perfecta de 8 preguntas o más, sin respuestas asistidas.', reward: '+10 XP en cada ronda perfecta siguiente.', phrase: 'Una sola cosa bien hecha vale más que cinco a medias.', prog: null },
+    { id: 'integridad', n: 'Integridad', how: 'Completa 10 rondas sin usar poderes.', reward: '+10 % de XP en las rondas sin poderes.', phrase: 'Ganar sin atajos se disfruta distinto.',
       prog: function () { return { cur: Math.min(10, S.stats.roundsNoPower), max: 10, u: 'rondas' }; } },
-    { id: 'resiliencia', n: 'Resiliencia', how: 'Aprueba un Jefe final que antes reprobaste.', reward: 'Reloj de arena y Escudo con 2 usos por ronda.', phrase: 'Caer es parte del camino; volver a intentarlo es la decisión.', prog: null },
-    { id: 'liderazgo', n: 'Liderazgo', how: 'Aprueba el Jefe final de cualquier módulo.', reward: 'Banda de brazo.', phrase: 'Quien domina un tema puede ayudar a otros a entenderlo.',
+    { id: 'resiliencia', n: 'Resiliencia', how: 'Aprueba un Jefe final que antes reprobaste.', reward: 'Escudo con 2 usos por ronda.', phrase: 'Caer es parte del camino; volver a intentarlo es la decisión.', prog: null },
+    { id: 'liderazgo', n: 'Liderazgo', how: 'Aprueba el Jefe final de cualquier módulo.', reward: '+5 XP al enseñar a un aprendiz.', phrase: 'Quien domina un tema puede ayudar a otros a entenderlo.',
       prog: function () { return { cur: anyBossPassed() ? 1 : 0, max: 1, u: '' }; } },
-    { id: 'sabiduria', n: 'Sabiduría', how: 'Llega a 100 % de dominio en un módulo.', reward: 'Etiqueta </>.', phrase: 'Saber es entender los detalles, no solo repetirlos.',
+    { id: 'sabiduria', n: 'Sabiduría', how: 'Llega a 100 % de dominio en un módulo.', reward: 'Memoria fotográfica con 2 usos por ronda.', phrase: 'Saber es entender los detalles, no solo repetirlos.',
       prog: function () { var b = 0; MODULES.forEach(function (m) { b = Math.max(b, dominio(m)); }); return { cur: b, max: 100, u: '%' }; } }
   ];
   function virtue(id) { return VIRTUES.filter(function (v) { return v.id === id; })[0]; }
@@ -559,6 +559,7 @@ const MODULES = [
     PEND.push(id);
   }
   function takePend() { var p = PEND; PEND = []; return p; }
+  function teachXp() { return TEACH_XP + (S.virtues.liderazgo ? LEAD_XP : 0); }
   function checkVirtues() {
     if (streak() >= 3) earn('constancia');
     if (S.stats.learnTopics.length >= 10) earn('curiosidad');
@@ -764,9 +765,11 @@ const MODULES = [
   }
 
   /* poderes: usos por ronda y estado por pregunta */
+  var FOCUS_XP = 10, LEAD_XP = 5, TEACH_XP = 15;   // bonos fijos (fuera del tope de +20 %)
   function powerUses(id) {
     if (id === 'detective' && S.virtues.curiosidad) return 2;
     if (id === 'shield' && S.virtues.resiliencia) return 2;
+    if (id === 'photo' && S.virtues.sabiduria) return 2;
     return 1;
   }
   function initPw() {
@@ -837,7 +840,7 @@ const MODULES = [
     if (!items.length) return;
     clearTimer();
     R = { cfg: cfg, items: items, i: 0, ok: 0, xp: 0, consec: 0, log: [], cur: null, answered: false, picked: null, t0: 0,
-      passed: null, baseXp: 0, assisted: 0, usedCount: 0, usedNames: [], lvl0: levelOf(S.xp), lvl1: 0, integrityBonus: 0,
+      passed: null, baseXp: 0, assisted: 0, usedCount: 0, usedNames: [], lvl0: levelOf(S.xp), lvl1: 0, integrityBonus: 0, focusBonus: 0, leadBonus: 0, hadFocus: !!S.virtues.enfoque, hadLead: !!S.virtues.liderazgo,
       pw: initPw(), st: freshSt() };
     R.battlePool = (items && items.pool) ? items.pool.slice() : [];
     if (cfg.villain) { var emax = S.virtues.valentia ? 4 : 3; R.battle = { hp: 4, en: emax, max: emax, fx: '', msg: '' }; }   // Valentía: energía máxima 4, fijada al empezar la ronda
@@ -972,7 +975,11 @@ const MODULES = [
       if (R.passed && wasFailed) earn('resiliencia');
       if (!R.passed) S.stats.bossFailed[mid] = true;
     }
-    if (R.ok === n && n >= 8 && R.assisted === 0) earn('enfoque');
+    if (R.ok === n && n >= 8 && R.assisted === 0) {
+      if (R.hadFocus) { R.focusBonus = FOCUS_XP; R.xp += FOCUS_XP; S.xp += FOCUS_XP; }
+      earn('enfoque');
+    }
+    if (R.hadLead && R.cfg.city && R.cfg.city.kind === 'teach' && R.ok === 1) { R.leadBonus = LEAD_XP; R.xp += LEAD_XP; S.xp += LEAD_XP; }
     checkVirtues();
     if (R.battle) { R.won = R.battle.hp <= 0; R.tie = !R.won && R.battle.en > 0; }   // sin preguntas con vida y energía: Empate
     cityResolve();
@@ -1194,9 +1201,9 @@ const MODULES = [
         '</small></div>';
     }
     h += bannersVirtues(takePend());
-    if (R.assisted || R.usedNames.length || R.integrityBonus) {
+    if (R.assisted || R.usedNames.length || R.integrityBonus || R.focusBonus || R.leadBonus) {
       h += '<p class="meta">' + (R.usedNames.length ? 'Poderes usados: ' + esc(R.usedNames.join(', ')) + '. ' : '') + 'Respuestas asistidas: ' + R.assisted + '.' +
-        (R.integrityBonus ? ' Bono de Integridad: +' + R.integrityBonus + ' XP.' : '') + '</p>';
+        (R.integrityBonus ? ' Bono de Integridad: +' + R.integrityBonus + ' XP.' : '') + (R.focusBonus ? ' Bono de Enfoque: +' + R.focusBonus + ' XP.' : '') + (R.leadBonus ? ' Bono de Liderazgo: +' + R.leadBonus + ' XP.' : '') + '</p>';
     }
     if (weak.length) {
       h += '<div><h2 class="h2">Temas por reforzar</h2><ul class="weak">' + weak.map(function (w) {

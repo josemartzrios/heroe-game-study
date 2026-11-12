@@ -397,13 +397,13 @@ function cityTeachGo() {
   var good = Object.keys(T.picked).every(function (i) { return T.items[i].own; });
   if (!good) { T.checked = true; cityTeachExplain(T.o, false); return; }
   touch();
-  S.xp += 15;
+  var gainXp = teachXp(); S.xp += gainXp;
   S.city.taught[T.o.id] = true;
   var rs = CityStory.applyRestore(S.city, CITY_DATA, cityBossPassed());
   checkVirtues(); save();
   CD.teach = null;
   if (rs.changed) { cityRestorePending = false; cityCelebrate('¡Gracias, ' + T.o.name + ' lo entendió!'); }
-  else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(T.o.name + ' lo entendió gracias a ti. +15 XP.') + '</p>'), '[data-c="sheetclose"]', T.o.id);
+  else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(T.o.name + ' lo entendió gracias a ti. +' + gainXp + ' XP.') + '</p>'), '[data-c="sheetclose"]', T.o.id);
 }
 function cityTeachCorrect(o) {
   var qs = shuffle(ofType(mod('M02'), 'error', o.topic));
