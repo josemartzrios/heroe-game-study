@@ -1134,7 +1134,7 @@ const MODULES = [
     var lgc = showFb ? R.log[R.log.length - 1] : null, fx = R.fx;
     var h = '<div class="playtop"><button class="btn sm ghost" data-act="quit">Salir</button><span class="pill">' + (R.i + 1) + ' / ' + n + '</span></div>' + (R.battle ? vBattleHud() : '') +
       '<div class="bar" role="img" aria-label="Pregunta ' + (R.i + 1) + ' de ' + n + '"><i style="width:' + ((R.i + (R.answered ? 1 : 0)) / n * 100) + '%"></i></div>' +
-      '<article class="qcard' + (fx === 'web' ? ' fx-web' : (fx === 'tele' ? ' fx-tele' : '')) + '"><div class="chips"><span class="chip">' + esc(boss ? 'Jefe final' : (R.cfg.kind === 'review' ? 'Repaso' : KIND_LABEL[q.type])) + '</span>' +
+      '<article class="qcard' + (fx === 'web' ? ' fx-web' : (fx === 'tele' ? ' fx-tele' : '')) + '"><div class="chips"><span class="chip">' + esc(boss ? 'Jefe final' : (R.cfg.kind === 'review' ? 'Repaso' : (R.cfg.kind === 'repair' ? 'Reparación' : KIND_LABEL[q.type]))) + '</span>' +
       (showFb ? '<span class="chip">' + esc(info.m.tById[q.topic].id + ' · ' + info.m.tById[q.topic].title) + '</span>' : '') +
       (lgc && lgc.ok && R.consec >= 3 ? '<span class="chip combo">¡Combo!</span>' : '') + '</div>';
     if (R.cfg.kind === 'tf' && !R.answered) {

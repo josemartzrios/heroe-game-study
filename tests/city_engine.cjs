@@ -22,6 +22,7 @@ function boot(opts = {}) {
       w.scrollTo = () => {};
       w.Element.prototype.scrollIntoView = function () {};
       if (!opts.noTest) w.__CITY_TEST__ = true;
+      if (opts.clock) { const RD = w.Date; class FD extends RD { constructor(...a) { if (a.length === 0) super(RD.now() + opts.clock.ms); else super(...a); } static now() { return RD.now() + opts.clock.ms; } } w.Date = FD; }
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });
       w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
@@ -293,6 +294,52 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       api(e2).teleport(6, -2.5); click(e2.w, $(e2, '#city-act'));
       ok('(o) el espejo va a "Tu héroe" y libera la ciudad', e2.st.disposed === 1 && /Héroe|héroe/.test(e2.d.body.textContent) && root(e2).hidden);
       e2.w.close(); }
+
+    // (p) criaturas y retos de campo
+    { const D3 = (await import('../city/districts.mjs')).city.districts.M02, bit = D3.creatures[0].area, r09 = D3.repairs.find((r) => r.id === 'r09');
+      const today = (w) => { const x = new w.Date(), p = (n) => (n < 10 ? '0' : '') + n; return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()); };
+      const clock = { ms: 0 };
+      const e3 = boot({ seed: base(), clock }); await enter(e3);
+      api(e3).teleport(bit.x, bit.z);
+      ok('(p) junto a la criatura: "Enfrentar a Bit Errante"', $(e3, '#city-act').textContent === 'Enfrentar a Bit Errante');
+      e3.st.worlds[0].encounter = (id) => { e3.st.calls.push(['encounter', id]); return Promise.resolve(); };
+      click(e3.w, $(e3, '#city-act')); await tick();
+      ok('(p) la acción llama a encounter(bit) y luego inicia la batalla suspendiendo la ciudad', callsOf(e3, 'encounter', 'bit').length === 1 && !!$(e3, '.arena') && root(e3).hidden);
+      for (let i = 0; i < 4; i++) answerRight(e3.w, e3.d);
+      click(e3.w, $(e3, '[data-act="back"]')); await tick();
+      ok('(p) victoria: beaten.bit = hoy y se llama a dissolve(bit)', saved(e3.w).city.beaten.bit === today(e3.w) && callsOf(e3, 'dissolve', 'bit').length === 1);
+      api(e3).teleport(bit.x, bit.z); tickW(e3);
+      ok('(p) la acción ya no ofrece a bit', $(e3, '#city-act').hidden);
+      clock.ms = 25 * 3600000; tickW(e3);
+      ok('(p) con el reloj +25 h sin salir de la ciudad vuelve "Enfrentar a Bit Errante"', !$(e3, '#city-act').hidden && /Enfrentar a Bit Errante/.test($(e3, '#city-act').textContent));
+      // reto de campo
+      api(e3).teleport(r09.x, r09.z + 1);
+      ok('(p) junto al reto: "Reparar {label}"', $(e3, '#city-act').textContent === 'Reparar ' + r09.label, $(e3, '#city-act').textContent);
+      click(e3.w, $(e3, '#city-act'));
+      ok('(p) el reto abre su ronda con el chip "Reparación"', !!$(e3, '.prompt') && /Reparación/.test($(e3, '.chips').textContent) && root(e3).hidden);
+      answerRight(e3.w, e3.d); answerRight(e3.w, e3.d);
+      click(e3.w, $(e3, '[data-act="back"]')); await tick();
+      ok('(p) 2 aciertos: queda en repairs y desaparece de Lugares cercanos', saved(e3.w).city.repairs.r09 === true && (() => { click(e3.w, $(e3, '#city-pause')); click(e3.w, btnText(e3, /^Lugares cercanos$/, '#city-pausebox')); return ![...e3.d.querySelectorAll('#city-pausebox button')].some((b) => b.textContent.includes(r09.label)); })());
+      e3.w.close(); }
+    { // derrota no marca; un fallo en el reto lo deja disponible; Lugares cercanos inicia criatura y reto
+      const D3 = (await import('../city/districts.mjs')).city.districts.M02, bit = D3.creatures[0].area, r09 = D3.repairs.find((r) => r.id === 'r09');
+      const e3 = boot({ seed: base() }); await enter(e3);
+      api(e3).teleport(bit.x + 1, bit.z + 1);
+      click(e3.w, $(e3, '#city-pause')); click(e3.w, btnText(e3, /^Lugares cercanos$/, '#city-pausebox'));
+      click(e3.w, [...e3.d.querySelectorAll('#city-pausebox button')].find((b) => /Bit Errante/.test(b.textContent))); await tick();
+      ok('(p) Lugares cercanos inicia la batalla de la criatura', !!$(e3, '.arena'));
+      for (let i = 0; i < 3 && $(e3, '.prompt'); i++) { const q = findQ(e3.w, e3.d), ct = norm(correctText(q)); click(e3.w, [...e3.d.querySelectorAll('.opt')].find((b) => !b.disabled && norm(b.querySelector('span:last-child').textContent) !== ct)); const n = $(e3, '#nextbtn'); if (n) click(e3.w, n); }
+      ok('(p) derrota: nada marcado', !(saved(e3.w).city.beaten || {}).bit);
+      click(e3.w, $(e3, '[data-act="back"]')); await tick();
+      api(e3).teleport(r09.x, r09.z + 3);
+      click(e3.w, $(e3, '#city-pause')); click(e3.w, btnText(e3, /^Lugares cercanos$/, '#city-pausebox'));
+      click(e3.w, [...e3.d.querySelectorAll('#city-pausebox button')].find((b) => b.textContent.includes(r09.label)));
+      ok('(p) Lugares cercanos inicia la ronda del reto', !!$(e3, '.prompt') && /Reparación/.test($(e3, '.chips').textContent));
+      answerRight(e3.w, e3.d);
+      { const q = findQ(e3.w, e3.d), ct = norm(correctText(q)); click(e3.w, [...e3.d.querySelectorAll('.opt')].find((b) => !b.disabled && norm(b.querySelector('span:last-child').textContent) !== ct)); const n = $(e3, '#nextbtn'); if (n) click(e3.w, n); }
+      click(e3.w, $(e3, '[data-act="back"]')); await tick();
+      ok('(p) con un fallo el reto sigue disponible', !(saved(e3.w).city.repairs || {}).r09 && (api(e3).teleport(r09.x, r09.z + 1), $(e3, '#city-act').textContent === 'Reparar ' + r09.label));
+      e3.w.close(); }
 
     // (n) el mundo 2D ya no existe
     { const e2 = boot({ seed: base() });

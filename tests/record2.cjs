@@ -263,6 +263,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
     for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0));
     w.__CITY_TEST_API__.teleport(BIT.x, BIT.z);
     click(w, d.querySelector('#city-act'));
+    for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0));
   };
   ({ w, d, errors } = boot({ seed: fresh() }));
   await enterBattle(w, d);

@@ -196,6 +196,7 @@ function cityResume() {
   cityClosePause(true);
   if (CD.sheet) cityCloseSheet(true);
   CD.boxes = CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true));
+  if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (S.city.beaten[pb] === today() && CD.world) CD.world.dissolve(pb); }
   CD.flags = cityFlags(); CD.objT = 1;
   if (CD.world) { CD.world.resize(); CD.world.setPaused('suspended', false); }
   cityHud(true); cityUpdateNear(true); cityRotateCheck(); cityAnnounce();
@@ -258,7 +259,7 @@ function cityState() {
   if (!CD) return null;
   return { hero: { x: CD.hero.x, z: CD.hero.z, yaw: CD.hero.yaw, speed: CD.hero.speed }, cam: { yaw: CD.cam.yaw, pitch: -CD.cam.tilt, arm: CD.cam.arm }, flags: CD.flags || (CD.flags = cityFlags()) };
 }
-function cityBlocked() { return !CD || !CD.world || CD.suspended || CD.paused || CD.sheet || CD.rotate || CD.lost; }
+function cityBlocked() { return !CD || !CD.world || CD.suspended || CD.paused || CD.sheet || CD.rotate || CD.lost || CD.busy; }
 function cityAngDiff(a, b) { var d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; }
 function cityTick(dt) {
   var c = CD;
@@ -330,6 +331,18 @@ function cityPractice(id) {
   CD.sheet = false; CD.sheetFor = null;
   startRound({ kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'city' }, city: { kind: 'practice', id: id } }, itemsFor('quiz', mod('M02'), o.topic));
 }
+/* Criatura: el mundo hace el encuentro y al resolver empieza la batalla; si el mundo ya no existe, no pasa nada */
+function cityEncounter(o) {
+  var c = CD; if (!c || !c.world || c.busy) return;
+  c.busy = true;
+  var go = function () {
+    if (CD !== c) return;
+    c.busy = false; c.pendingBattle = o.id;
+    startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: o.id, name: o.name, mod: 'M02', topics: o.topics }, city: { kind: 'battle', id: o.id } }, battleItems({ mod: 'M02', topics: o.topics, n: 8 }));
+  };
+  var p; try { p = c.world.encounter(o.id); } catch (e) { p = null; }
+  Promise.resolve(p).then(go, go);
+}
 /* Punto de extensión: cada tarea posterior reemplaza la rama de su tipo (mentor, criatura, reparación, aprendiz, torre, puente). */
 function cityOpen(o) {
   if (!CD || !o) return;
@@ -341,7 +354,7 @@ function cityOpen(o) {
   } else if (o.kind === 'mentor') {
     cityLesson(o);
   } else if (o.kind === 'creature') {
-    startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: o.id, name: o.name, mod: 'M02', topics: o.topics }, city: { kind: 'battle', id: o.id } }, battleItems({ mod: 'M02', topics: o.topics, n: 8 }));
+    cityEncounter(o);
   } else if (o.kind === 'repair') {
     startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: o.id } }, repairItems('M02', o.topic));
   } else {
