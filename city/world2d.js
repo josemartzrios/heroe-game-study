@@ -28,6 +28,13 @@ var CityWorld2D = (function () {
     var r, a, i;
     g.fillStyle = '#1b2250';
     for (a = -P.r; a <= P.r; a += 0.5) { var half = Math.sqrt(Math.max(0, P.r * P.r - a * a)); g.fillRect(Math.round(X(-half)), Math.round(Z(a)), Math.round(half * 2 * PX), Math.round(0.5 * PX) + 1); }
+    // baldosas de la plaza y anillo neón
+    for (a = -P.r + 3; a < P.r; a += 3) {
+      var hw = Math.sqrt(Math.max(0, P.r * P.r - a * a));
+      rect('#232c63', -hw, a - 0.06, hw, a + 0.06); rect('#232c63', a - 0.06, -hw, a + 0.06, hw);
+    }
+    g.strokeStyle = '#5ce1ff'; g.lineWidth = 3; g.beginPath(); g.arc(X(0), Z(0), P.r * PX, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = '#ff4fd8'; g.lineWidth = 1; g.beginPath(); g.arc(X(0), Z(0), (P.r - 1) * PX, 0, Math.PI * 2); g.stroke();
     var road = '#232a52', line = '#5ce1ff';
     rect(road, -3, -54, 3, -29);
     P.roads.forEach(function (rd) { var an = rd.angle * Math.PI / 180; for (r = 30; r < 38; r += 0.5) rect(road, Math.cos(an) * r - 2, Math.sin(an) * r - 2, Math.cos(an) * r + 2, Math.sin(an) * r + 2); });
@@ -46,6 +53,7 @@ var CityWorld2D = (function () {
     var hq = P.hq, tw = M.tower;
     rect('rgba(0,0,0,0.30)', hq.x - hq.w / 2 + 1, hq.z - hq.d / 2 + 1, hq.x + hq.w / 2 + 1, hq.z + hq.d / 2 + 1);
     rect('#3d6fa8', hq.x - hq.w / 2, hq.z - hq.d / 2, hq.x + hq.w / 2, hq.z + hq.d / 2); rect('#5ce1ff', hq.x - hq.w / 2, hq.z - hq.d / 2, hq.x + hq.w / 2, hq.z - hq.d / 2 + 0.4); rect('#ffd76a', hq.x - 1.5, hq.z + hq.d / 2 - 1.2, hq.x + 1.5, hq.z + hq.d / 2);
+    var wxx; for (wxx = hq.x - hq.w / 2 + 1.2; wxx < hq.x + hq.w / 2 - 1.5; wxx += 2.2) { rect('#ffd76a', wxx, hq.z - hq.d / 2 + 1.5, wxx + 1, hq.z - hq.d / 2 + 2.5); rect('#5ce1ff', wxx, hq.z - hq.d / 2 + 3.5, wxx + 1, hq.z - hq.d / 2 + 4.5); }
     rect('#9be7ff', P.mirror.x - 0.7, P.mirror.z - 1.2, P.mirror.x + 0.7, P.mirror.z + 1.2);
     rect('rgba(0,0,0,0.30)', tw.x - tw.w / 2 + 2, tw.z - tw.d / 2 + 2, tw.x + tw.w / 2 + 2, tw.z + tw.d / 2 + 2);
     rect('#5b6270', tw.x - tw.w / 2, tw.z - tw.d / 2, tw.x + tw.w / 2, tw.z + tw.d / 2); rect('#ffd23f', tw.x - tw.w / 2 + 1, tw.z - tw.d / 2 + 1, tw.x + tw.w / 2 - 1, tw.z + tw.d / 2 - 1);
