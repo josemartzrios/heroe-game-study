@@ -98,6 +98,21 @@ const edit = (dir, file, fn) => { const p = path.join(dir, file); fs.writeFileSy
 { const r = build((d) => edit(d, 'trip/flow.js', (t) => t + "\n/* marca $' $` */\n"));
   ok("b4 \"$'\" y \"$`\" en flow.js se copian literales", r.status === 0 && !!r.out && r.out.includes("/* marca $' $` */"), 'status=' + r.status); }
 
+// ---- guardas de limpieza y seguridad (spec §6 y §7) ----
+for (const id of ['avatarSvg', 'PARTS', 'fixLook', 'setLook', 'mergeBoxes', 'cameraArm', 'consumeCamera', 'CityHero', 'welcomed', 'villainsM01']) {
+  const r = validate(html0 + '<script>/* ' + id + ' */</script>');
+  ok('v-guard ' + id + ': un identificador retirado hace fallar validate.mjs', r.status === 1 && r.out.indexOf(id) >= 0, 'status=' + r.status + ' ' + r.out.slice(-160));
+}
+{ const r = validate(html0 + '<script>window.__CITY_TEST_API__ = {};</script>');
+  ok('v-guard ganchos: __CITY_TEST_API__ fuera de un bloque __CITY_TEST__ === true falla', r.status === 1 && /__CITY_TEST_API__/.test(r.out), r.out.slice(-160)); }
+{ const r = validate(html0 + '<script>window.__CITY_WORLD__ = {};</script>');
+  ok('v-guard ganchos: asignar __CITY_WORLD__ fuera de un bloque de prueba falla', r.status === 1 && /__CITY_WORLD__/.test(r.out), r.out.slice(-160)); }
+{ const i = html0.indexOf('function cityStart('), j = html0.indexOf('function citySuspend(');
+  const r = validate(html0.slice(0, i) + 'function cityStart() { loadThree(); }\n' + html0.slice(j));
+  ok('v-guard: llamar a loadThree dentro de la ciudad falla', r.status === 1 && /loadThree/.test(r.out), r.out.slice(-160)); }
+{ const h = fs.readFileSync(path.join(root, '_headers'), 'utf8');
+  ok('_headers: img-src \'none\' y blob: se conserva en script-src (lo usa el viaje)', /img-src 'none'/.test(h) && /script-src[^;]*blob:/.test(h), h.slice(0, 200)); }
+
 results.forEach((r) => console.log(r.join(' | ')));
 const fails = results.filter((r) => r[0] === 'FAIL').length;
 console.log(fails ? `\n${fails} FALLOS` : '\nBUILD_VALIDATE OK (' + results.length + ' comprobaciones)');

@@ -22,6 +22,7 @@ function boot(cfg, r) {
   const dom = new JSDOM(html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
+      w.__CITY_TEST__ = true;
       w.scrollTo = () => {};
       w.Element.prototype.scrollIntoView = function () {};
       w.confirm = () => false; w.alert = () => {};

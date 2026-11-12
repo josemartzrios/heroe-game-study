@@ -1,5 +1,5 @@
-/* Piezas 3D compartidas por el viaje y la ciudad: Pauser, carrera de compilación contra pérdida de contexto,
-   liberación de escenas y fusión de cajas. Sin DOM propio: recibe canvas, renderer y THREE por parámetro. */
+/* Piezas comunes del viaje 3D y del mundo 2D de la ciudad: Pauser (pausa por motivos), carrera de compilación contra pérdida
+   de contexto y liberación de escenas. Sin DOM propio: recibe canvas, renderer y THREE por parámetro. */
 var Three3D = (function () {
   /* Pausa por motivos: el bucle corre solo si no hay ninguno activo. */
   function Pauser() {
@@ -42,32 +42,6 @@ var Three3D = (function () {
     ms.forEach(function (m) { m.dispose(); });
   }
 
-  /* Fusiona cajas en una sola BufferGeometry indexada con position, normal y color (sin uv).
-     parts: [{ w, h, d, x, y, z, color: 0xRRGGBB, rotY? }] */
-  function mergeBoxes(THREE, parts) {
-    var pos = [], nor = [], col = [], idx = [], base = 0;
-    parts.forEach(function (p) {
-      var g = new THREE.BoxGeometry(p.w, p.h, p.d), c = new THREE.Color(p.color);
-      var cs = Math.cos(p.rotY || 0), sn = Math.sin(p.rotY || 0);
-      var gp = g.attributes.position, gn = g.attributes.normal, gi = g.index.array, i;
-      for (i = 0; i < gp.count; i++) {
-        var x = gp.getX(i), y = gp.getY(i), z = gp.getZ(i), nx = gn.getX(i), ny = gn.getY(i), nz = gn.getZ(i);
-        pos.push(x * cs + z * sn + p.x, y + p.y, -x * sn + z * cs + p.z);
-        nor.push(nx * cs + nz * sn, ny, -nx * sn + nz * cs);
-        col.push(c.r, c.g, c.b);
-      }
-      for (i = 0; i < gi.length; i++) idx.push(gi[i] + base);
-      base += gp.count;
-      g.dispose();
-    });
-    var out = new THREE.BufferGeometry();
-    out.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
-    out.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3));
-    out.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
-    out.setIndex(new THREE.BufferAttribute(base > 65535 ? new Uint32Array(idx) : new Uint16Array(idx), 1));
-    return out;
-  }
-
-  return { Pauser: Pauser, compileOrLost: compileOrLost, disposeScene: disposeScene, mergeBoxes: mergeBoxes };
+  return { Pauser: Pauser, compileOrLost: compileOrLost, disposeScene: disposeScene };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Three3D;

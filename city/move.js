@@ -27,7 +27,7 @@ var CityMove = (function () {
     return out;
   }
 
-  function aabb(o, h) { return { minX: o.x - o.w / 2, maxX: o.x + o.w / 2, minZ: o.z - o.d / 2, maxZ: o.z + o.d / 2, h: o.h || h || 3 }; }
+  function aabb(o) { return { minX: o.x - o.w / 2, maxX: o.x + o.w / 2, minZ: o.z - o.d / 2, maxZ: o.z + o.d / 2 }; }
   /* punto de interacción de una caja sólida (torre, puente): su puerta, 1.2 m al frente (lado sur) */
   function door(o) { return { x: o.x, z: o.z + o.d / 2 + 1.2 }; }
 
@@ -35,17 +35,17 @@ var CityMove = (function () {
   function boxesFor(D, restored) {
     var M = D.districts.M02, B = D.bounds, boxes = [];
     layoutBuildings(M).forEach(function (b) { boxes.push(aabb(b)); });
-    boxes.push(aabb(M.tower, 20));
-    if (D.plaza.hq) boxes.push(aabb(D.plaza.hq, 9));
-    D.plaza.roads.forEach(function (r) { boxes.push(aabb(r.wall, 4)); });
+    boxes.push(aabb(M.tower));
+    if (D.plaza.hq) boxes.push(aabb(D.plaza.hq));
+    D.plaza.roads.forEach(function (r) { boxes.push(aabb(r.wall)); });
     var br = M.bridge, z0 = br.z - br.d / 2, z1 = br.z + br.d / 2, big = 10;
-    boxes.push({ minX: B.minX - big, maxX: br.x - br.w / 2, minZ: z0, maxZ: z1, h: 6 });          // muros laterales del puente
-    boxes.push({ minX: br.x + br.w / 2, maxX: B.maxX + big, minZ: z0, maxZ: z1, h: 6 });
-    if (!restored) boxes.push(aabb(br, 3));
-    boxes.push({ minX: B.minX - big, maxX: B.minX, minZ: B.minZ - big, maxZ: B.maxZ + big, h: 100 });  // borde del mundo
-    boxes.push({ minX: B.maxX, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.maxZ + big, h: 100 });
-    boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.minZ, h: 100 });
-    boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.maxZ, maxZ: B.maxZ + big, h: 100 });
+    boxes.push({ minX: B.minX - big, maxX: br.x - br.w / 2, minZ: z0, maxZ: z1 });          // muros laterales del puente
+    boxes.push({ minX: br.x + br.w / 2, maxX: B.maxX + big, minZ: z0, maxZ: z1 });
+    if (!restored) boxes.push(aabb(br));
+    boxes.push({ minX: B.minX - big, maxX: B.minX, minZ: B.minZ - big, maxZ: B.maxZ + big });  // borde del mundo
+    boxes.push({ minX: B.maxX, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.maxZ + big });
+    boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.minZ });
+    boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.maxZ, maxZ: B.maxZ + big });
     return boxes;
   }
 

@@ -1,4 +1,4 @@
-// Pruebas de three/shared.js (Pauser, compileOrLost, disposeScene, mergeBoxes) con Three r169 real, sin WebGL.
+// Pruebas de three/shared.js (Pauser, compileOrLost, disposeScene) con Three r169 real, sin WebGL.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -45,19 +45,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     THREE.BufferGeometry.prototype.dispose = og; THREE.Material.prototype.dispose = om;
     ok('c disposeScene libera cada geometría y material compartido una sola vez', gd === 2 && md === 1, `g=${gd} m=${md}`); }
 
-  // (d) mergeBoxes
-  { const geo = T3.mergeBoxes(THREE, [
-      { w: 1, h: 1, d: 1, x: 0, y: 0, z: 0, color: 0xff0000 },
-      { w: 2, h: 1, d: 1, x: 3, y: 0, z: 0, color: 0x00ff00 },
-      { w: 2, h: 1, d: 1, x: 0, y: 0, z: 5, color: 0x0000ff, rotY: Math.PI / 2 }]);
-    ok('d mergeBoxes: 108 índices y 72 vértices', geo.index.count === 108 && geo.attributes.position.count === 72, `${geo.index.count}/${geo.attributes.position.count}`);
-    ok('d mergeBoxes: tiene color y no tiene uv', !!geo.attributes.color && !geo.attributes.uv && !!geo.attributes.normal);
-    const c = geo.attributes.color; ok('d mergeBoxes: el primer vértice es rojo y el último azul', Math.abs(c.getX(0) - 1) < 1e-6 && Math.abs(c.getZ(71) - 1) < 1e-6);
-    // una caja larga (4 en X) girada 90° queda larga en Z; si las normales también giran, las que miran a ±Z están en las tapas (|z| ≈ 2)
-    const g2 = T3.mergeBoxes(THREE, [{ w: 4, h: 1, d: 0.2, x: 0, y: 0, z: 0, color: 0xffffff, rotY: Math.PI / 2 }]);
-    const p2 = g2.attributes.position, n2 = g2.attributes.normal; let capZ = 0, bad = 0;
-    for (let i = 0; i < p2.count; i++) if (Math.abs(n2.getZ(i)) > 0.99) { capZ++; if (Math.abs(Math.abs(p2.getZ(i)) - 2) > 1e-4) bad++; }
-    ok('d mergeBoxes: rotY gira también las normales', capZ === 8 && bad === 0, `vértices con normal ±Z=${capZ}, fuera de la tapa=${bad}`); }
+  // (d) mergeBoxes ya no existe (solo lo usaba la ciudad 3D)
+  ok('d mergeBoxes se retiró y Pauser, compileOrLost y disposeScene siguen', T3.mergeBoxes === undefined && ['Pauser', 'compileOrLost', 'disposeScene'].every((k) => typeof T3[k] === 'function'));
 
   // (e) en el navegador no hay require: scene.js debe encontrar Three3D global
   { const shared = fs.readFileSync(path.join(__dirname, '..', 'three', 'shared.js'), 'utf8');

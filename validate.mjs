@@ -31,6 +31,16 @@ for (const s of ['function cityStart', 'data-act="city"', 'CITY_DATA']) if (!htm
 { const eng = htmlNoV.slice(0, htmlNoV.indexOf('// === MODULE:M01 START ===')) + htmlNoV.slice(htmlNoV.indexOf('// === MODULE:M10 END ==='));
   for (const re of [/<img/i, /fetch\(/, /new Image/]) if (re.test(eng)) bad('El motor usa un recurso no permitido: ' + re); }
 if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.argv[2]).length, grow = Buffer.byteLength(htmlNoV) - oldLen; console.log('Crecimiento respecto a la versión publicada:', grow, 'bytes'); if (grow > 90 * 1024 && /v12/.test(process.argv[2])) bad('El archivo creció más de 90 KB respecto a la versión 12'); }
+// Limpieza y seguridad: identificadores retirados y ganchos de prueba protegidos (solo el motor, sin el contenido de los módulos)
+{ const eng = htmlNoV.slice(0, htmlNoV.indexOf('// === MODULE:M01 START ===')) + htmlNoV.slice(htmlNoV.indexOf('// === MODULE:M10 END ==='));
+  for (const id of ['avatarSvg', 'PARTS', 'fixLook', 'setLook', 'mergeBoxes', 'cameraArm', 'consumeCamera', 'CityHero', 'welcomed', 'villainsM01']) if (new RegExp('\\b' + id + '\\b').test(eng)) bad('Identificador retirado en el motor: ' + id);
+  for (const g of ['__CITY_TEST_API__', '__CITY_ROUND__', '__CITY_WORLD__']) {
+    const re = new RegExp('window\\.' + g + '\\s*=(?!=)', 'g'); let m;
+    while ((m = re.exec(eng))) if (!/__CITY_TEST__ === true/.test(eng.slice(Math.max(0, m.index - 300), m.index))) bad('Gancho de prueba sin proteger (' + g + '): debe asignarse solo con window.__CITY_TEST__ === true');
+  }
+  const ci = eng.indexOf('function cityStart('), cj = eng.indexOf('function citySuspend(');
+  if (ci >= 0 && cj > ci && /loadThree/.test(eng.slice(ci, cj))) bad('La ciudad no debe llamar a loadThree');
+}
 // Batalla
 for (const s of ['function vBattleHud']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
 for (const id of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10']) for (const s of ['START', 'END']) if (!html.includes(`// === MODULE:${id} ${s} ===`)) bad(`Falta marcador ${id} ${s}`);
@@ -374,8 +384,6 @@ console.log('Por tema M02:', JSON.stringify(r2.perTopic));
     // rangos y villanos de M01
     const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];
     if (JSON.stringify(D.ranks) !== JSON.stringify(want)) bad('La tabla de rangos no coincide con el spec');
-    const vt = (D.villainsM01 || []).flatMap((v) => v.topics);
-    if (vt.length !== m1.topics.length || new Set(vt).size !== vt.length || m1.topics.some((t) => !vt.includes(t.id))) bad('villainsM01 debe cubrir los temas de M01 exactamente una vez');
   }
 }
 // ---------- Viaje 3D: estaciones (TRIP_STATIONS) ----------

@@ -18,6 +18,7 @@ function boot(opts = {}) {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
+      if (!opts.noTest) w.__CITY_TEST__ = true;
       w.scrollTo = () => {}; w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };   // iconos del héroe
       w.Element.prototype.scrollIntoView = function () { if (opts.spyScroll) (w.__scrolled = w.__scrolled || []).push(this); };
       if (opts.rndSeed) { let a = opts.rndSeed; w.Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -77,6 +78,10 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
 
 (async () => {
   let e;
+  { const e0 = boot({ seed: undefined, imp: 'ok', noTest: true }); enter(e0); await tick(8);
+    ok('ganchos del viaje: sin __CITY_TEST__ no se usan __TRIP_IMPORT__ ni __TRIP_SCENE__ (cae al respaldo)', e0.st.imports === 0 && e0.st.creates === 0 && /no pudo abrir el viaje 3D/.test(e0.d.getElementById('trip-root').textContent), e0.st.imports + ' ' + e0.st.creates);
+    e0.w.close(); }
+
 
   // (a) botón solo en M08
   e = boot({ imp: 'ok' }); click(e.w, modBtn(e.d, 'M08'));

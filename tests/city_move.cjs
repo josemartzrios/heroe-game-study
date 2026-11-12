@@ -46,8 +46,9 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
 
   // ---- boxesFor ----
   const closed = CM.boxesFor(D, false), open = CM.boxesFor(D, true);
+  ok('boxesFor: las cajas de colisión no llevan altura (el dibujo 2D no la usa)', closed.concat(open).every((b) => !('h' in b) && ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => Number.isFinite(b[k]))));
   ok('boxesFor: el puente solo existe si !restored', closed.length === open.length + 1, `${closed.length}/${open.length}`);
-  ok('boxesFor: todas las cajas tienen minX/maxX/minZ/maxZ/h finitos', closed.every((b) => ['minX', 'maxX', 'minZ', 'maxZ', 'h'].every((k) => typeof b[k] === 'number' && Number.isFinite(b[k]))));
+  ok('boxesFor: todas las cajas tienen minX/maxX/minZ/maxZ finitos', closed.every((b) => ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => typeof b[k] === 'number' && Number.isFinite(b[k]))));
   ok('boxesFor: el spawn queda libre', !pen(D.spawn.x, D.spawn.z, closed));
   { const pts = [...M2.mentors, ...M2.repairs, ...M2.apprentices, ...M2.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), D.plaza.director, D.plaza.mirror];
     const bad = pts.filter((p) => closed.some((b) => d2(p.x, p.z, b) < 0.6 * 0.6)).map((p) => p.id);
