@@ -1,6 +1,6 @@
 // Oráculo adversarial de los CONTRATOS del plan docs/superpowers/plans/2026-11-11-ciudad-nucleo.md
 // (Tareas 4 y 5) antes de que exista el código. Implementa referencias mínimas que siguen el contrato al pie
-// de la letra y ataca: step/cameraArm (túneles, atascos, NaN), nextObjective (objetivos imposibles, bucles)
+// de la letra y ataca: step (túneles, atascos, NaN), nextObjective (objetivos imposibles, bucles)
 // y normalizeCity/restoration/applyRestore (estado hostil, prototipo).
 // Uso: node tests/adv/plan_city_oracle.cjs [SEED=20261111] [N_STEP=4000] [N_OBJ=1500] [N_NORM=1500]
 // Sale con 1 si algún contrato, tal como está escrito, produce un fallo.
@@ -65,10 +65,10 @@ function resolveAxis(axis, x, z, d, boxes) {
 }
 
 // step literal: velocidad 4/7, "aceleración hacia el objetivo en 0.15 s" (mezcla lineal k = dt/0.15),
-// relativo a camYaw (yaw 0 mira a -z), X luego Z, no finito → state anterior. Sin tope de dt (el contrato no lo pone).
+// relativo a la pantalla (mz = -1 va a -z), X luego Z, no finito → state anterior. Sin tope de dt (el contrato no lo pone).
 function step(s, intent, dt, boxes, opts) {
   if (!fin(dt) || dt < 0) return s;
-  const cy = intent.camYaw || 0;
+  const cy = 0;
   let mx = Math.max(-1, Math.min(1, intent.mx || 0)), mz = Math.max(-1, Math.min(1, intent.mz || 0));
   const l = Math.hypot(mx, mz); if (l > 1) { mx /= l; mz /= l; }
   // adelante (mz = -1) = (-sin cy, -cos cy); derecha = (cos cy, -sin cy)
@@ -87,7 +87,7 @@ function step(s, intent, dt, boxes, opts) {
   return n;
 }
 
-// cameraArm literal: rayo hacia atrás desde target en XZ contra AABB; largo = min(len, max(1.2, hit - 0.2)).
+// Ayudas para las comprobaciones de túneles y penetración (rayo contra AABB).
 function rayBox(ox, oz, dx, dz, b) {
   let t0 = 0, t1 = Infinity;
   for (const [o, d, lo, hi] of [[ox, dx, b.minX, b.maxX], [oz, dz, b.minZ, b.maxZ]]) {
@@ -97,13 +97,6 @@ function rayBox(ox, oz, dx, dz, b) {
   }
   return t0;
 }
-function cameraArm(target, yaw, pitch, len, boxes) {
-  const h = Math.cos(pitch), dx = Math.sin(yaw) * h, dz = Math.cos(yaw) * h; // detrás del héroe (yaw 0 mira a -z)
-  let hit = Infinity;
-  for (const b of boxes) hit = Math.min(hit, rayBox(target.x, target.z, dx, dz, b) / Math.max(h, 1e-9));
-  return Math.min(len, Math.max(ARM_MIN, hit - 0.2));
-}
-function camPoint(target, yaw, pitch, L) { const h = Math.cos(pitch); return { x: target.x + Math.sin(yaw) * h * L, z: target.z + Math.cos(yaw) * h * L }; }
 const inside = (x, z, b) => x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ;
 const box = (cx, cz, w, d) => ({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
 // ¿el segmento del centro p→q cruza la caja (atravesó sin quedar dentro)?
@@ -114,11 +107,10 @@ function crossed(p, q, b) {
   return t <= L && !inside(q.x, q.z, b) && !overlaps(q.x, q.z, b);
 }
 
-// Con REAL=1 las comprobaciones de step/cameraArm se ejecutan contra la implementación real (city/move.js).
+// Con REAL=1 las comprobaciones de step se ejecutan contra la implementación real (city/move.js).
 if (process.env.REAL) {
   const CMr = require('../../city/move.js');
   step = (s, it, dt, b, op) => CMr.step(s, it, dt, b, Object.assign({ safe: { x: s && Number.isFinite(s.x) ? s.x : 0, z: s && Number.isFinite(s.z) ? s.z : 0, yaw: 0 } }, op));
-  cameraArm = (t, y, p, l, b) => CMr.cameraArm(t, y, p, l, b);
 }
 // ---------- 1a. fuzz: dt ∈ [0, 50 ms], cajas aleatorias (incluye muros 6×2), 7 m/s ----------
 function randBoxes(r, overlapOk) {
@@ -143,7 +135,7 @@ function fuzzStep(seed, n, dtMax, overlapOk) {
     const boxes = randBoxes(r, overlapOk); const p = freeStart(r, boxes); if (!p) continue;
     const vmag = r.range(0, 7), ang = r.range(-Math.PI, Math.PI);
     const s = { x: p.x, z: p.z, yaw: 0, vx: Math.sin(ang) * vmag, vz: Math.cos(ang) * vmag, speed: vmag };
-    const intent = { mx: r.range(-1, 1), mz: r.range(-1, 1), run: true, camYaw: r.range(-7, 7) };
+    const intent = { mx: r.range(-1, 1), mz: r.range(-1, 1), run: true };
     const dt = r.bool(0.1) ? dtMax : r.range(0, dtMax);
     const q = step(s, intent, dt, boxes, { canRun: true }); cases++;
     const c = { s, intent, dt, boxes };
@@ -164,7 +156,7 @@ check('S1', 'ALTO', `step: ${F50.cases} casos dt≤50ms, cajas separadas — sin
 // muro 6×2 a 7 m/s, 50 ms, posición de contacto (peor caso) en ambos ejes
 check('S2', 'CRÍTICO', 'step: muro 6×2 (2 m de grueso) a 7 m/s y dt=50 ms no se atraviesa', () => {
   const wall = box(0, 0, 6, 2); let s = { x: 0, z: 1 + R + 1e-9, yaw: 0, vx: 0, vz: -7, speed: 7 };
-  for (let i = 0; i < 100; i++) s = step(s, { mx: 0, mz: -1, run: true, camYaw: 0 }, 0.05, [wall], { canRun: true });
+  for (let i = 0; i < 100; i++) s = step(s, { mx: 0, mz: -1, run: true }, 0.05, [wall], { canRun: true });
   return { ok: s.z >= 1 + R - 1e-6, detail: 'z final=' + s.z };
 });
 
@@ -173,7 +165,7 @@ const dtTunnel = [];
 for (const dt of [0.1, 0.12, 0.2, 0.3, 0.5, 1, 2, 5]) {
   for (const [name, b] of [['muro 6×2', box(0, 0, 6, 2)], ['borde fino 0.1', box(0, 0, 6, 0.1)], ['caja 0 grosor', box(0, 0, 6, 0)]]) {
     const s = { x: 0, z: (b.maxZ - b.minZ) / 2 + R + 0.01, yaw: 0, vx: 0, vz: -7, speed: 7 };
-    const q = step(s, { mx: 0, mz: -1, run: true, camYaw: 0 }, dt, [b], { canRun: true });
+    const q = step(s, { mx: 0, mz: -1, run: true }, dt, [b], { canRun: true });
     if (q.z < b.minZ) dtTunnel.push(`${name} dt=${dt}s z ${s.z.toFixed(2)}→${q.z.toFixed(2)}`);
   }
 }
@@ -182,7 +174,7 @@ check('S3', 'CRÍTICO', 'step: dt grande (0.1–5 s, rAF tras suspender pestaña
 check('S4', 'ALTO', 'step: "aceleración en 0.15 s" no sobrepasa la velocidad objetivo con dt grande', () => {
   const bad = [];
   for (const dt of [0.1, 0.16, 0.25, 0.31, 0.5]) {
-    const q = step({ x: 0, z: 0, yaw: 0, vx: 0, vz: 0, speed: 0 }, { mx: 0, mz: -1, run: true, camYaw: 0 }, dt, [], { canRun: true });
+    const q = step({ x: 0, z: 0, yaw: 0, vx: 0, vz: 0, speed: 0 }, { mx: 0, mz: -1, run: true }, dt, [], { canRun: true });
     if (q.speed > RUN + 1e-9) bad.push(`dt=${dt} speed=${q.speed.toFixed(2)}`);
   }
   return { ok: !bad.length, detail: bad.join(' | ') };
@@ -193,8 +185,8 @@ function seamTrial(r) {
   const zTop = r.range(-170, 40), x0 = r.range(-60, 60), w1 = r.range(5, 9), w2 = r.range(5, 9);
   const A = { minX: x0, maxX: x0 + w1, minZ: zTop - 6, maxZ: zTop }, B = { minX: x0 + w1, maxX: x0 + w1 + w2, minZ: zTop - 6, maxZ: zTop };
   let s = { x: x0 + w1 - 1.5, z: zTop + R + 0.05, yaw: 0, vx: 0, vz: 0, speed: 0 };
-  // camYaw 0: mx=+1 → +x, mz=+1 → +z… queremos +x y -z (contra la pared): mx=1, mz=-1
-  for (let i = 0; i < 120; i++) s = step(s, { mx: 1, mz: -1, camYaw: 0 }, 1 / 60, [A, B], {});
+  // relativo a pantalla: mx=+1 → +x, mz=+1 → +z… queremos +x y -z (contra la pared): mx=1, mz=-1
+  for (let i = 0; i < 120; i++) s = step(s, { mx: 1, mz: -1 }, 1 / 60, [A, B], {});
   return { stuck: s.x < x0 + w1 + 0.5, A, B, s };
 }
 check('S5', 'ALTO', 'step: deslizar contra una pared hecha de 2 cajas contiguas (costura) no se atasca (500 costuras)', () => {
@@ -211,7 +203,7 @@ check('S6', 'ALTO', `step: ${FOV.cases} casos con cajas solapadas/huecos <0.8 m 
 check('S7', 'ALTO', 'step: esquina cóncava de 2 cajas con hueco de 0.6 m — el círculo no queda dentro', () => {
   const A = box(-5.3, 0, 10, 10), B = box(5.3, 0, 10, 10); // hueco de 0.6 m en x∈[-0.3,0.3]
   let s = { x: 0, z: 5 + R + 0.1, yaw: 0, vx: 0, vz: 0, speed: 0 };
-  for (let i = 0; i < 60; i++) s = step(s, { mx: 0, mz: -1, camYaw: 0 }, 1 / 60, [A, B], {});
+  for (let i = 0; i < 60; i++) s = step(s, { mx: 0, mz: -1 }, 1 / 60, [A, B], {});
   const pen = [A, B].some((b) => d2circleBox(s.x, s.z, b) < (R - 1e-6) ** 2);
   return { ok: !pen, detail: `final x=${s.x.toFixed(3)} z=${s.z.toFixed(3)} d(A)=${Math.sqrt(d2circleBox(s.x, s.z, A)).toFixed(3)} d(B)=${Math.sqrt(d2circleBox(s.x, s.z, B)).toFixed(3)}` };
 });
@@ -221,40 +213,12 @@ check('S8', 'ALTO', 'step: NaN en dt/estado/intent no propaga NaN (2000 casos ho
   for (let i = 0; i < 2000; i++) {
     const s = { x: r.range(-5, 5), z: r.range(-5, 5), yaw: 0, vx: 0, vz: 0, speed: 0 };
     if (r.bool(0.3)) s[r.pick(['x', 'z', 'vx', 'vz', 'yaw'])] = r.pick(hostile);
-    const it = { mx: r.bool(0.3) ? r.pick(hostile) : r.range(-1, 1), mz: r.bool(0.3) ? r.pick(hostile) : r.range(-1, 1), camYaw: r.bool(0.3) ? r.pick(hostile) : 0, run: true };
+    const it = { mx: r.bool(0.3) ? r.pick(hostile) : r.range(-1, 1), mz: r.bool(0.3) ? r.pick(hostile) : r.range(-1, 1), run: true };
     const dt = r.bool(0.3) ? r.pick(hostile) : r.range(0, 0.05);
     const q = step(s, it, dt, [box(20, 20, 2, 2)], { canRun: true });
     if (![q.x, q.z, q.yaw, q.vx, q.vz].every((v) => typeof v === 'number' && fin(v))) { bad++; ex = ex || { s, it, dt, q }; }
   }
   return { ok: !bad, detail: `${bad} salidas no finitas (devuelve el state previo ya corrupto: el contrato solo valida la salida)` + (ex ? ' ej=' + J(ex) : '') };
-});
-
-// ---------- 1b. cameraArm ----------
-check('C1', 'ALTO', 'cameraArm: resultado ≤ len siempre (len < 1.2 incluido)', () => {
-  const v = cameraArm({ x: 0, z: 0 }, 0, 0.3, 0.8, []);
-  return { ok: v <= 0.8, detail: `len=0.8 → ${v} (min 1.2 y ≤ len se contradicen)` };
-});
-check('C2', 'ALTO', 'cameraArm: 2000 casos — finito, ≤len, y la cámara nunca queda dentro de una caja', () => {
-  const r = rng(SEED + 9); let nan = 0, over = 0, inBox = 0, ex = null;
-  for (let i = 0; i < 2000; i++) {
-    const boxes = randBoxes(r, true); const p = freeStart(r, boxes) || { x: 30, z: 30 };
-    const yaw = r.bool(0.05) ? r.pick([NaN, Infinity]) : r.range(-7, 7), pitch = r.range(-0.2, 1.3), len = r.range(0.5, 8);
-    const L = cameraArm(p, yaw, pitch, len, boxes);
-    if (!fin(L)) { nan++; continue; }
-    if (L > len + 1e-9) over++;
-    const c = camPoint(p, yaw, pitch, L);
-    if (boxes.some((b) => inside(c.x, c.z, b))) { inBox++; ex = ex || { p, yaw, pitch, len, L, boxes }; }
-  }
-  return { ok: !nan && !over && !inBox, detail: `nan=${nan} >len=${over} cámara-dentro-de-caja=${inBox}` + (ex ? ` ej: target=${J(ex.p)} yaw=${ex.yaw.toFixed(2)} L=${ex.L.toFixed(2)}` : '') };
-});
-check('C3', 'MEDIO', 'cameraArm: "más altura" es implementable con las AABB de boxesFor', () => {
-  let sample = { minX: 0, maxX: 1, minZ: 0, maxZ: 1 }; // forma literal de boxesFor(D) del plan original
-  if (process.env.REAL) {
-    const mini = { bounds: { minX: -70, maxX: 70, minZ: -190, maxZ: 40 }, plaza: { roads: [], hq: { x: 0, z: -14, w: 14, d: 10, h: 9 } },
-      districts: { M02: { seed: 1, blocks: [[0, -66]], tower: { x: 0, z: -162, w: 8, d: 8, h: 20 }, bridge: { x: 0, z: -178, w: 6, d: 10 } } } };
-    sample = require('../../city/move.js').boxesFor(mini, false)[0];
-  }
-  return { ok: 'h' in sample || 'maxY' in sample, detail: 'boxesFor devuelve { minX, maxX, minZ, maxZ } sin altura: el rayo no puede pasar sobre cajas bajas' };
 });
 
 // =====================================================================================
@@ -467,7 +431,7 @@ check('N3', 'ALTO', 'coord: contrato (1e308 → max) vs test del plan ("at {x:1e
 });
 check('N4', 'CRÍTICO', 'coord con isFinite global: at.x = "5" (string) llega a step → concatena', () => {
   const C = normalizeCity(JSON.parse('{"at":{"x":"5","z":8}}'), D, false, coordSpec);
-  const q = step({ x: C.at.x, z: C.at.z, yaw: 0, vx: 1, vz: 0, speed: 1 }, { mx: 1, mz: 0, camYaw: 0 }, 0.016, [], {});
+  const q = step({ x: C.at.x, z: C.at.z, yaw: 0, vx: 1, vz: 0, speed: 1 }, { mx: 1, mz: 0 }, 0.016, [], {});
   return { ok: typeof C.at.x === 'number', detail: `at.x=${J(C.at.x)} (${typeof C.at.x}); x+vx*dt=${J(C.at.x + 0.016)} no es finito → step devuelve siempre el mismo state: héroe congelado` };
 });
 check('N5', 'MEDIO', 'applyRestore: estado con restored.M02 ya puesto pero powers vacío queda sin planos (y nunca revoca)', () => {

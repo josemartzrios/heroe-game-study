@@ -1,5 +1,5 @@
-/* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, cámara de tercera persona, cercanos y distribución de edificios.
-   Sin DOM ni Three. Convención: yaw 0 mira hacia -z (norte); pitch de cameraArm = elevación de la cámara sobre el objetivo (rad). */
+/* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, dirección del héroe, cercanos y distribución de edificios.
+   Sin DOM. Vista desde arriba: el movimiento es relativo a la pantalla (mz = -1 va a -z, arriba) y yaw 0 mira hacia -z. */
 var CityMove = (function () {
   var WALK = 4, RUN = 7, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
 
@@ -75,7 +75,7 @@ var CityMove = (function () {
     return axis === 'x' ? x : z;
   }
 
-  /* Un paso del héroe. state = { x, z, yaw, vx, vz, speed }; intent = { mx, mz, run, camYaw } (mx, mz en [-1, 1]).
+  /* Un paso del héroe. state = { x, z, yaw, vx, vz, speed }; intent = { mx, mz, run } (mx, mz en [-1, 1]).
      opts = { canRun, radius, safe: { x, z, yaw } }. Con estado o dt inválidos devuelve safe, quieto. */
   function step(s, intent, dt, boxes, opts) {
     opts = opts || {};
@@ -84,9 +84,9 @@ var CityMove = (function () {
     if (!s || !isNum(s.x) || !isNum(s.z) || !isNum(s.vx) || !isNum(s.vz) || !isNum(s.yaw) || !isNum(dt) || dt < 0) return fallback;
     dt = Math.min(dt, DT_MAX);
     intent = intent || {};
-    var mx = isNum(intent.mx) ? clamp(intent.mx, -1, 1) : 0, mz = isNum(intent.mz) ? clamp(intent.mz, -1, 1) : 0, cy = isNum(intent.camYaw) ? intent.camYaw : 0;
+    var mx = isNum(intent.mx) ? clamp(intent.mx, -1, 1) : 0, mz = isNum(intent.mz) ? clamp(intent.mz, -1, 1) : 0;
     var len = Math.hypot(mx, mz); if (len > 1) { mx /= len; mz /= len; }
-    var wx = mx * Math.cos(cy) + mz * Math.sin(cy), wz = -mx * Math.sin(cy) + mz * Math.cos(cy);   // adelante (mz = -1) = (-sin cy, -cos cy)
+    var wx = mx, wz = mz;
     var top = (intent.run && opts.canRun) ? RUN : WALK, k = Math.min(1, dt / ACC);
     var vx = s.vx, vz = s.vz, sp = Math.hypot(vx, vz);
     if (sp > RUN) { vx *= RUN / sp; vz *= RUN / sp; }
@@ -100,32 +100,12 @@ var CityMove = (function () {
     return (isNum(out.x) && isNum(out.z) && isNum(out.yaw) && isNum(out.vx) && isNum(out.vz) && isNum(out.speed)) ? out : fallback;
   }
 
-  /* distancia horizontal (en XZ) hasta la entrada de la caja siguiendo el rayo (dx, dz) unitario; Infinity si no la toca */
-  function rayBox(ox, oz, dx, dz, b) {
-    var t0 = 0, t1 = Infinity, axes = [[ox, dx, b.minX, b.maxX], [oz, dz, b.minZ, b.maxZ]], i;
-    for (i = 0; i < 2; i++) {
-      var o = axes[i][0], d = axes[i][1], lo = axes[i][2], hi = axes[i][3];
-      if (Math.abs(d) < 1e-12) { if (o < lo || o > hi) return Infinity; continue; }
-      var a = (lo - o) / d, c = (hi - o) / d; if (a > c) { var tmp = a; a = c; c = tmp; }
-      t0 = Math.max(t0, a); t1 = Math.min(t1, c); if (t0 > t1) return Infinity;
-    }
-    return t0;
-  }
-
-  /* Largo del brazo de cámara: len, o menos si una caja (más alta que el rayo) se interpone. Nunca deja la cámara dentro de una caja. */
-  function cameraArm(target, yaw, pitch, len, boxes) {
-    if (!target || !isNum(target.x) || !isNum(target.z) || !isNum(yaw) || !isNum(pitch) || !isNum(len) || len <= 0) return isNum(len) ? len : 6;
-    var ty = isNum(target.y) ? target.y : 1.6, ch = Math.cos(pitch), tn = Math.tan(pitch);
-    if (ch < 0.05) return len;
-    var dx = Math.sin(yaw), dz = Math.cos(yaw), hit = Infinity, i;
-    for (i = 0; i < boxes.length; i++) {
-      var t = rayBox(target.x, target.z, dx, dz, boxes[i]);
-      if (t === Infinity) continue;
-      if (isNum(boxes[i].h) && ty + t * tn > boxes[i].h) continue;
-      hit = Math.min(hit, t / ch);
-    }
-    if (hit === Infinity) return len;
-    return Math.min(len, Math.max(0.3, hit - 0.2), Math.max(0.05, hit - 0.05));
+  /* Dirección en pantalla a partir de yaw (yaw 0 = arriba, π/2 = izquierda): up, down, left o right. En el empate a 45° gana el eje vertical. */
+  function faceOf(yaw) {
+    if (!isNum(yaw)) return 'up';
+    var a = ((yaw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), s = Math.sin(a), c = Math.cos(a);
+    if (Math.abs(c) >= Math.abs(s) - 1e-9) return c >= 0 ? 'up' : 'down';
+    return s > 0 ? 'left' : 'right';
   }
 
   /* items: [{ id, x, z, … }]. within devuelve copias con dist, ordenadas; nearest, la más cercana o null. */
@@ -137,6 +117,6 @@ var CityMove = (function () {
   }
   function nearest(pos, items, maxDist) { var w = within(pos, items, maxDist); return w.length ? w[0] : null; }
 
-  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, cameraArm: cameraArm, nearest: nearest, within: within };
+  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, nearest: nearest, within: within };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityMove;

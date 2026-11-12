@@ -1,8 +1,8 @@
-/* Entrada de Ciudad Núcleo: joystick táctil por pointerId, arrastre de cámara, teclado (WASD/flechas, Shift, Q/Z, E/Enter, Esc).
-   Sin Three. El teclado se escucha en la ventana del propio root (root.ownerDocument.defaultView).
-   consumeCamera(): yaw = +grados hacia la derecha del arrastre (0.25 °/px) y pitch = +grados hacia abajo; Q = -90 °/s y Z = +90 °/s. */
+/* Entrada de Ciudad Núcleo: joystick táctil por pointerId, zoom (pellizco, rueda y teclas +/-), teclado (WASD/flechas, Shift, E/Enter, Esc).
+   El teclado se escucha en la ventana del propio root (root.ownerDocument.defaultView).
+   consumeZoom() → { factor, steps }: factor = producto acumulado del pellizco (cada evento en [0.5, 2]); steps = pasos de rueda y teclas (±1). */
 var CityInput = (function () {
-  var JOY_R = 48, DRAG = 0.25, KEY_DEG = 90, EDGE = 16;
+  var JOY_R = 48, EDGE = 16, WHEEL_MS = 120;
   var KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right' };
 
   function create(root, opts) {
@@ -11,7 +11,8 @@ var CityInput = (function () {
     var safe = opts.safe || function () { return { left: 0, bottom: 0 }; };
     var isFree = opts.isFree || function () { return true; };
     var now = opts.now || function () { return win.performance.now(); };
-    var fingers = {}, down = {}, camYaw = 0, camPitch = 0, lastNow = now(), action = false, pause = false, dead = false;
+    var isActive = opts.isActive || function () { return true; };
+    var fingers = {}, down = {}, zoomF = 1, zoomS = 0, pinch = null, lastWheel = -Infinity, action = false, pause = false, dead = false;
 
     function typing() { var t = doc.activeElement && doc.activeElement.tagName; return t === 'INPUT' || t === 'TEXTAREA'; }
     function onDown(e) {
@@ -19,21 +20,44 @@ var CityInput = (function () {
       var r = root.getBoundingClientRect(), s = safe(), lx = e.clientX - r.left, ly = e.clientY - r.top;
       if (lx < (s.left || 0) + EDGE || (r.height - ly) < (s.bottom || 0) + EDGE) return;       // margen de los gestos del sistema: no hace nada
       var joy = lx < r.width * 0.5 && ly > r.height * 0.75;
-      fingers[e.pointerId] = joy ? { kind: 'joy', ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 } : { kind: 'cam', x: e.clientX, y: e.clientY };
+      fingers[e.pointerId] = joy ? { kind: 'joy', ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 } : { kind: 'free', x: e.clientX, y: e.clientY };
+      if (!joy && !pinch) {
+        var fr = Object.keys(fingers).filter(function (k) { return fingers[k].kind === 'free'; });
+        if (fr.length === 2) pinch = { a: fr[0], b: fr[1], d: Math.max(1, dist(fingers[fr[0]], fingers[fr[1]])) };
+      }
       if (root.setPointerCapture) { try { root.setPointerCapture(e.pointerId); } catch (x) {} }
     }
     function onMove(e) {
       var f = fingers[e.pointerId]; if (dead || !f) return;
       if (f.kind === 'joy') { f.dx = e.clientX - f.ox; f.dy = e.clientY - f.oy; }
-      else { camYaw += (e.clientX - f.x) * DRAG; camPitch += (e.clientY - f.y) * DRAG; f.x = e.clientX; f.y = e.clientY; }
+      else if (f.kind === 'free') {
+        f.x = e.clientX; f.y = e.clientY;
+        if (pinch && (String(e.pointerId) === pinch.a || String(e.pointerId) === pinch.b)) {
+          var nd = Math.max(1, dist(fingers[pinch.a], fingers[pinch.b])), k = Math.max(0.5, Math.min(2, nd / pinch.d));
+          zoomF *= k; pinch.d = nd;
+        }
+      }
     }
-    function onUp(e) { delete fingers[e.pointerId]; }
+    function dist(p, q) { return Math.hypot(p.x - q.x, p.y - q.y); }
+    function onUp(e) {
+      var id = String(e.pointerId);
+      if (pinch && (id === pinch.a || id === pinch.b)) { var other = id === pinch.a ? pinch.b : pinch.a; pinch = null; if (fingers[other]) fingers[other].kind = 'idle'; }
+      delete fingers[e.pointerId];
+    }
+    function onWheel(e) {
+      if (dead || !isActive() || typeof e.deltaY !== 'number' || !isFinite(e.deltaY) || e.deltaY === 0) return;
+      e.preventDefault();
+      var t = now();
+      if (t - lastWheel >= WHEEL_MS) { zoomS += e.deltaY < 0 ? 1 : -1; lastWheel = t; }
+    }
     function onKeyDown(e) {
       if (dead || e.ctrlKey || e.metaKey || e.altKey) return;
       var k = String(e.key).toLowerCase();
       if (k === 'escape') { if (!e.repeat) pause = true; return; }
       if (typing()) return;
-      if (KEYS[k] || k === 'q' || k === 'z' || k === 'shift') { down[k] = true; return; }
+      if (k === '+' || k === '=') { if (!e.repeat) zoomS += 1; return; }
+      if (k === '-' || k === '_') { if (!e.repeat) zoomS -= 1; return; }
+      if (KEYS[k] || k === 'shift') { down[k] = true; return; }
       if (k === 'e' || k === 'enter') {
         var ae = doc.activeElement;
         if (k === 'enter' && ae && ae.tagName === 'BUTTON') return;
@@ -42,7 +66,7 @@ var CityInput = (function () {
     }
     function onKeyUp(e) { delete down[String(e.key).toLowerCase()]; }
     root.addEventListener('pointerdown', onDown); root.addEventListener('pointermove', onMove);
-    root.addEventListener('pointerup', onUp); root.addEventListener('pointercancel', onUp);
+    root.addEventListener('pointerup', onUp); root.addEventListener('pointercancel', onUp); root.addEventListener('wheel', onWheel, { passive: false });
     win.addEventListener('pointerup', onUp); win.addEventListener('pointercancel', onUp);
     win.addEventListener('keydown', onKeyDown); win.addEventListener('keyup', onKeyUp);
 
@@ -64,22 +88,17 @@ var CityInput = (function () {
       run = f ? mag >= 0.7 : !!down.shift && mag > 0;
       return { mx: mx, mz: mz, mag: mag, run: run };
     }
-    function consumeCamera() {
-      var t = now(), dt = (t - lastNow) / 1000; lastNow = t;
-      var yaw = camYaw + ((down.z ? 1 : 0) - (down.q ? 1 : 0)) * KEY_DEG * dt, pitch = camPitch;
-      camYaw = 0; camPitch = 0;
-      return { yaw: yaw, pitch: pitch };
-    }
+    function consumeZoom() { var r = { factor: zoomF, steps: zoomS }; zoomF = 1; zoomS = 0; return r; }
     function consumeAction() { var a = action; action = false; return a; }
     function consumePause() { var p = pause; pause = false; return p; }
     function dispose() {
-      dead = true; fingers = {}; down = {}; action = false; pause = false;
+      dead = true; fingers = {}; down = {}; pinch = null; zoomF = 1; zoomS = 0; action = false; pause = false;
       root.removeEventListener('pointerdown', onDown); root.removeEventListener('pointermove', onMove);
-      root.removeEventListener('pointerup', onUp); root.removeEventListener('pointercancel', onUp);
+      root.removeEventListener('pointerup', onUp); root.removeEventListener('pointercancel', onUp); root.removeEventListener('wheel', onWheel);
       win.removeEventListener('pointerup', onUp); win.removeEventListener('pointercancel', onUp);
       win.removeEventListener('keydown', onKeyDown); win.removeEventListener('keyup', onKeyUp);
     }
-    return { intent: intent, consumeCamera: consumeCamera, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
+    return { intent: intent, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
   }
   return { create: create };
 })();

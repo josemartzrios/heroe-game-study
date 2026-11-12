@@ -1,4 +1,4 @@
-// Pruebas de city/move.js (matemática pura): coord, layoutBuildings, boxesFor, step, cameraArm, nearest y within.
+// Pruebas de city/move.js (matemática pura): coord, layoutBuildings, boxesFor, step, faceOf, nearest y within.
 // Los casos de step/cameraArm incluyen los contraejemplos del oráculo adversarial (tests/adv/plan_city_oracle.cjs).
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -54,7 +54,7 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
     ok('boxesFor: ningún interactuable queda dentro de una caja (margen 0.6 m)', bad.length === 0, bad.join(',')); }
 
   // ---- step ----
-  const run = { mx: 0, mz: -1, run: true, camYaw: 0 };
+  const run = { mx: 0, mz: -1, run: true };
   { let s = { x: 0, z: 1 + R + 1e-9, yaw: 0, vx: 0, vz: -7, speed: 7 };
     for (let i = 0; i < 100; i++) s = CM.step(s, run, 0.05, [box(0, 0, 6, 2)], { canRun: true, safe: { x: 0, z: 5, yaw: 0 } });
     ok('step S2: un muro 6×2 resiste 100 pasos de 50 ms a 7 m/s', s.z >= 1 + R - 1e-6, 'z=' + s.z); }
@@ -68,24 +68,24 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
   { const bad = [];
     for (const dt of [0.1, 0.16, 0.25, 0.5, 5]) { const q = CM.step(st0, run, dt, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } }); if (q.speed > 7 + 1e-9) bad.push(`dt=${dt} v=${q.speed}`); }
     ok('step S4: la velocidad nunca pasa de 7 m/s con dt grande', bad.length === 0, bad.join(' | '));
-    let s = st0; for (let i = 0; i < 3; i++) s = CM.step(s, { mx: 0, mz: -1, camYaw: 0 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
+    let s = st0; for (let i = 0; i < 3; i++) s = CM.step(s, { mx: 0, mz: -1 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
     ok('step: a los 0.15 s ya lleva más del 60 % de 4 m/s y nunca se pasa', s.speed >= 0.6 * 4 && s.speed <= 4 + 1e-9, 'speed=' + s.speed);
-    for (let i = 0; i < 12; i++) s = CM.step(s, { mx: 0, mz: -1, camYaw: 0 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
+    for (let i = 0; i < 12; i++) s = CM.step(s, { mx: 0, mz: -1 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
     ok('step: a los 0.75 s alcanza los 4 m/s', s.speed > 3.95 && s.speed <= 4 + 1e-9, 'speed=' + s.speed);
-    const w = CM.step(st0, { mx: 0, mz: -1, run: true, camYaw: 0 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
-    const r2 = CM.step({ ...st0, vz: -4 }, { mx: 0, mz: -1, run: true, camYaw: 0 }, 0.05, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } });
+    const w = CM.step(st0, { mx: 0, mz: -1, run: true }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
+    const r2 = CM.step({ ...st0, vz: -4 }, { mx: 0, mz: -1, run: true }, 0.05, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } });
     ok('step: corre (7) solo con canRun', w.speed < 4.0001 && r2.speed > 4.5, `${w.speed} / ${r2.speed}`); }
   { const r = rng(5); let stuck = 0, back = 0;
     for (let i = 0; i < 300; i++) {
       const zTop = r.range(-170, 40), x0 = r.range(-60, 60), w1 = r.range(5, 9), w2 = r.range(5, 9);
       const A = { minX: x0, maxX: x0 + w1, minZ: zTop - 6, maxZ: zTop, h: 10 }, B = { minX: x0 + w1, maxX: x0 + w1 + w2, minZ: zTop - 6, maxZ: zTop, h: 10 };
       let s = { x: x0 + w1 - 1.5, z: zTop + R + 0.05, yaw: 0, vx: 0, vz: 0, speed: 0 }, minDx = 0, px = s.x;
-      for (let k = 0; k < 120; k++) { s = CM.step(s, { mx: 1, mz: -1, camYaw: 0 }, 1 / 60, [A, B], { safe: { x: s.x, z: s.z, yaw: 0 } }); minDx = Math.min(minDx, s.x - px); px = s.x; }
+      for (let k = 0; k < 120; k++) { s = CM.step(s, { mx: 1, mz: -1 }, 1 / 60, [A, B], { safe: { x: s.x, z: s.z, yaw: 0 } }); minDx = Math.min(minDx, s.x - px); px = s.x; }
       if (s.x < x0 + w1 + 0.5) stuck++; if (minDx < -0.01) back++;
     }
     ok('step S5: deslizar contra dos cajas contiguas (costura) no se atasca ni retrocede (300 casos)', stuck === 0 && back === 0, `atascadas=${stuck} retrocesos=${back}`); }
   { const A = box(-5.3, 0, 10, 10), B = box(5.3, 0, 10, 10); let s = { x: 0, z: 5 + R + 0.1, yaw: 0, vx: 0, vz: 0, speed: 0 };
-    for (let i = 0; i < 60; i++) s = CM.step(s, { mx: 0, mz: -1, camYaw: 0 }, 1 / 60, [A, B], { safe: { x: 0, z: 9, yaw: 0 } });
+    for (let i = 0; i < 60; i++) s = CM.step(s, { mx: 0, mz: -1 }, 1 / 60, [A, B], { safe: { x: 0, z: 9, yaw: 0 } });
     ok('step S7: un hueco de 0.6 m entre cajas no deja al círculo dentro', !pen(s.x, s.z, [A, B]), `x=${s.x.toFixed(3)} z=${s.z.toFixed(3)}`); }
   { const r = rng(8), hostile = [NaN, Infinity, -Infinity, 1e308, -1e308, undefined, null, '5', {}, []]; let bad = 0, unsafe = 0;
     for (let i = 0; i < 2000; i++) {
@@ -107,32 +107,22 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
       let p = null; for (let k = 0; k < 200 && !p; k++) { const x = r.range(-14, 14), z = r.range(-14, 14); if (boxes.every((b) => d2(x, z, b) >= R * R)) p = { x, z }; }
       if (!p) continue;
       const vm = r.range(0, 7), an = r.range(-Math.PI, Math.PI), s = { x: p.x, z: p.z, yaw: 0, vx: Math.sin(an) * vm, vz: Math.cos(an) * vm, speed: vm };
-      const q = CM.step(s, { mx: r.range(-1, 1), mz: r.range(-1, 1), run: true, camYaw: r.range(-7, 7) }, r.bool(0.1) ? 0.05 : r.range(0, 0.05), boxes, { canRun: true, safe: { x: p.x, z: p.z, yaw: 0 } }); cases++;
+      const q = CM.step(s, { mx: r.range(-1, 1), mz: r.range(-1, 1), run: true }, r.bool(0.1) ? 0.05 : r.range(0, 0.05), boxes, { canRun: true, safe: { x: p.x, z: p.z, yaw: 0 } }); cases++;
       if (![q.x, q.z, q.vx, q.vz, q.speed].every(Number.isFinite)) bNan++;
       if (pen(q.x, q.z, boxes)) bPen++;
       if (boxes.some((b) => crossed(s, q, b))) bTun++;
     }
     ok('step S1: ' + cases + ' casos con cajas separadas — sin NaN, penetración ni túnel', bNan === 0 && bPen === 0 && bTun === 0, `nan=${bNan} pen=${bPen} túnel=${bTun}`); }
 
-  // ---- cameraArm ----
-  ok('cameraArm: sin cajas devuelve len', CM.cameraArm({ x: 0, z: 0 }, 0, 0.3, 6, []) === 6);
-  ok('cameraArm: len menor que el mínimo se respeta (C1)', CM.cameraArm({ x: 0, z: 0 }, 0, 0.3, 0.8, []) <= 0.8);
-  { const wall = box(0, 3, 4, 1, 20), a = CM.cameraArm({ x: 0, z: 0 }, 0, 0.3, 8, [wall]);
-    ok('cameraArm: con una caja detrás es menor que len', a < 8 && a >= 0.3, 'arm=' + a); }
-  { const wall = box(0, 0.9, 6, 0.8, 20), a = CM.cameraArm({ x: 0, z: 0 }, 0, 0.2, 6, [wall]), h = Math.cos(0.2), c = { x: Math.sin(0) * h * a, z: Math.cos(0) * h * a };
-    ok('cameraArm: con el muro a 0.5 m la cámara no queda dentro de la caja', !inside(c.x, c.z, wall), `arm=${a} z=${c.z}`); }
-  ok('cameraArm: yaw NaN devuelve len', CM.cameraArm({ x: 0, z: 0 }, NaN, 0.3, 6, [box(0, 3, 4, 1, 20)]) === 6);
-  { const r = rng(9); let nan = 0, over = 0, inBox = 0;
-    for (let i = 0; i < 1000; i++) {
-      const boxes = []; for (let k = 0; k < r.int(1, 5); k++) boxes.push(box(r.range(-8, 8), r.range(-8, 8), r.range(0.5, 6), r.range(0.5, 6), 30));
-      let p = null; for (let k = 0; k < 100 && !p; k++) { const x = r.range(-12, 12), z = r.range(-12, 12); if (boxes.every((b) => d2(x, z, b) >= R * R)) p = { x, z }; }
-      if (!p) continue;
-      const yaw = r.range(-7, 7), pitch = r.range(0, 1.2), len = r.range(0.5, 8), a = CM.cameraArm(p, yaw, pitch, len, boxes);
-      if (!Number.isFinite(a)) { nan++; continue; } if (a > len + 1e-9) over++;
-      const h = Math.cos(pitch), c = { x: p.x + Math.sin(yaw) * h * a, z: p.z + Math.cos(yaw) * h * a };
-      if (boxes.some((b) => inside(c.x, c.z, b))) inBox++;
-    }
-    ok('cameraArm C2: 1000 casos — finito, ≤ len y la cámara nunca queda dentro de una caja', nan === 0 && over === 0 && inBox === 0, `nan=${nan} >len=${over} dentro=${inBox}`); }
+  // ---- cámara 2D: sin brazo de cámara y con faceOf ----
+  ok('cameraArm ya no existe', CM.cameraArm === undefined);
+  { const f = CM.faceOf, PI = Math.PI;
+    ok('faceOf: yaw 0 → up, π → down, π/2 → left, -π/2 → right', f(0) === 'up' && f(PI) === 'down' && f(PI / 2) === 'left' && f(-PI / 2) === 'right');
+    ok('faceOf: en el empate a 45° gana el eje vertical', f(PI / 4) === 'up' && f(-PI / 4) === 'up' && f(3 * PI / 4) === 'down' && f(-3 * PI / 4) === 'down');
+    ok('faceOf: normaliza ángulos grandes', f(7 * PI) === 'down' && f(-7 * PI) === 'down' && f(2 * PI) === 'up');
+    ok('faceOf: valores no finitos o no numéricos → up', f(NaN) === 'up' && f(Infinity) === 'up' && f('x') === 'up' && f(null) === 'up'); }
+  { const q = CM.step({ x: 0, z: 0, yaw: 0, vx: 0, vz: 0, speed: 0 }, { mx: 0, mz: -1 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
+    ok('step sin camYaw: mz = -1 baja z (arriba en pantalla) y mx = +1 sube x (derecha)', q.vz < 0 && Math.abs(q.vx) < 1e-9 && CM.step({ x: 0, z: 0, yaw: 0, vx: 0, vz: 0, speed: 0 }, { mx: 1, mz: 0 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } }).vx > 0); }
 
   // ---- nearest / within ----
   { const items = [{ id: 'a', x: 3, z: 0 }, { id: 'b', x: 1, z: 0 }, { id: 'c', x: 0, z: 10 }];

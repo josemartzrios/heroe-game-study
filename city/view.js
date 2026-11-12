@@ -103,7 +103,7 @@ function cityPauseKey() {
   if (!CD) return;
   if (CD.sheet) cityCloseSheet(); else if (CD.paused) cityClosePause(); else if (!CD.rotate) cityOpenPause();
 }
-function cityFlush() { if (CD && CD.input) { CD.input.consumeAction(); CD.input.consumeCamera(); } }
+function cityFlush() { if (CD && CD.input) { CD.input.consumeAction(); CD.input.consumeZoom(); } }
 function cityHtml() {
   var run = levelOf(S.xp) >= 5 ? '<button class="btn sm" id="city-run" data-act="cx" data-c="run" aria-pressed="' + (S.city.run ? 'true' : 'false') + '">Correr</button>' : '';
   return '<canvas id="city-cv" aria-hidden="true"></canvas>' +
@@ -269,21 +269,19 @@ function cityTick(dt) {
   var sec = Math.min(dt, 100) / 1000;
   if (c.input.consumePause()) cityPauseKey();
   var act = c.input.consumeAction();
-  if (cityBlocked()) { c.input.consumeCamera(); return; }
-  var it = c.input.intent(), cm = c.input.consumeCamera();
-  c.cam.yaw -= cm.yaw * Math.PI / 180;
-  c.cam.tilt = Math.max(CITY_TILT_MIN, Math.min(CITY_TILT_MAX, c.cam.tilt - cm.pitch * Math.PI / 180));
+  if (cityBlocked()) { c.input.consumeZoom(); return; }
+  var it = c.input.intent();
+  c.input.consumeZoom();   // el zoom 2D llega en la Tarea 4; el mundo 3D no lo usa
   var canRun = levelOf(S.xp) >= 5 && S.city.run === true;
-  var nh = CityMove.step(c.hero, { mx: it.mx, mz: it.mz, run: it.run, camYaw: c.cam.yaw }, sec, c.boxes, { canRun: canRun, radius: CITY_DATA.radius, safe: c.safe });
+  var nh = CityMove.step(c.hero, { mx: it.mx, mz: it.mz, run: it.run }, sec, c.boxes, { canRun: canRun, radius: CITY_DATA.radius, safe: c.safe });
   c.hero = nh; c.safe = { x: nh.x, z: nh.z, yaw: nh.yaw };
   var rm = false;
   if (!c.reducedChecked) { c.reducedChecked = true; try { c.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { c.reduced = false; } }
   rm = c.reduced;
-  if (nh.speed > 0.5 && !rm && Math.abs(cm.yaw) < 0.01) {
+  if (nh.speed > 0.5 && !rm) {
     var df = cityAngDiff(c.cam.yaw, nh.yaw), stp = (Math.PI / 2) * sec;
     c.cam.yaw += Math.abs(df) <= stp ? df : (df > 0 ? stp : -stp);
   }
-  c.cam.arm = CityMove.cameraArm({ x: nh.x, z: nh.z, y: 1.6 }, c.cam.yaw, -c.cam.tilt, 6, c.boxes);
   c.saveT += sec; c.objT += sec;
   if (c.saveT >= 5) { c.saveT = 0; citySave(); }
   if (c.objT >= 0.25) { c.objT = 0; cityObjUpdate(true); cityAnnounce(); }
