@@ -369,6 +369,11 @@ console.log('Por tema M02:', JSON.stringify(r2.perTopic));
       for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) if (Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z) < 4) bad(`${pts[i].id} y ${pts[j].id} están a menos de 4 m`);
       for (const o of [D.plaza.director, D.plaza.mirror, D.spawn]) if (!inB(o)) bad(`${o.id || 'spawn'}: fuera de los límites`);
       if (D.plaza.roads.length !== 10) bad('La plaza debe tener 10 muros');
+      // ningún interactuable dentro de un edificio ni de una caja de colisión (margen 0.6 m)
+      const CM = vm.runInNewContext((await import('node:fs')).readFileSync(new URL('./city/move.js', import.meta.url), 'utf8') + '\n;CityMove');
+      const solid = CM.boxesFor(D, false);
+      const free = [...dist.mentors, ...dist.repairs, ...dist.apprentices, ...dist.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), D.plaza.director, D.plaza.mirror, CM.door(dist.tower), CM.door(dist.bridge), D.spawn];
+      for (const p of free) for (const b of solid) { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); if (Math.hypot(p.x - cx, p.z - cz) < 0.6) bad(`${p.id || 'spawn'}: dentro o junto a una caja de colisión`); }
     }
     // rangos y villanos de M01
     const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];

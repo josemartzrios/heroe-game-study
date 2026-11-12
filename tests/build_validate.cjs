@@ -14,6 +14,7 @@ const OPEN = '<script type="text/plain" id="three-src" data-version="0.169.0">';
 function validate(htmlText) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'val-'));
   fs.copyFileSync(path.join(root, 'validate.mjs'), path.join(dir, 'validate.mjs'));
+  fs.mkdirSync(path.join(dir, 'city')); fs.copyFileSync(path.join(root, 'city', 'move.js'), path.join(dir, 'city', 'move.js'));   // validate.mjs lo carga para comprobar posiciones
   fs.writeFileSync(path.join(dir, 'juego_estudio.html'), htmlText);
   const r = spawnSync('node', ['validate.mjs'], { cwd: dir, encoding: 'utf8' });
   fs.rmSync(dir, { recursive: true, force: true });

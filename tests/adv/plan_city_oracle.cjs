@@ -114,6 +114,12 @@ function crossed(p, q, b) {
   return t <= L && !inside(q.x, q.z, b) && !overlaps(q.x, q.z, b);
 }
 
+// Con REAL=1 las comprobaciones de step/cameraArm se ejecutan contra la implementación real (city/move.js).
+if (process.env.REAL) {
+  const CMr = require('../../city/move.js');
+  step = (s, it, dt, b, op) => CMr.step(s, it, dt, b, Object.assign({ safe: { x: s && Number.isFinite(s.x) ? s.x : 0, z: s && Number.isFinite(s.z) ? s.z : 0, yaw: 0 } }, op));
+  cameraArm = (t, y, p, l, b) => CMr.cameraArm(t, y, p, l, b);
+}
 // ---------- 1a. fuzz: dt ∈ [0, 50 ms], cajas aleatorias (incluye muros 6×2), 7 m/s ----------
 function randBoxes(r, overlapOk) {
   const out = [];
@@ -242,7 +248,12 @@ check('C2', 'ALTO', 'cameraArm: 2000 casos — finito, ≤len, y la cámara nunc
   return { ok: !nan && !over && !inBox, detail: `nan=${nan} >len=${over} cámara-dentro-de-caja=${inBox}` + (ex ? ` ej: target=${J(ex.p)} yaw=${ex.yaw.toFixed(2)} L=${ex.L.toFixed(2)}` : '') };
 });
 check('C3', 'MEDIO', 'cameraArm: "más altura" es implementable con las AABB de boxesFor', () => {
-  const sample = { minX: 0, maxX: 1, minZ: 0, maxZ: 1 }; // forma literal de boxesFor(D)
+  let sample = { minX: 0, maxX: 1, minZ: 0, maxZ: 1 }; // forma literal de boxesFor(D) del plan original
+  if (process.env.REAL) {
+    const mini = { bounds: { minX: -70, maxX: 70, minZ: -190, maxZ: 40 }, plaza: { roads: [], hq: { x: 0, z: -14, w: 14, d: 10, h: 9 } },
+      districts: { M02: { seed: 1, blocks: [[0, -66]], tower: { x: 0, z: -162, w: 8, d: 8, h: 20 }, bridge: { x: 0, z: -178, w: 6, d: 10 } } } };
+    sample = require('../../city/move.js').boxesFor(mini, false)[0];
+  }
   return { ok: 'h' in sample || 'maxY' in sample, detail: 'boxesFor devuelve { minX, maxX, minZ, maxZ } sin altura: el rayo no puede pasar sobre cajas bajas' };
 });
 
