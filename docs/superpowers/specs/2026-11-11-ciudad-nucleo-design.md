@@ -1,6 +1,6 @@
 # Diseño: "Ciudad Núcleo", mundo abierto 3D con protagonista (primer corte: prólogo + capítulo 1)
 
-Fecha: 2026-11-11 · Estado: borrador v2, corregido tras `/review` · Rama: `feat/ciudad-3d` (parte de `feat/viaje-paquete-3d`)
+Fecha: 2026-11-11 · Estado: v3, corregido tras dos `/review` (spec y plan) · Rama: `feat/ciudad-3d` (parte de `feat/viaje-paquete-3d`)
 
 ## 1. Propósito
 
@@ -106,12 +106,14 @@ M02 tiene 23 temas (T01 Bits… T23 LLMs) y 92 mcq, 76 tf, 16 escenarios y 26 de
 ### 3.5 Objetivo activo (flecha y texto del HUD)
 `story.nextObjective(state)` devuelve `{ kind, id, label }` según el primer caso que se cumpla:
 1. Prólogo no visto → la directora.
-2. Distrito restaurado → el puente.
+2. Distrito restaurado → el puente. Si el puente ya se vio → **"Capítulo completo"**, guardado en `bridgeSeen`.
 3. Torre, si el jefe está desbloqueado y no aprobado.
-4. **Avance por grupo de criatura**, en el orden de la tabla de §3.2. Para el primer grupo incompleto:
-   1. un mentor del grupo sin lección abierta;
-   2. un tema del grupo con 0 estrellas (practicar);
-   3. su criatura si **nunca** ha sido vencida.
+4. **Avance por grupo de criatura**, en el orden de la tabla de §3.2. Un grupo está **incompleto** si cumple cualquiera de estas:
+   - algún mentor del grupo no tiene lección abierta;
+   - algún tema del grupo tiene 0 estrellas;
+   - su criatura **nunca** ha sido vencida.
+
+   Para el primer grupo incompleto, el objetivo es, en este orden: el mentor sin lección, luego el tema por practicar, luego la criatura.
 5. Reto sin reparar.
 6. Aprendiz disponible.
 7. Criatura no vencida hoy (repaso opcional).
@@ -133,7 +135,7 @@ El HUD muestra la flecha más un texto corto con distancia, por ejemplo "Habla c
 - Brazo de 6 m, altura 2.6 m, inclinación −15° (límites −35° a 10°).
 - Se acorta si una caja de colisión corta el brazo (rayo contra AABB).
 - Se re-centra detrás del héroe al caminar. **Con movimiento reducido no gira sola.**
-- En vertical, el héroe va en el tercio inferior (`setViewOffset`) y el FOV horizontal nunca baja de 60°.
+- FOV vertical de 70°. En vertical, el héroe va en el tercio inferior (`setViewOffset`) y el brazo de cámara se ajusta para que entre la ciudad. En la laptop se usa la vista horizontal normal, sin offset.
 - `camera.far` ≈ 62 m, el fin de la niebla.
 
 ### 5.2 Teléfono (siempre vertical)
@@ -156,7 +158,7 @@ El HUD muestra la flecha más un texto corto con distancia, por ejemplo "Habla c
 
 ### 5.5 Movimiento
 - Círculo de 0.4 m contra cajas en XZ (lineal, ~100 cajas).
-- 4 m/s caminando y 7 m/s corriendo, con aceleración de 0.15 s. Sin salto (llega en el cap. 5).
+- 4 m/s caminando y 7 m/s corriendo, con aceleración de 0.15 s (`k = min(1, dt/0.15)`), **dt ≤ 50 ms** y una piel de colisión de 1e-4 m. Sin salto (llega en el cap. 5).
 - **Guarda contra NaN:** si un componente de la posición, el `yaw` o el `dt` no es finito, se vuelve a la última posición válida.
 
 ### 5.6 Estados
@@ -238,13 +240,17 @@ El HUD muestra la flecha más un texto corto con distancia, por ejemplo "Habla c
 ```
 S.city = { prologue: bool, at: { x, z, yaw }, run: bool,
            beaten: { criaturaId: 'YYYY-MM-DD' }, repairs: { retoId: true },
-           taught: { puestoId: true }, restored: { M02: true }, powers: { planos: true } }
+           taught: { puestoId: true }, restored: { M02: true }, powers: { planos: true }, bridgeSeen: bool }
 ```
 `story.normalizeCity(raw, CITY_DATA)` (llamado desde `migrate()`):
 - **Reconstruye con listas blancas sobre objetos nuevos**, sin `Object.assign` con datos guardados.
 - Por cada id **que exista en `CITY_DATA`**, comprobado con `Object.prototype.hasOwnProperty.call`, copia el valor solo si es exactamente `true`, o `/^\d{4}-\d{2}-\d{2}$/` en `beaten`. Las claves `__proto__`, `constructor` o desconocidas se ignoran.
 - **`restored` y `powers` se recalculan** con las condiciones (jefe aprobado + 8 aprendices válidos), sin confiar en los booleanos guardados.
-- `at`: `coord(v, min, max)` con `isFinite` y clamp a los límites del mundo, `yaw` módulo 2π. Si la posición cae dentro de una caja o de una zona bloqueada (puente cerrado, detrás de La Maraña), va a la entrada de la plaza.
+- **`at`:** si `x` o `z` no son números (`typeof === 'number' && Number.isFinite`), `at = spawn` completo. Si lo son, se acotan a los límites menos el radio (0.4 m).
+  - `yaw` se reduce módulo 2π solo si es finito; si no, vale el `yaw` del spawn.
+  - Si la posición cae dentro de una caja o de una zona bloqueada (puente cerrado, detrás de La Maraña), se usa el spawn.
+- **Arranque y fechas:** si `raw` (o cualquier subobjeto) no es un objeto plano, se trata como vacío. Las fechas de `beaten` deben ser válidas y no posteriores a hoy.
+- **Restauración:** `applyRestore` es idempotente: pone o quita `restored` y `powers` según la condición. Se llama siempre en `finish()`, también si el jefe se aprueba desde la pantalla del módulo.
 - **Este mismo patrón se aplica a `hero.look`**: copiar solo las claves conocidas de `PARTS` a un objeto nuevo, más `hc`/`capec` si cumplen `hex()`. Cierra el bypass actual con `__proto__` (engine.html:493). `plainObj` exige además `Object.getPrototypeOf(x) === Object.prototype`.
 
 ## 7. Rendimiento
