@@ -3243,7 +3243,81 @@ const MODULES = [
   /* ---------- modo aventura: datos ---------- */
   var TS = 16, WD = null, SPR = {}, MAPS = {};
   var TRIP_STATIONS = [{"id":"S0","name":"Prólogo: la red","topics":["T01"],"ask":1,"layers":0,"kp":[{"topic":"T01","index":0,"expect":"computadoras autónomas conectadas"}]},{"id":"S1","name":"Aplicación (tu teléfono)","topics":["T05","T11"],"ask":2,"layers":1,"kp":[{"topic":"T11","index":0,"expect":"Protocolos de aplicación"}]},{"id":"S2","name":"Transporte","topics":["T09","T10","T12"],"ask":2,"layers":2,"kp":[{"topic":"T12","index":3,"expect":"Los puertos pertenecen a la capa de"}]},{"id":"S3","name":"Red","topics":["T07"],"ask":2,"layers":3,"kp":[{"topic":"T07","index":5,"expect":"identifica el origen y el destino"}]},{"id":"S4","name":"Enlace y física","topics":["T08","T02"],"ask":2,"layers":4,"kp":[{"topic":"T08","index":3,"expect":"Enlace de datos"}]},{"id":"S5","name":"El medio inalámbrico","topics":["T02","T14"],"ask":1,"layers":4,"kp":[{"topic":"T02","index":1,"expect":"ondas electromagnéticas"}]},{"id":"S6","name":"Router de casa","topics":["T04"],"ask":2,"layers":4,"kp":[{"topic":"T04","index":1,"expect":"reparte la conexión"}]},{"id":"S7","name":"Cable e Internet","topics":["T02","T03","T04","T14"],"ask":2,"layers":4,"kp":[{"topic":"T04","index":3,"expect":"la interconexión de muchas LAN"}]},{"id":"S8","name":"Servidor","topics":["T05","T12","T11"],"ask":2,"layers":1,"kp":[{"topic":"T12","index":4,"expect":"hacia el puerto 443 del servidor"}]},{"id":"S9","name":"Epílogo","topics":["T06","T13","T15"],"ask":2,"layers":1,"kp":[{"topic":"T13","index":0,"expect":"7 capas, modelo"}]}];
-  /* Máquina de estados del viaje "Viaja como paquete". Sin DOM ni Three.js: se puede probar con require. */
+  /* Piezas 3D compartidas por el viaje y la ciudad: Pauser, carrera de compilación contra pérdida de contexto,
+   liberación de escenas y fusión de cajas. Sin DOM propio: recibe canvas, renderer y THREE por parámetro. */
+var Three3D = (function () {
+  /* Pausa por motivos: el bucle corre solo si no hay ninguno activo. */
+  function Pauser() {
+    var reasons = {}, count = 0, last = 0;
+    return {
+      set: function (r, on) {
+        var was = count === 0;
+        if (on && !reasons[r]) { reasons[r] = true; count++; }
+        else if (!on && reasons[r]) { delete reasons[r]; count--; }
+        if (!was && count === 0) last = 0;
+      },
+      running: function () { return count === 0; },
+      has: function (r) { return !!reasons[r]; },
+      tick: function (ts) { var dt = last ? Math.min(50, ts - last) : 16; last = ts; return dt; }
+    };
+  }
+
+  /* compileAsync de r169 sondea cada 10 ms y no termina nunca si se pierde el contexto: se compite contra webglcontextlost. */
+  function compileOrLost(renderer, scene, camera, canvas) {
+    var onLost;
+    var lostP = new Promise(function (_, rej) { onLost = function () { rej(new Error('contextlost')); }; canvas.addEventListener('webglcontextlost', onLost); });
+    var compiled;
+    try { compiled = renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve(renderer.compile(scene, camera)); }
+    catch (e) { canvas.removeEventListener('webglcontextlost', onLost); return Promise.reject(e); }
+    return Promise.race([Promise.resolve(compiled), lostP]).then(function (v) {
+      canvas.removeEventListener('webglcontextlost', onLost); return v;
+    }, function (err) {
+      canvas.removeEventListener('webglcontextlost', onLost); throw err;
+    });
+  }
+
+  /* Libera cada geometría y material único de la escena (InstancedMesh.dispose no libera su geometría). */
+  function disposeScene(scene) {
+    var gs = new Set(), ms = new Set();
+    scene.traverse(function (o) {
+      if (o.geometry) gs.add(o.geometry);
+      if (o.material) { if (Array.isArray(o.material)) o.material.forEach(function (m) { ms.add(m); }); else ms.add(o.material); }
+    });
+    gs.forEach(function (g) { g.dispose(); });
+    ms.forEach(function (m) { m.dispose(); });
+  }
+
+  /* Fusiona cajas en una sola BufferGeometry indexada con position, normal y color (sin uv).
+     parts: [{ w, h, d, x, y, z, color: 0xRRGGBB, rotY? }] */
+  function mergeBoxes(THREE, parts) {
+    var pos = [], nor = [], col = [], idx = [], base = 0;
+    parts.forEach(function (p) {
+      var g = new THREE.BoxGeometry(p.w, p.h, p.d), c = new THREE.Color(p.color);
+      var cs = Math.cos(p.rotY || 0), sn = Math.sin(p.rotY || 0);
+      var gp = g.attributes.position, gn = g.attributes.normal, gi = g.index.array, i;
+      for (i = 0; i < gp.count; i++) {
+        var x = gp.getX(i), y = gp.getY(i), z = gp.getZ(i), nx = gn.getX(i), ny = gn.getY(i), nz = gn.getZ(i);
+        pos.push(x * cs + z * sn + p.x, y + p.y, -x * sn + z * cs + p.z);
+        nor.push(nx * cs + nz * sn, ny, -nx * sn + nz * cs);
+        col.push(c.r, c.g, c.b);
+      }
+      for (i = 0; i < gi.length; i++) idx.push(gi[i] + base);
+      base += gp.count;
+      g.dispose();
+    });
+    var out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    out.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3));
+    out.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
+    out.setIndex(new THREE.BufferAttribute(base > 65535 ? new Uint32Array(idx) : new Uint16Array(idx), 1));
+    return out;
+  }
+
+  return { Pauser: Pauser, compileOrLost: compileOrLost, disposeScene: disposeScene, mergeBoxes: mergeBoxes };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = Three3D;
+
+/* Máquina de estados del viaje "Viaja como paquete". Sin DOM ni Three.js: se puede probar con require. */
 var TripFlow = (function () {
   function create(deps) {
     var stations = deps.stations, byTopic = deps.questionsByTopic, rnd = deps.rnd || Math.random;
@@ -3323,25 +3397,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = TripFlow;
 /* Escena 3D del viaje "Viaja como paquete": estilo holograma técnico (sin luces, materiales unlit).
    Recibe THREE como parámetro; no hace import. Ver spec §6 "Estilo visual". */
 var TripScene = (function () {
+  /* alias distinto de Three3D: un `var Three3D` aquí taparía al global y en el navegador caería en require */
+  var T3 = (typeof Three3D !== 'undefined') ? Three3D : require('../three/shared.js');
   var BG = 0x0b1220, GRID = 0x1d2b47, LINE = 0x7da2ff, CYAN = 0x5ce1ff, GOOD = 0x5fd39b, LOST = 0xff8f84, CORE = 0xf2b04a;
   var DEG = Math.PI / 180;
   function easeInOutCubic(k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
   function easeOutCubic(k) { return 1 - Math.pow(1 - k, 3); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  function Pauser() {
-    var reasons = {}, count = 0, last = 0;
-    return {
-      set: function (r, on) {
-        var was = count === 0;
-        if (on && !reasons[r]) { reasons[r] = true; count++; }
-        else if (!on && reasons[r]) { delete reasons[r]; count--; }
-        if (!was && count === 0) last = 0;
-      },
-      running: function () { return count === 0; },
-      tick: function (ts) { var dt = last ? Math.min(50, ts - last) : 16; last = ts; return dt; }
-    };
-  }
+  var Pauser = T3.Pauser;
 
   function buildWorld(THREE, stations) {
     var scene = new THREE.Scene();
@@ -3422,10 +3486,7 @@ var TripScene = (function () {
     var freed = false;
     function dispose() {
       if (freed) return; freed = true;
-      var gs = new Set(), ms = new Set();
-      scene.traverse(function (o) { if (o.geometry) gs.add(o.geometry); if (o.material) ms.add(o.material); });
-      gs.forEach(function (g) { g.dispose(); });
-      ms.forEach(function (m) { m.dispose(); });
+      T3.disposeScene(scene);
     }
     return { scene: scene, camera: camera, curve: curve, stops: stops, packet: packet, rings: rings, particles: particles, core: core, mats: { packet: packetMat, points: pointsMat, core: coreMat }, dispose: dispose };
   }
@@ -3572,22 +3633,16 @@ var TripScene = (function () {
     }
     var api = { goTo: goTo, setLayers: setLayers, lost: lost, look: look, resize: resize, setPaused: setPaused, dispose: dispose };
 
-    // compileAsync de r169 sondea cada 10 ms y no termina nunca si se pierde el contexto: se compite contra webglcontextlost
-    var onLost;
-    var lostP = new Promise(function (_, rej) { onLost = function () { rej(new Error('contextlost')); }; canvas.addEventListener('webglcontextlost', onLost); });
-    var compiled = renderer.compileAsync ? renderer.compileAsync(W.scene, W.camera) : Promise.resolve(renderer.compile(W.scene, W.camera));
-    return Promise.race([Promise.resolve(compiled), lostP]).then(function () {
-      canvas.removeEventListener('webglcontextlost', onLost);
+    return T3.compileOrLost(renderer, W.scene, W.camera, canvas).then(function () {
       frameNow();
       return api;
     }, function (err) {
-      canvas.removeEventListener('webglcontextlost', onLost);
       dispose();
       throw err;
     });
   }
 
-  return { create: create, buildWorld: buildWorld, Pauser: Pauser };
+  return { create: create, buildWorld: buildWorld, Pauser: T3.Pauser };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = TripScene;
 

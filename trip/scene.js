@@ -1,25 +1,15 @@
 /* Escena 3D del viaje "Viaja como paquete": estilo holograma técnico (sin luces, materiales unlit).
    Recibe THREE como parámetro; no hace import. Ver spec §6 "Estilo visual". */
 var TripScene = (function () {
+  /* alias distinto de Three3D: un `var Three3D` aquí taparía al global y en el navegador caería en require */
+  var T3 = (typeof Three3D !== 'undefined') ? Three3D : require('../three/shared.js');
   var BG = 0x0b1220, GRID = 0x1d2b47, LINE = 0x7da2ff, CYAN = 0x5ce1ff, GOOD = 0x5fd39b, LOST = 0xff8f84, CORE = 0xf2b04a;
   var DEG = Math.PI / 180;
   function easeInOutCubic(k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
   function easeOutCubic(k) { return 1 - Math.pow(1 - k, 3); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  function Pauser() {
-    var reasons = {}, count = 0, last = 0;
-    return {
-      set: function (r, on) {
-        var was = count === 0;
-        if (on && !reasons[r]) { reasons[r] = true; count++; }
-        else if (!on && reasons[r]) { delete reasons[r]; count--; }
-        if (!was && count === 0) last = 0;
-      },
-      running: function () { return count === 0; },
-      tick: function (ts) { var dt = last ? Math.min(50, ts - last) : 16; last = ts; return dt; }
-    };
-  }
+  var Pauser = T3.Pauser;
 
   function buildWorld(THREE, stations) {
     var scene = new THREE.Scene();
@@ -100,10 +90,7 @@ var TripScene = (function () {
     var freed = false;
     function dispose() {
       if (freed) return; freed = true;
-      var gs = new Set(), ms = new Set();
-      scene.traverse(function (o) { if (o.geometry) gs.add(o.geometry); if (o.material) ms.add(o.material); });
-      gs.forEach(function (g) { g.dispose(); });
-      ms.forEach(function (m) { m.dispose(); });
+      T3.disposeScene(scene);
     }
     return { scene: scene, camera: camera, curve: curve, stops: stops, packet: packet, rings: rings, particles: particles, core: core, mats: { packet: packetMat, points: pointsMat, core: coreMat }, dispose: dispose };
   }
@@ -250,21 +237,15 @@ var TripScene = (function () {
     }
     var api = { goTo: goTo, setLayers: setLayers, lost: lost, look: look, resize: resize, setPaused: setPaused, dispose: dispose };
 
-    // compileAsync de r169 sondea cada 10 ms y no termina nunca si se pierde el contexto: se compite contra webglcontextlost
-    var onLost;
-    var lostP = new Promise(function (_, rej) { onLost = function () { rej(new Error('contextlost')); }; canvas.addEventListener('webglcontextlost', onLost); });
-    var compiled = renderer.compileAsync ? renderer.compileAsync(W.scene, W.camera) : Promise.resolve(renderer.compile(W.scene, W.camera));
-    return Promise.race([Promise.resolve(compiled), lostP]).then(function () {
-      canvas.removeEventListener('webglcontextlost', onLost);
+    return T3.compileOrLost(renderer, W.scene, W.camera, canvas).then(function () {
       frameNow();
       return api;
     }, function (err) {
-      canvas.removeEventListener('webglcontextlost', onLost);
       dispose();
       throw err;
     });
   }
 
-  return { create: create, buildWorld: buildWorld, Pauser: Pauser };
+  return { create: create, buildWorld: buildWorld, Pauser: T3.Pauser };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = TripScene;

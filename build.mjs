@@ -76,9 +76,10 @@ let out = tpl.replace(
 // Viaje 3D: datos de estaciones y ancla para el código del viaje (flow.js / scene.js)
 if (!out.includes('/*__TRIP__*/')) throw new Error('falta el ancla /*__TRIP__*/ del motor');
 out = out.replace('/*__TRIP__*/', () => 'var TRIP_STATIONS = ' + JSON.stringify(tripStations) + ';\n  /*__TRIP_CODE__*/');
+const three3d = fs.readFileSync(new URL('./three/shared.js', import.meta.url), 'utf8');
 const tripFlow = fs.readFileSync(new URL('./trip/flow.js', import.meta.url), 'utf8');
 const tripScene = fs.readFileSync(new URL('./trip/scene.js', import.meta.url), 'utf8');
-out = out.replace('/*__TRIP_CODE__*/', () => tripFlow + '\n' + tripScene + '\n  /*__TRIP_CODE__*/');
+out = out.replace('/*__TRIP_CODE__*/', () => three3d + '\n' + tripFlow + '\n' + tripScene + '\n  /*__TRIP_CODE__*/');
 out = out.split('/*__TRIP_CODE__*/').join('');
 // Three.js r169 como texto inerte (se importa solo al entrar al viaje)
 const threePath = process.env.THREE_VENDOR || new URL('./vendor/three.module.min.js', import.meta.url);

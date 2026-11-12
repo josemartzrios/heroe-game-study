@@ -25,6 +25,7 @@ function build(mutate) {
   for (const f of fs.readdirSync(root)) if (f.endsWith('.mjs') || f === 'engine.html') fs.copyFileSync(path.join(root, f), path.join(dir, f));
   fs.cpSync(path.join(root, 'trip'), path.join(dir, 'trip'), { recursive: true });
   fs.cpSync(path.join(root, 'vendor'), path.join(dir, 'vendor'), { recursive: true });
+  for (const extra of ['three', 'city']) if (fs.existsSync(path.join(root, extra))) fs.cpSync(path.join(root, extra), path.join(dir, extra), { recursive: true });
   if (mutate) mutate(dir);
   const env = Object.assign({}, process.env); delete env.THREE_VENDOR;
   const r = spawnSync('node', ['build.mjs'], { cwd: dir, env, encoding: 'utf8' });
