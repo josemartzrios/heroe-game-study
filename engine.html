@@ -7,30 +7,16 @@
 <style>
 /* Layout: una sola columna de 760 px sobre papel cuadriculado de plano técnico. Los temas son nodos con ID en mono; el héroe vive en la cabecera y en su propia pantalla. */
 :root{
-  --bg:#eaeef4; --grid:#e0e6ef; --surface:#ffffff; --surface2:#e2e8f1;
-  --ink:#0f1b2d; --ink2:#4b5a73; --line:#c8d1de;
-  --accent:#2457e6; --accent-ink:#ffffff; --accent-soft:#dbe5ff;
-  --good:#15744a; --good-soft:#d7f1e4; --bad:#b3261e; --bad-soft:#fde2df;
-  --star:#d68300;
+  --bg:#0d1230; --surface:#151c45; --cyan:#5ce1ff; --magenta:#ff4fd8; --green:#7dff8a; --yellow:#ffd76a; --red:#ff5a5f; --ink:#e8ecff; --deco:#2e3a7a;
+  --grid:#131b45; --surface2:#1d2658; --ink2:#aab4e6; --line:#5c70d6;
+  --accent:var(--cyan); --accent-ink:#0d1230; --accent-soft:#16305a;
+  --good:var(--green); --good-soft:#123a2c; --bad:var(--red); --bad-soft:#4a1d2b; --star:var(--yellow);
+  color-scheme:dark;
   --f-display:"Space Grotesk","Inter",system-ui,sans-serif;
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0b1220; --grid:#111b2e; --surface:#142036; --surface2:#1d2b47;
-    --ink:#e8edf6; --ink2:#9eb0cc; --line:#2a3a5a;
-    --accent:#7da2ff; --accent-ink:#0b1220; --accent-soft:#1c2f60;
-    --good:#5fd39b; --good-soft:#12392a; --bad:#ff8f84; --bad-soft:#47201d;
-    --star:#f2b04a; color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0b1220; --grid:#111b2e; --surface:#142036; --surface2:#1d2b47;
-  --ink:#e8edf6; --ink2:#9eb0cc; --line:#2a3a5a;
-  --accent:#7da2ff; --accent-ink:#0b1220; --accent-soft:#1c2f60;
-  --good:#5fd39b; --good-soft:#12392a; --bad:#ff8f84; --bad-soft:#47201d;
-  --star:#f2b04a; color-scheme:dark;
+
+  --f-game:"Press Start 2P",ui-monospace,monospace;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -47,7 +33,7 @@ body{
   padding-block:16px 56px;
 }
 h1,h2,h3{font-family:var(--f-display); line-height:1.15; margin:0; text-wrap:balance}
-h1{font-size:clamp(30px,7vw,44px); font-weight:700; letter-spacing:-.02em}
+h1{font-family:var(--f-game); font-size:clamp(18px,5vw,26px); font-weight:400; line-height:1.5; letter-spacing:0; color:var(--cyan); text-shadow:0 0 8px rgba(92,225,255,.5)}
 h2{font-size:22px; font-weight:700; letter-spacing:-.01em}
 p{margin:0}
 .mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
@@ -68,17 +54,22 @@ button{font:inherit; color:inherit; cursor:pointer}
 .pill{font:500 13px var(--f-mono); font-variant-numeric:tabular-nums; border:1px solid var(--line); background:var(--surface); padding:5px 10px; border-radius:6px}
 .pill b{font-weight:600}
 .lvlbox{display:flex; align-items:center; gap:8px}
-.avbtn{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:2px; line-height:0; display:block}
-.avbtn:hover{border-color:var(--accent)}
+.herobtn{background:var(--surface); border:2px solid var(--cyan); border-radius:8px; padding:2px; line-height:0; display:inline-grid; place-items:center; min-width:44px; min-height:44px; box-shadow:0 0 8px rgba(92,225,255,.4)}
+.herobtn.big{min-width:76px; min-height:76px}
+.heroic{display:block; image-rendering:pixelated}
+.herosum{display:flex; gap:16px; align-items:center; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; margin-bottom:16px}
+.herosum .info{display:grid; gap:8px; flex:1; min-width:200px}
+.herolay{display:grid; gap:20px; grid-template-columns:auto minmax(0,1fr); align-items:start}
+@media (max-width:560px){.herolay{grid-template-columns:1fr}}
 .lvlcol{display:grid; gap:4px; min-width:64px}
 .minibar{height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; display:block}
 .minibar i{display:block; height:100%; background:var(--accent)}
 
 /* Botones y tarjetas */
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:46px; padding:10px 18px; border-radius:8px; border:1px solid var(--line); background:var(--surface); font-weight:600; text-align:center}
-.btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn.primary{background:linear-gradient(#ff4fd8,#c43bff); color:var(--bg); border-color:var(--magenta); box-shadow:0 0 14px rgba(255,79,216,.55)}
 .btn.ghost{background:transparent}
-.btn.sm{min-height:38px; padding:6px 12px; font-size:14px}
+.btn.sm{min-height:44px; padding:6px 12px; font-size:14px}
 .btn.wide{width:100%}
 .btn:disabled{opacity:.5; cursor:not-allowed}
 .btn:hover:not(:disabled){border-color:var(--accent)}
@@ -98,14 +89,7 @@ button.card:hover{border-color:var(--accent)}
 .review{margin-top:16px; background:var(--accent-soft); border-color:var(--accent)}
 .review strong{font:700 20px var(--f-display)}
 .reset{margin-top:36px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; color:var(--ink2); font-size:14px}
-.linkbtn{background:none; border:0; padding:6px 0; text-decoration:underline; color:var(--ink2)}
-.herocard{display:flex; gap:16px; align-items:center; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; margin-bottom:20px; flex-wrap:wrap}
-.herocard .info{display:grid; gap:8px; flex:1; min-width:200px}
-.avwrap{background:var(--surface2); border-radius:12px; padding:8px; line-height:0; border:1px solid var(--line); display:block}
-button.avwrap:hover{border-color:var(--accent)}
-.welcome{margin-bottom:16px; background:var(--accent-soft); border-color:var(--accent)}
-.welcome strong{font:700 20px var(--f-display)}
-.welcome .actions{margin-top:4px}
+.linkbtn{background:none; border:0; padding:6px 0; min-height:44px; display:inline-flex; align-items:center; text-decoration:underline; color:var(--ink2)}
 
 /* Módulo y temas */
 .crumb{display:flex; align-items:center; gap:8px; margin-bottom:16px}
@@ -187,16 +171,7 @@ button.pw:hover:not(:disabled){border-color:var(--accent)}
 .stack{display:flex; flex-direction:column; gap:16px}
 
 /* Pantalla héroe */
-.herolay{display:grid; gap:20px; grid-template-columns:minmax(0,200px) minmax(0,1fr); align-items:start}
-@media (max-width:560px){.herolay{grid-template-columns:1fr}.herolay .avwrap{max-width:200px}}
-.namefield{display:grid; gap:4px}
 .namefield input{font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); min-height:44px; width:100%}
-.pieces{display:grid; gap:8px; grid-template-columns:repeat(auto-fill,minmax(min(100%,104px),1fr))}
-.piece{display:grid; gap:4px; justify-items:center; align-content:start; text-align:center; padding:8px; background:var(--surface); border:1px solid var(--line); border-radius:10px; font-size:12px; line-height:1.25; min-width:0}
-.piece svg{max-width:100%}
-.piece[aria-pressed="true"]{border-color:var(--accent); outline:2px solid var(--accent)}
-.piece:disabled{opacity:.55; cursor:not-allowed}
-.piece small{color:var(--ink2); font-size:11px}
 .vlist{display:grid; gap:8px; margin:0; padding:0; list-style:none}
 .vitem{padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:8px; display:grid; gap:2px}
 .vitem.off{opacity:.7}
@@ -205,32 +180,34 @@ button.pw:hover:not(:disabled){border-color:var(--accent)}
 .vitem.off .st{color:var(--ink2)}
 .adv{margin-bottom:16px; background:var(--accent-soft); border-color:var(--accent)}
 .adv strong{font:700 20px var(--f-display)}
-.herolay .avwrap svg{transform-origin:50% 100%; animation:breathe 3s ease-in-out infinite}
-@keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.015)}}
 /* W2: interfaz de juego (rondas y resultados). Estilo nocturno propio, igual en tema claro y oscuro. */
-body.game{--bg:#141a33; --grid:#1b2244; --surface:#1f2850; --surface2:#2a3466; --ink:#f2f4ff; --ink2:#c3c9ea; --line:#3a4580; --accent:#ffd23f; --accent-ink:#1a1400; --accent-soft:#2f3a75; --good:#7ff0a4; --good-soft:#1d5c3a; --bad:#ffa3a6; --bad-soft:#5c1d2a; --star:#ffd23f; color-scheme:dark; --f-game:"Press Start 2P",ui-monospace,monospace}
+body.game{color-scheme:dark}
 .sronly{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0}
 body.game .qcard{position:relative; background:var(--surface); border:2px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 4px 0 #0b1022}
-body.game .chip{font:400 9px/1.4 var(--f-game); letter-spacing:0; text-transform:uppercase; padding:6px 8px; background:#2f3a75; color:#f2f4ff}
+body.game .chip{font:600 12px/1.4 var(--f-mono); letter-spacing:.04em; text-transform:uppercase; padding:6px 8px; background:#2f3a75; color:#f2f4ff}
 body.game .chip.combo{background:#ffd23f; color:#1a1400}
 body.game .bar{height:12px; border:2px solid var(--line); background:#0f1430; border-radius:4px}
-body.game .bar i{background:repeating-linear-gradient(90deg,#ffd23f 0 10px,#d9a400 10px 12px)}
+body.game .bar i{background:repeating-linear-gradient(90deg,#5ce1ff 0 10px,#ff4fd8 10px 12px)}
 body.game .btn{border-width:2px; border-bottom-width:4px; border-color:var(--line); border-bottom-color:#0b1022; border-radius:10px; background:#2a3466; color:#f2f4ff}
-body.game .btn.primary{background:#ffd23f; color:#1a1400; border-color:#ffd23f; border-bottom-color:#a97f00}
+body.game .btn.primary{background:linear-gradient(#ff4fd8,#c43bff); color:var(--bg); border-color:var(--magenta); border-bottom-color:#8a1f9e}
 body.game .btn.ghost{background:transparent}
 body.game .btn:active:not(:disabled){transform:translateY(2px)}
-body.game .opt{background:#2a3466; color:#f2f4ff; border:2px solid #3a4580; border-bottom:4px solid #141a3a; border-radius:12px}
-body.game .opt:hover:not(:disabled),body.game .opt:focus-visible{border-color:#ffd23f; box-shadow:0 0 0 3px rgba(255,210,63,.28)}
+body.game .opt{background:#1d2658; color:#e8ecff; border:2px solid var(--line); border-bottom:4px solid #141a3a; border-radius:12px}
+body.game .opt:hover:not(:disabled),body.game .opt:focus-visible{border-color:var(--cyan); box-shadow:0 0 0 3px rgba(92,225,255,.3)}
 body.game .opt:active:not(:disabled){transform:translateY(2px)}
 body.game .opt .key{border:0; border-radius:6px; color:#141a33; font-weight:700; background:#4fd2ff}
 body.game .opt:nth-child(2) .key{background:#ffd23f}
 body.game .opt:nth-child(3) .key{background:#ff7ab6}
 body.game .opt:nth-child(4) .key{background:#7dff9b}
-body.game .opt.ok{background:#1d5c3a; border-color:#3fd16b; border-bottom-color:#2a9c50; box-shadow:0 0 14px rgba(63,209,107,.45)}
-body.game .opt.bad{background:#5c1d2a; border-color:#ff5a5f; border-bottom-color:#b53a3f}
+body.game .opt.ok{background:#12452f; border-color:var(--green); border-bottom-color:#2a9c50; box-shadow:0 0 14px rgba(125,255,138,.45)}
+body.game .opt.bad{background:#5c1d2a; border-color:var(--red); border-bottom-color:#b53a3f}
 body.game .opt.ok .key{background:#3fd16b; color:#0b1f12}
 body.game .opt.bad .key{background:#ff5a5f; color:#2a0508}
 body.game .opt.dim{opacity:.5}
+.opt .mark{display:inline; grid-template-columns:none; gap:0; font-style:normal; font-weight:700; font-size:18px; line-height:1}
+.opt .kn{font-weight:inherit}
+.opt.ok .kn,.opt.bad .kn{display:none}
+.opt:not(.ok):not(.bad) .mark{display:none}
 body.game .opt.struck{opacity:.4}
 body.game .opt.zap{position:relative; overflow:hidden; opacity:1; animation:zapfade .5s .35s forwards}
 body.game .opt.zap::after{content:""; position:absolute; left:0; top:50%; width:100%; height:3px; background:#4fd2ff; box-shadow:0 0 10px 2px #4fd2ff; transform-origin:left; animation:zap .35s ease-out forwards}
@@ -241,7 +218,7 @@ body.game .fb{border:2px solid var(--line)}
 body.game .fb.good{border-color:#3fd16b}
 body.game .fb.bad{border-color:#ff5a5f}
 body.game .fb strong{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-body.game .fb .fbt{font:400 12px/1.5 var(--f-game)}
+body.game .fb .fbt{font:400 14px/1.5 var(--f-game)}
 body.game .fb.good .fbt::before{content:"¡"} body.game .fb.good .fbt::after{content:"!"}
 body.game .fb.bad .fbt::before{content:"¡"} body.game .fb.bad .fbt::after{content:"!"}
 body.game .sep{display:none}
@@ -282,13 +259,13 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 .fighter.vil>div{align-items:flex-end}
 .fig{flex:none; display:grid; place-items:center; width:56px; height:72px}
 .vfig{width:60px; height:66px; border-radius:12px; background:#27306a; color:#ffd23f; font:400 22px "Press Start 2P",ui-monospace,monospace}
-.gname{font:400 9px/1.5 "Press Start 2P",ui-monospace,monospace; color:#f2f4ff; overflow-wrap:anywhere}
+.gname{font:700 14px/1.4 var(--f-mono); color:var(--ink); overflow-wrap:anywhere}
 .hearts{font-size:22px; line-height:1; letter-spacing:3px; color:#ff5a7a}
 .hearts .off{color:#48528f}
 .hpbar{display:inline-flex; gap:3px}
 .hpbar i{width:18px; height:12px; border-radius:3px; background:#3a4580; border:1px solid #0b1022}
 .hpbar i.on{background:#ff5a5f; box-shadow:inset 0 2px 0 rgba(255,255,255,.35)}
-.vs{font:400 12px "Press Start 2P",ui-monospace,monospace; color:#ffd23f; align-self:center}
+.vs{font:400 14px "Press Start 2P",ui-monospace,monospace; color:#ffd23f; align-self:center}
 .dmg{position:absolute; right:22px; top:-4px; font:400 14px "Press Start 2P",ui-monospace,monospace; color:#ffd23f; opacity:0; animation:rise .7s ease-out}
 @keyframes rise{0%{opacity:1; transform:translateY(8px)}100%{opacity:0; transform:translateY(-22px)}}
 @keyframes shake{0%,100%{translate:0 0}20%{translate:-5px 0}40%{translate:5px 0}60%{translate:-4px 0}80%{translate:3px 0}}
@@ -867,9 +844,9 @@ const MODULES = [
   function vHome() {
     var q = queue();
     var h = header() + '<main>' + bannersVirtues(takePend());
-    h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Estudia jugando</h1>' +
-      '<p class="lead">Un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroSummary() +
-      '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad: aprende con los mentores, ponte a prueba y enseña a tus vecinos.</p><div><button class="btn primary" data-act="city">Entrar a la ciudad</button></div></section>' +
+    h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Ciudad Núcleo</h1>' +
+      '<p class="lead">Estudia jugando: un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroSummary() +
+      '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad: aprende con los mentores, ponte a prueba y enseña a tus vecinos.</p><div><button class="btn primary" data-act="city">▶ Entrar a la ciudad</button></div></section>' +
       '<h2 class="h2">Módulos</h2><div class="mods">' + MODULES.map(function (m) {
         var b = S.boss[m.id];
         return '<button class="card" data-act="mod" data-id="' + esc(m.id) + '"><span class="tag">' + esc(m.id) + '</span>' +
@@ -986,7 +963,7 @@ const MODULES = [
         if (showFb) cls += i === p.correct ? ' ok' : (i === R.picked ? ' bad' : ' dim');
         else if (st.pend !== null && i === st.pend) cls += ' bad';
         if (struck) cls += ' struck' + (fx === 'laser' ? ' zap' : '');
-        return '<button class="' + cls + '" data-act="opt" data-k="' + i + '"' + ((showFb || struck || st.pend !== null) ? ' disabled' : '') + '><span class="key mono">' + (i + 1) + '</span><span>' + fmt(l) + '</span></button>';
+        return '<button class="' + cls + '" data-act="opt" data-k="' + i + '"' + ((showFb || struck || st.pend !== null) ? ' disabled' : '') + '><span class="key mono"><b class="kn">' + (i + 1) + '</b>' + (showFb && i === p.correct ? '<i class="mark" aria-hidden="true">✓</i><i class="sronly">respuesta correcta</i>' : (showFb && i === R.picked ? '<i class="mark" aria-hidden="true">✗</i><i class="sronly">tu respuesta</i>' : '')) + '</span><span>' + fmt(l) + '</span></button>';
       }).join('') + '</div>';
     if (st.pend !== null) {
       h += '<div class="fb bad" role="status"><strong>Fallaste</strong><p>Fallaste. ¿Usar Regeneración e intentar otra vez?</p>' +
@@ -1230,7 +1207,7 @@ const MODULES = [
   function tripOpts(item, picked) {
     return '<div class="opts" role="group" aria-label="Opciones de respuesta">' + item.labels.map(function (l, i) {
       var cls = 'opt' + (picked === null ? '' : (i === item.correct ? ' ok' : (i === picked ? ' bad' : ' dim')));
-      return '<button class="' + cls + '" data-act="tripopt" data-k="' + i + '"' + (picked === null ? '' : ' disabled') + '><span class="key mono">' + (i + 1) + '</span><span>' + fmt(l) + '</span></button>';
+      return '<button class="' + cls + '" data-act="tripopt" data-k="' + i + '"' + (picked === null ? '' : ' disabled') + '><span class="key mono"><b class="kn">' + (i + 1) + '</b>' + ((picked !== null && i === item.correct) ? '<i class="mark" aria-hidden="true">✓</i><i class="sronly">respuesta correcta</i>' : ((picked !== null && i === picked) ? '<i class="mark" aria-hidden="true">✗</i><i class="sronly">tu respuesta</i>' : '')) + '</span><span>' + fmt(l) + '</span></button>';
     }).join('') + '</div>';
   }
   function tripOnAsk(item) {
