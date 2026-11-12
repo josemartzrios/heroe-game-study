@@ -840,7 +840,7 @@ const MODULES = [
       passed: null, baseXp: 0, assisted: 0, usedCount: 0, usedNames: [], lvl0: levelOf(S.xp), lvl1: 0, integrityBonus: 0,
       pw: initPw(), st: freshSt() };
     R.battlePool = (items && items.pool) ? items.pool.slice() : [];
-    if (cfg.villain) R.battle = { hp: 4, en: 3, fx: '', msg: '' };
+    if (cfg.villain) { var emax = S.virtues.valentia ? 4 : 3; R.battle = { hp: 4, en: emax, max: emax, fx: '', msg: '' }; }   // Valentía: energía máxima 4, fijada al empezar la ronda
     present();
     scrollTop();
   }
@@ -926,7 +926,7 @@ const MODULES = [
     recordAnswer(q, ok, assisted, gain);
     if (R.battle) {
       var B = R.battle;
-      if (ok) { B.hp = Math.max(0, B.hp - 1); B.fx = 'hit'; B.msg = 'Le quitaste 1 de vida a ' + R.cfg.villain.name + '.'; if (st.retry && B.en < 3) { B.en++; B.msg += ' Recuperaste 1 de energía.'; } }
+      if (ok) { B.hp = Math.max(0, B.hp - 1); B.fx = 'hit'; B.msg = 'Le quitaste 1 de vida a ' + R.cfg.villain.name + '.'; if (st.retry && B.en < B.max) { B.en++; B.msg += ' Recuperaste 1 de energía.'; } }
       else if (shielded) { B.fx = 'shield'; B.msg = 'El escudo te protegió: no perdiste energía.'; }
       else { B.en = Math.max(0, B.en - 1); B.fx = 'hurt'; B.msg = 'Perdiste 1 de energía.'; }
     }
@@ -974,7 +974,7 @@ const MODULES = [
     }
     if (R.ok === n && n >= 8 && R.assisted === 0) earn('enfoque');
     checkVirtues();
-    if (R.battle) R.won = R.battle.hp <= 0;
+    if (R.battle) { R.won = R.battle.hp <= 0; R.tie = !R.won && R.battle.en > 0; }   // sin preguntas con vida y energía: Empate
     cityResolve();
     var rs = CityStory.applyRestore(S.city, CITY_DATA, !!(S.boss.M02 && S.boss.M02.passed === true));
     if (rs.changed) cityRestorePending = true;
@@ -1180,10 +1180,10 @@ const MODULES = [
     });
     var weak = Object.keys(weakMap).map(function (k) { return weakMap[k]; }).filter(function (w) { return w.wrong > 0; }).sort(function (a, b) { return b.wrong - a.wrong; });
     var h = header() + '<main class="stack"><p class="eyebrow">' + esc(boss ? 'Jefe final' : (R.cfg.title || 'Ronda')) + '</p>' +
-      '<h1 class="gtitle">' + (R.battle ? (R.won ? '¡Victoria!' : 'Derrota') : (boss ? (R.passed ? '¡Victoria!' : 'Derrota') : '¡Ronda completada!')) + '</h1>' +
+      '<h1 class="gtitle">' + (R.battle ? (R.won ? '¡Victoria!' : (R.tie ? 'Empate' : 'Derrota')) : (boss ? (R.passed ? '¡Victoria!' : 'Derrota') : '¡Ronda completada!')) + '</h1>' +
       '<div class="score"><span class="big">' + R.ok + '/' + n + '</span><span class="pill"><b id="xpc" data-xp="' + R.xp + '">+' + nf(R.xp) + '</b> XP</span><span class="pill">' + pct + ' %</span>' +
       '<span class="rank r' + rk + '" role="img" aria-label="Calificación ' + rk + '">' + rk + '</span></div>';
-    if (R.battle) h += '<div class="banner ' + (R.won ? 'good' : 'bad') + '">' + esc(R.won ? '¡Victoria! ' + R.cfg.villain.name + ' huyó de la ciudad.' : R.cfg.villain.name + ' escapó esta vez. Habla con los mentores de sus temas y vuelve a intentarlo.') + '</div>';
+    if (R.battle) h += '<div class="banner ' + (R.won ? 'good' : 'bad') + '">' + esc(R.won ? '¡Victoria! ' + R.cfg.villain.name + ' huyó de la ciudad.' : (R.tie ? 'Se acabaron las preguntas: vuelve a intentarlo.' : R.cfg.villain.name + ' escapó esta vez. Habla con los mentores de sus temas y vuelve a intentarlo.')) + '</div>';
     if (boss) h += '<div class="banner ' + (R.passed ? 'good' : 'bad') + '">' + (R.passed ? 'Jefe superado. Dominas este módulo.' : 'Todavía no: necesitas 16 de 20. Repasa los temas débiles y vuelve a intentarlo.') + '</div>';
     else if (!miss.length) h += '<div class="banner good">Ronda perfecta.</div>';
     if (R.lvl1 > R.lvl0) {
@@ -1533,11 +1533,11 @@ const MODULES = [
   function battleOver() { return !!(R && R.battle && (R.battle.hp <= 0 || R.battle.en <= 0)); }
   function vBattleHud() {
     var B = R.battle, v = R.cfg.villain, fx = R.answered ? B.fx : '', hearts = '', hp = '', i;
-    for (i = 0; i < 3; i++) hearts += '<span class="' + (i < B.en ? 'on' : 'off') + '">♥</span>';
+    for (i = 0; i < B.max; i++) hearts += '<span class="' + (i < B.en ? 'on' : 'off') + '">♥</span>';
     for (i = 0; i < 4; i++) hp += '<i class="' + (i < B.hp ? 'on' : '') + '"></i>';
     var dome = (R.st.shield && !R.answered) || fx === 'shield';
     return '<div class="arena' + (fx ? ' fx-' + fx : '') + '"><div class="fighter hero' + (dome ? ' domed' : '') + '"><span class="fig" aria-hidden="true">' + avatarSvg(S.hero.look, 56, null, null) + '</span>' +
-      '<div><span class="gname">' + esc(heroName()) + '</span><span class="hearts" role="img" aria-label="Energía ' + B.en + ' de 3">' + hearts + '</span></div></div>' +
+      '<div><span class="gname">' + esc(heroName()) + '</span><span class="hearts" role="img" aria-label="Energía ' + B.en + ' de ' + B.max + '">' + hearts + '</span></div></div>' +
       '<span class="vs" aria-hidden="true">VS</span>' +
       '<div class="fighter vil"><span class="fig vfig" aria-hidden="true">' + esc(String(v.name).charAt(0)) + '</span>' +
       '<div><span class="gname">' + esc(v.name) + '</span><span class="hpbar" role="img" aria-label="Vida del villano ' + B.hp + ' de 4">' + hp + '</span></div>' +

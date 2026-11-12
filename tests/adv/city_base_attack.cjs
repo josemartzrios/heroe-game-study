@@ -53,7 +53,7 @@ const todayW = (w) => dstr(new w.Date());
 const sumA = (s) => Object.values(s.qs).reduce((n, r) => n + r.a, 0);
 const histN = (s, mid, tops) => tops.reduce((n, t) => n + (s.topics[mid + ':' + t] || []).length, 0);
 const hud = (d) => { const h = d.querySelector('.hearts'), b = d.querySelector('.hpbar'); if (!h || !b) return null;
-  const en = +(/Energía (-?\d+) de 3/.exec(h.getAttribute('aria-label')) || [])[1], hp = +(/villano (-?\d+) de 4/.exec(b.getAttribute('aria-label')) || [])[1]; return { en, hp }; };
+  const en = +(/Energía (-?\d+) de \d+/.exec(h.getAttribute('aria-label')) || [])[1], hp = +(/villano (-?\d+) de 4/.exec(b.getAttribute('aria-label')) || [])[1]; return { en, hp }; };
 const VIL = { bit: { topics: ['T01', 'T02', 'T03'] }, silicio: { topics: ['T04', 'T05', 'T10'] },
   kernel: { topics: ['T06', 'T07', 'T08', 'T09'] }, eco: { topics: ['T12', 'T13', 'T14', 'T15', 'T16'] } };
 /* Entra a la batalla por el gancho del motor (la ciudad 3D se prueba en tests/city_engine.cjs): síncrono, sin mundo */

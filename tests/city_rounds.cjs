@@ -159,6 +159,30 @@ const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city'
       ok('Jefe M02 aprobado sin enseñados: no restaura', s.boss.M02.passed === true && !s.city.restored.M02);
       e.w.close(); }
 
+    // --- energía máxima por Valentía y Empate al agotar las preguntas (spec §4.1 y §4.2)
+    const mcq = (w, n) => w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((x) => x.topic === 'T01' && x.type === 'mcq').slice(0, n);
+    const hearts = (d) => d.querySelectorAll('.hearts span').length;
+    { const e = boot(fresh()); startBattle(e.w);
+      ok('sin Valentía: 3 corazones y "Energía 3 de 3"', hearts(e.d) === 3 && hud(e.d, '.hearts') === 'Energía 3 de 3', hud(e.d, '.hearts'));
+      e.w.close(); }
+    { const e = boot(fresh({ virtues: { valentia: 1700000000000 } })); startBattle(e.w);
+      ok('con Valentía: 4 corazones y "Energía 4 de 4"', hearts(e.d) === 4 && hud(e.d, '.hearts') === 'Energía 4 de 4', hud(e.d, '.hearts'));
+      e.w.close(); }
+    for (const [vir, max] of [[{}, 3], [{ valentia: 1700000000000 }, 4]]) {
+      const e = boot(fresh({ xp: 2500, virtues: vir })); R(e.w).startRound(Object.assign({}, BIT), mcq(e.w, 3));
+      answerOne(e.w, e.d, false); const b = e.d.querySelector('[data-act="regenno"]'); if (b) L.click(e.w, b); nextQ(e.w, e.d);   // 1.º fallo: pierde 1 de energía
+      const afterFail = en(e.d);
+      answerOne(e.w, e.d, false); const y = e.d.querySelector('[data-act="regenyes"]'); if (y) L.click(e.w, y); answerOne(e.w, e.d, true);   // 2.º: Regenerar y acierta
+      ok('Regenerar recupera 1 de energía hasta el máximo (' + max + ')', afterFail === max - 1 && en(e.d) === max && hud(e.d, '.hearts') === 'Energía ' + max + ' de ' + max, afterFail + ' → ' + en(e.d));
+      e.w.close(); }
+    { const e = boot(fresh()); const items = mcq(e.w, 2); items.pool = [];
+      R(e.w).startRound(Object.assign({}, BIT), items);
+      answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+      const s = saved(e.w);
+      ok('sin preguntas y con vida y energía: "Empate", sin vencer y sin marcar derrota', /Empate/.test(e.d.querySelector('.gtitle').textContent) && /Se acabaron las preguntas: vuelve a intentarlo/.test(e.d.querySelector('main').textContent) && !(s.city.beaten || {}).bit && !(s.stats.bossFailed || {}).M02, e.d.querySelector('.gtitle').textContent);
+      ok('el Empate no es victoria ni derrota', !won(e.d) && !/Derrota/.test(e.d.querySelector('.gtitle').textContent));
+      e.w.close(); }
+
     // --- fresh / migrate: S.city existe y city.run toma world.run
     { const e = boot(fresh()); startRepair(e, 'T15', 'r09'); answerOne(e.w, e.d, true);
       const c = saved(e.w).city;

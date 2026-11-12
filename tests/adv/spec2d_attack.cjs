@@ -38,7 +38,7 @@ function boot(raw, opts = {}) {
       w.__CITY_TEST__ = true;
       w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
-      w.__CITY_WORLD__ = { create(THREE, canvas, D, o) { w.__fakeOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, setLook() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
+      w.__CITY_WORLD__ = { create(canvas, D, o) { w.__fakeOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       w.requestAnimationFrame = () => 1; w.cancelAnimationFrame = () => {};
@@ -64,7 +64,7 @@ function forceSave(w, d) {
   try {
     // ================= A) inventario de lectores =================
     {
-      const files = ['engine.html', 'city/view.js', 'city/world.js', 'city/hero3d.js'];
+      const files = ['engine.html', 'city/view.js', 'city/world2d.js', 'city/sprites2d.js'];
       const hits = [];
       files.forEach((f) => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').forEach((ln, i) => {
         if (/hero\.look|\.welcomed|S\.hero\.look|opts\.look|\blook\b\s*[,)]/.test(ln) && !/lookAt|TRIP_LOOK|scene\.look/.test(ln)) hits.push(f + ':' + (i + 1));
@@ -208,13 +208,12 @@ function forceSave(w, d) {
       if (!cb) bad.push('sin botón ciudad');
       if (!o) bad.push('la ciudad no creó el mundo');
       else {
-        // el lector actual de look en view.js recibe un look ya normalizado
-        if (!o.look || SLOTS.some((k) => !Number.isInteger(o.look[k]))) bad.push('look para el mundo no normalizado');
         const hs = []; let st = o.state();
         hs.push(st && st.hero);
         // ATAQUE: dt hostiles en el bucle de la vista
         for (const dt of [NaN, -5, Infinity, 1e9, 0, 16, -0, 1e-300]) { try { o.tick(dt); st = o.state(); hs.push(st && st.hero); } catch (x) { bad.push('tick(' + dt + ') lanzó ' + x.message); } }
-        if (hs.some((h) => !validAt(h, !!bossPassed && false))) bad.push('héroe inválido en la vista ' + JSON.stringify(hs.find((h) => !validAt(h, false))));
+        const validHero = (h) => !!h && validAt({ x: h.x, z: h.z, yaw: 0 }, false) && ['up', 'down', 'left', 'right'].includes(h.face) && CityMove.isNum(h.speed);
+        if (hs.some((h) => !validHero(h))) bad.push('héroe inválido en la vista ' + JSON.stringify(hs.find((h) => !validHero(h))));
       }
       forceSave(w, d);
       const s = saved(w);
@@ -284,7 +283,7 @@ function forceSave(w, d) {
           w.__CITY_ROUND__.battleItems({ mod: 'M02', topics: vil.topics, n: 8 }));
         battleRuns++;
         let prev = hudOf(d), last = prev, n = 0, guard = 0, bad = '';
-        if (!prev || prev.en !== 3 || prev.hp !== 4) bad = 'inicio ' + JSON.stringify(prev);
+        if (!prev || !(prev.en === prev.enMax && (prev.enMax === 3 || prev.enMax === 4)) || prev.hp !== 4) bad = 'inicio ' + JSON.stringify(prev);
         while (!bad && !isResults(d) && guard++ < 300) {
           const pr = r();
           const pend = d.querySelector('[data-act="regenyes"]');
@@ -301,7 +300,8 @@ function forceSave(w, d) {
           }
           const h = hudOf(d);
           if (h) {
-            if (h.en < 0 || h.en > 3) bad = 'energía fuera de [0,3]: ' + h.en;
+            if (h.enMax !== 3 && h.enMax !== 4) bad = 'energía máxima inesperada: ' + h.enMax;
+            else if (h.en < 0 || h.en > h.enMax) bad = 'energía fuera de [0,' + h.enMax + ']: ' + h.en;
             else if (h.hp < 0 || h.hp > 4) bad = 'vida fuera de [0,4]: ' + h.hp;
             else if (h.hp > last.hp) bad = 'la vida subió ' + last.hp + '→' + h.hp;
             else if (h.heartsOn !== h.en || h.hearts !== h.enMax) bad = 'HUD corazones ' + h.heartsOn + '/' + h.hearts + ' vs ' + h.en + '/' + h.enMax;
@@ -313,11 +313,11 @@ function forceSave(w, d) {
         if (!bad && won(d) && last.hp !== 0) bad = 'victoria con vida ' + last.hp;
         if (!bad && !won(d) && last.hp === 0) bad = 'derrota con vida 0';
         if (!bad && !won(d) && last.en !== 0) bad = 'derrota con energía ' + last.en + ' (vida ' + last.hp + ')';
-        if (!bad && over.virtues && over.virtues.valentia && last.enMax !== 3) bad = 'enMax ' + last.enMax;
+        if (!bad && last.enMax !== ((over.virtues && over.virtues.valentia) ? 4 : 3)) bad = 'enMax ' + last.enMax + ' no coincide con Valentía';
         if (bad) viol.push('seed=' + seed + ' ' + vil.id + ': ' + bad);
         const home = d.querySelector('[data-act="home"]') || d.querySelector('[data-act="back"]'); if (home) L.click(w, home);
       }
-      ok('D1-D5 batalla [' + vlabel + '] ×' + per + ': energía en [0,3], vida en [0,4] y no sube, HUD = energía, victoria <=> vida 0, derrota => energía 0, termina', !viol.length && !e.errors.length, viol.concat(e.errors.slice(0, 2)).join(' | '));
+      ok('D1-D5 batalla [' + vlabel + '] ×' + per + ': energía en [0,máx], vida en [0,4] y no sube, HUD = energía, victoria <=> vida 0, derrota => energía 0, termina', !viol.length && !e.errors.length, viol.concat(e.errors.slice(0, 2)).join(' | '));
       w.close();
     }
     console.log('INFO batallas ' + battleRuns + ': ' + wins + ' victorias, ' + losses + ' derrotas, ' + answers + ' respuestas, ' + regens + ' regeneraciones, ' + powers + ' poderes');
@@ -328,15 +328,15 @@ function forceSave(w, d) {
       w.__CITY_ROUND__.startRound({ kind: 'battle', title: 'B', mid: 'M02', back: { name: 'home' }, villain: { id: 'bit', name: 'Bit' }, city: { kind: 'battle', id: 'bit' } }, it);
       for (let i = 0; i < 2; i++) { const q = L.findQ(w, d); L.click(w, L.optBtn(d, L.correctText(q))); L.click(w, d.querySelector('#nextbtn')); }
       const h = hudOf(d);
-      // [MEDIO, solo alcanzable por el gancho de prueba]: con el pool agotado finish() da derrota con energía 3 y vida 2
-      ok('D6 [MEDIO] pool agotado (2 preguntas, sin pool): derrota solo con energía 0', !(isResults(d) && !won(d)), 'resultado ' + (isResults(d) ? (won(d) ? 'victoria' : 'derrota con energía 3, vida 2') : 'sigue') + (h ? ' hud ' + JSON.stringify(h) : ''));
+      // con el pool agotado y vida y energía: "Empate" (no victoria ni derrota)
+      ok('D6 pool agotado (2 preguntas, sin pool): termina en "Empate"', isResults(d) && !won(d) && /Empate/.test(d.querySelector('.gtitle').textContent), 'resultado ' + (isResults(d) ? d.querySelector('.gtitle').textContent : 'sigue') + (h ? ' hud ' + JSON.stringify(h) : ''));
       e.w.close();
     }
     // Valentía en el guardado hoy no cambia la energía: el máximo 3 está fijo en 4 sitios del motor
     {
       const eng = fs.readFileSync(path.join(ROOT, 'engine.html'), 'utf8');
       const sites = ['en: 3', 'B.en < 3', 'i < 3; i++) hearts', 'de 3">'].filter((s) => eng.includes(s));
-      console.log('INFO energía máxima 3 fija en ' + sites.length + ' sitios de engine.html: ' + sites.join(' | ') + ' (también tests/city_rounds y city_base_attack leen "de 3")');
+      ok('D7 la energía máxima ya no está escrita a mano en el motor (R.battle.max)', sites.length === 0, sites.join(' | '));
     }
 
     // ================= E) movimiento relativo a pantalla (camYaw = 0) =================
@@ -378,7 +378,7 @@ function forceSave(w, d) {
         .filter((p) => !inside(p.x, p.z, p.restored ? boxesT : boxesF));
       const p2 = fc.check(fc.property(arbStart, fc.array(arbStep, { minLength: 1, maxLength: 300 }), (st, seq) => {
         const boxes = st.restored ? boxesT : boxesF; let s = { x: st.x, z: st.z, yaw: 0, vx: 0, vz: 0, speed: 0 };
-        for (const k of seq) { s = CityMove.step(s, { mx: k.mx, mz: k.mz, run: k.run, camYaw: 0 }, k.dt, boxes, { canRun: true, radius: RAD, safe: s }); if (!inBounds(s.x, s.z) || inside(s.x, s.z, boxes) || !Number.isFinite(s.x + s.z + s.vx + s.vz + s.yaw)) return false; }
+        for (const k of seq) { s = CityMove.step(s, { mx: k.mx, mz: k.mz, run: k.run }, k.dt, boxes, { canRun: true, radius: RAD, safe: s }); if (!inBounds(s.x, s.z) || inside(s.x, s.z, boxes) || !Number.isFinite(s.x + s.z + s.vx + s.vz + s.yaw)) return false; }
         return true;
       }), { numRuns: 1500, seed: SEED });
       ok('E2 prop: cualquier secuencia (≤300 pasos) desde posición libre queda en bounds y fuera de cajas (1500 ejecuciones)', !p2.failed, p2.failed ? 'contraejemplo ' + JSON.stringify(p2.counterexample).slice(0, 400) + ' seed=' + p2.seed : '');
@@ -387,7 +387,7 @@ function forceSave(w, d) {
       const p3 = fc.check(fc.property(fc.double({ min: -1, max: 1, noNaN: true }), fc.double({ min: -1, max: 1, noNaN: true }), (mx, mz) => {
         fc.pre(Math.hypot(mx, mz) > 0.05);
         let s = { x: 0, z: 20, yaw: 0, vx: 0, vz: 0, speed: 0 };     // plaza sur, libre a varios metros
-        for (let i = 0; i < 20; i++) s = CityMove.step(s, { mx, mz, camYaw: 0 }, 0.05, [], { radius: RAD });
+        for (let i = 0; i < 20; i++) s = CityMove.step(s, { mx, mz }, 0.05, [], { radius: RAD });
         const dx = s.x - 0, dz = s.z - 20, len = Math.hypot(dx, dz), il = Math.hypot(mx, mz);
         return len > 0 && Math.abs(dx / len - mx / il) < 1e-6 && Math.abs(dz / len - mz / il) < 1e-6 && Math.abs(Math.atan2(-s.vx, -s.vz) - s.yaw) < 1e-9;
       }), { numRuns: 1000, seed: SEED });
@@ -401,7 +401,7 @@ function forceSave(w, d) {
           const ang = a * Math.PI / 180, sx = wl.x - Math.cos(ang) * 4, sz = wl.z - Math.sin(ang) * 4;
           if (!inBounds(sx, sz) || inside(sx, sz, boxesF)) continue;
           let s = { x: sx, z: sz, yaw: 0, vx: Math.cos(ang) * 7, vz: Math.sin(ang) * 7, speed: 7 };
-          for (let i = 0; i < 80; i++) { s = CityMove.step(s, { mx: Math.cos(ang), mz: Math.sin(ang), run: true, camYaw: 0 }, 0.05, boxesF, { canRun: true, radius: RAD, safe: s }); if (inside(s.x, s.z, boxesF)) { tunnel = rd.dist + ' ang ' + a + ' ' + JSON.stringify(s); break; } }
+          for (let i = 0; i < 80; i++) { s = CityMove.step(s, { mx: Math.cos(ang), mz: Math.sin(ang), run: true }, 0.05, boxesF, { canRun: true, radius: RAD, safe: s }); if (inside(s.x, s.z, boxesF)) { tunnel = rd.dist + ' ang ' + a + ' ' + JSON.stringify(s); break; } }
         }
       }
       ok('E4 carrera contra los muros delgados de la plaza en 120 ángulos: sin túnel', !tunnel, tunnel);
