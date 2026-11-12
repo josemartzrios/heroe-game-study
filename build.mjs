@@ -86,7 +86,8 @@ out = out.split('/*__TRIP_CODE__*/').join('');
 for (const a of ['/*__CITY__*/', '/*__CITY_VIEW__*/']) if (!out.includes(a)) throw new Error('falta el ancla ' + a + ' del motor');
 out = out.replace('/*__CITY__*/', () => 'var CITY_DATA = ' + JSON.stringify(cityData) + ';\n  /*__CITY_CODE__*/');
 const cityMove = fs.readFileSync(new URL('./city/move.js', import.meta.url), 'utf8');
-out = out.replace('/*__CITY_CODE__*/', () => cityMove + '\n  /*__CITY_CODE__*/');
+const cityStory = fs.readFileSync(new URL('./city/story.js', import.meta.url), 'utf8');
+out = out.replace('/*__CITY_CODE__*/', () => cityMove + '\n' + cityStory + '\n  /*__CITY_CODE__*/');
 out = out.replace('/*__CITY_VIEW__*/', () => '/*__CITY_VIEW_CODE__*/');
 out = out.split('/*__CITY_CODE__*/').join('').split('/*__CITY_VIEW_CODE__*/').join('');
 

@@ -309,6 +309,17 @@ function world(r) {
   return st;
 }
 const bossUnlocked = (st) => Object.keys(st.stars).every((t) => st.stars[t] >= 1); // engine.html:732
+// Con REAL=1 las comprobaciones de objetivo, normalización y restauración usan city/story.js y los datos reales de city/districts.mjs.
+if (process.env.REAL) {
+  const fsr = require('fs'), vmr = require('vm'), pr = require('path'), CS = require('../../city/story.js');
+  const realD = vmr.runInNewContext(fsr.readFileSync(pr.join(__dirname, '..', '..', 'city', 'districts.mjs'), 'utf8').replace('export const city =', 'var city =') + ';city');
+  Object.keys(D).forEach((k) => { delete D[k]; }); Object.assign(D, realD);
+  Object.keys(M).forEach((k) => { delete M[k]; }); Object.assign(M, realD.districts.M02); D.districts = { M02: M };
+  nextObjective = (C, Dd, ctx) => CS.nextObjective(C, Dd, ctx);
+  applyRestoreRef = (C, Dd, bp) => CS.applyRestore(C, Dd, bp);
+  restorationRef = (C, Dd, bp) => CS.restoration(C, Dd, bp);
+  normalizeCity = (raw, Dd, bp) => CS.normalizeCity(raw, Dd, bp, TODAY);
+}
 function view(st) {
   const C = { prologue: st.prologue, beaten: st.beaten, repairs: st.repairs, taught: st.taught, restored: {}, powers: {} };
   applyRestoreRef(C, D, st.bossPassed);
@@ -366,7 +377,8 @@ check('O4', 'MEDIO', "nextObjective: el final ('bridge' tras restaurar) es un ob
   const st = { learned: {}, stars: {}, beaten: {}, repairs: {}, taught: {}, prologue: true, bossPassed: true };
   for (let i = 1; i <= 23; i++) { st.learned[TOP(i)] = true; st.stars[TOP(i)] = 1; }
   M.apprentices.slice(0, 8).forEach((a) => { st.taught[a.id] = true; });
-  const v = view(st); const o = nextObjective(v.C, D, v.ctx, 'A');
+  const v = view(st); if (process.env.REAL) v.C.bridgeSeen = true; const o = nextObjective(v.C, D, v.ctx, 'A');
+  if (process.env.REAL) return { ok: o.kind === 'done', detail: 'objetivo=' + o.kind + ' (esperado done tras ver el puente)' };
   return { ok: o.kind !== 'bridge', detail: `objetivo=${o.kind}: "Cruza el puente" abre "Próximamente" y la flecha queda fija para siempre (sin estado de cierre)` };
 });
 
