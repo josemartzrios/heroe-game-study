@@ -195,7 +195,7 @@ Es la versión en 3D del "papel de plano técnico" que ya usa el juego. La escen
 **Pantalla:**
 - `#trip-root` va en posición fija a `100dvh`. El canvas lleva `touch-action: none` y `overscroll-behavior: none` y se gira con Pointer Events y `setPointerCapture`. El scroll del `body` se bloquea solo en la vista `trip`.
 - HUD superior: "Salir" (≥ 44 px, `aria-label="Salir del viaje"`), píldora "Estación N de 10", `.bar role="img" aria-label="Estación N de 10"` y la pila de chips de capas. Usa `padding` con `env(safe-area-inset-top/left/right)`.
-- Capa de pregunta: hoja inferior con fondo opaco `var(--surface)`, `max-height: 60dvh` (85dvh en horizontal) y scroll interno, con `padding-bottom: env(safe-area-inset-bottom)` y `padding-left/right: max(16px, env(safe-area-inset-left/right))`, para que en horizontal la muesca no tape `.opt .key`. Tras responder se hace `scrollIntoView({ block: 'nearest' })` de la `.fb` dentro de la hoja. Reutiliza `.qcard`, `.opt` y `.fb`, pero con `data-act` propios. Las dos orientaciones están permitidas.
+- Capa de pregunta: hoja inferior con fondo opaco `var(--surface)`, `max-height: 50dvh` (85dvh en horizontal) y scroll interno, con `padding-bottom: env(safe-area-inset-bottom)` y `padding-left/right: max(16px, env(safe-area-inset-left/right))`, para que en horizontal la muesca no tape `.opt .key`. Tras responder se hace `scrollIntoView({ block: 'nearest' })` de la `.fb` dentro de la hoja. Reutiliza `.qcard`, `.opt` y `.fb`, pero con `data-act` propios. Las dos orientaciones están permitidas.
 
 **Accesibilidad:**
 - El canvas lleva `aria-hidden="true"`, porque toda la información está en HTML.

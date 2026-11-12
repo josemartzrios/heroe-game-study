@@ -6,15 +6,22 @@ var TripFlow = (function () {
     var used = {}, perStation = [], i;
     for (i = 0; i < stations.length; i++) perStation.push({ ok: 0, total: 0 });
 
+    function idx(n) { return Math.min(n - 1, Math.floor(rnd() * n)); }   // rnd() = 1 no se sale del arreglo
     function pick(topic, avoidId) {
       var all = byTopic[topic] || [];
+      if (!all.length) {   // tema sin preguntas: otro tema de la estación y, si no, cualquiera del banco
+        var alt = stations[s.station].topics.concat(Object.keys(byTopic)), k;
+        for (k = 0; k < alt.length && !all.length; k++) all = byTopic[alt[k]] || [];
+      }
+      if (!all.length) return null;
       var fresh = all.filter(function (q) { return !used[q.id] && q.id !== avoidId; });
       var pool = fresh.length ? fresh : all.filter(function (q) { return q.id !== avoidId; });
       if (!pool.length) pool = all;
-      return pool[Math.floor(rnd() * pool.length)];
+      return pool[idx(pool.length)];
     }
     function present(topic, avoidId) {
       var q = pick(topic, avoidId);
+      if (!q) { s.item = null; s.lastOk = true; s.phase = 'result'; next(); return; }   // sin preguntas: la decisión se omite
       used[q.id] = true;
       s.item = deps.prep(q);
       s.phase = 'ask';
@@ -22,7 +29,7 @@ var TripFlow = (function () {
     }
     function nextTopic() {
       var t = stations[s.station].topics;
-      return t[Math.floor(rnd() * t.length)];
+      return t[idx(t.length)];
     }
     function start() {
       if (s.phase !== 'idle') return;
@@ -41,7 +48,8 @@ var TripFlow = (function () {
       if (!ok && !s.fails.some(function (f) { return f.id === q.id; })) s.fails.push(q);
       var ps = perStation[s.station]; ps.total++; if (ok) ps.ok++;
       s.phase = 'result';
-      s.xp += deps.onResult({ q: q, ok: ok, consec: s.consec }) || 0;
+      var g = Number(deps.onResult({ q: q, ok: ok, consec: s.consec }));
+      s.xp += isFinite(g) ? g : 0;
     }
     function next() {
       if (s.phase !== 'result') return;
@@ -59,7 +67,7 @@ var TripFlow = (function () {
       deps.onStation(s.station);
     }
     function state() {
-      return { phase: s.phase, station: s.station, decision: s.decision, attempt: s.attempt, item: s.item, lastOk: s.lastOk, consec: s.consec, xp: s.xp, fails: s.fails.slice() };
+      return { phase: s.phase, station: s.station, decision: s.decision, attempt: s.attempt, item: s.item ? { q: s.item.q, labels: s.item.labels.slice(), correct: s.item.correct } : null, lastOk: s.lastOk, consec: s.consec, xp: s.xp, fails: s.fails.slice() };
     }
     return { start: start, ask: ask, answer: answer, next: next, state: state };
   }

@@ -36,11 +36,12 @@ var TripScene = (function () {
     var pointsMat = new THREE.PointsMaterial({ color: CYAN, size: 0.08, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     var ringMats = [CYAN, LINE, GOOD, CORE].map(function (c) { return new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.55, depthWrite: false }); });
 
-    // riel: 10 puntos de control, uno por estación; con nudos uniformes, getPoint(i/9) pasa por el punto i
+    // riel: 10 puntos de control, uno por estación; con nudos uniformes, getPoint(i/(n-1)) pasa por el punto i
     var pts = [], i;
-    for (i = 0; i < 10; i++) pts.push(new THREE.Vector3(i * 5, 0.4 * Math.sin(i * 0.9), 2.5 * Math.sin(i * 0.6)));
+    var n = stations.length;
+    for (i = 0; i < n; i++) pts.push(new THREE.Vector3(i * 5, 0.4 * Math.sin(i * 0.9), 2.5 * Math.sin(i * 0.6)));
     var curve = new THREE.CatmullRomCurve3(pts);
-    var stops = pts.map(function (_, k) { return k / 9; });
+    var stops = pts.map(function (_, k) { return k / Math.max(1, n - 1); });
 
     var grid = new THREE.GridHelper(80, 40, LINE, GRID);
     grid.position.set(22, -1.5, 0); grid.material.transparent = true; grid.material.opacity = 0.35;
@@ -65,7 +66,7 @@ var TripScene = (function () {
       scene.add(new THREE.LineSegments(eg, lineMat));
     }
 
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < n; i++) {
       var p = pts[i];
       box(p.x, -1.45, p.z, 3, 0.1, 3);                                       // plataforma de la estación
       if (i === 0) cluster(new THREE.BoxGeometry(0.4, 0.4, 0.4), [[p.x - 0.8, -1.0, p.z + 1.4], [p.x, -1.0, p.z + 1.8], [p.x + 0.8, -1.0, p.z + 1.2], [p.x - 0.4, -0.4, p.z + 2.2], [p.x + 0.6, -0.5, p.z + 2.0]]);

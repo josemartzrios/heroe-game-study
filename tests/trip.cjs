@@ -107,6 +107,30 @@ const prep = (q) => ({ q, labels: q.type === 'tf' ? ['Verdadero', 'Falso'] : q.o
     const st = b.flow.state();
     ok('j segundo create empieza en idle, xp 0 y fails []', st.phase === 'idle' && st.xp === 0 && st.fails.length === 0 && st.consec === 0); }
 
+  // (l) onResult devuelve texto → xp sigue siendo número
+  { const { flow, rec } = make({ onResult: (r) => { rec.results.push(r); return '5'; } }); flow.start(); drive(flow, right);
+    ok('l xp numérico aunque onResult devuelva "5"', typeof rec.summary.xp === 'number' && rec.summary.xp === 90, JSON.stringify(rec.summary.xp)); }
+  // (m) rnd() === 1 no se sale del arreglo
+  { let err = null, f; try { const m = make({ rnd: () => 1 }); f = m.flow; f.start(); drive(f, right); } catch (e) { err = e.message; }
+    ok('m rnd() = 1 no lanza y el viaje termina', !err && f.state().phase === 'summary', err); }
+  // (n) banco vacío: las decisiones se omiten y se llega al resumen sin lanzar
+  { let err = null, m; try { m = make({ questionsByTopic: {} }); m.flow.start(); m.flow.ask(); drive(m.flow, right); } catch (e) { err = e.message; }
+    ok('n banco vacío no lanza', !err, err);
+    ok('n banco vacío: sin onAsk, 10 estaciones y se llega al resumen', !err && m.rec.asks.length === 0 && m.rec.stations.length === 10 && m.flow.state().phase === 'summary', m && (m.flow.state().phase + ' ' + m.rec.stations.length)); }
+  // (o) un tema sin preguntas usa otro tema de la estación o del banco
+  { const by = Object.assign({}, byTopicAll); delete by.T01;
+    const m = make({ questionsByTopic: by }); m.flow.start(); drive(m.flow, right);
+    ok('o tema T01 sin preguntas: el viaje termina con preguntas de otros temas', m.flow.state().phase === 'summary' && m.rec.asks.length >= 17, 'asks=' + m.rec.asks.length); }
+  // (p) state().item es una copia
+  { const { flow } = make(); flow.start(); flow.ask(); const real = flow.state().item.correct;
+    flow.state().item.correct = real === 0 ? 1 : 0; flow.state().item.labels.length = 0;
+    ok('p mutar state().item no cambia la respuesta correcta ni las opciones', flow.state().item.correct === real && flow.state().item.labels.length > 0); }
+  // (q) start() repetido o tras el resumen no hace nada
+  { const { flow, rec } = make(); flow.start(); flow.start();
+    ok('q start() repetido no repite onStation', JSON.stringify(rec.stations) === '[0]', JSON.stringify(rec.stations));
+    drive(flow, right); flow.start(); flow.ask(); flow.next();
+    ok('q start() tras el resumen no emite otro onSummary', flow.state().phase === 'summary' && JSON.stringify(rec.layers) === JSON.stringify([0, 1, 2, 3, 4, 4, 4, 4, 1, 1])); }
+
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
   console.log(fails ? `\n${fails} FALLOS` : '\nTRIP OK (' + results.length + ' comprobaciones)');

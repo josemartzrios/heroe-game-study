@@ -337,7 +337,8 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 #trip-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}
 #trip-ui{position:absolute; inset:0; pointer-events:none}
 #trip-ui > *{pointer-events:auto}
-.trip-quit{min-height:44px; min-width:44px}
+.trip-quit{min-height:44px; min-width:44px; background:var(--surface)}
+#savewarn{position:fixed; top:0; left:0; right:0; z-index:60}
 #trip-root .banner{background:var(--surface)}
 body.trip-on{overflow:hidden}
 .trip-hud{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left))}
@@ -345,11 +346,12 @@ body.trip-on{overflow:hidden}
 .trip-hud .chips{margin-left:auto}
 #trip-load{position:absolute; top:50%; left:0; right:0; text-align:center; font-weight:600}
 #trip-sheet,#trip-confirm{position:absolute; left:0; right:0; bottom:0; overflow:auto; padding:12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
-#trip-sheet{max-height:60dvh; background:var(--surface); border-top:2px solid var(--line)}
+#trip-sheet{max-height:50dvh; background:var(--surface); border-top:2px solid var(--line)}
 #trip-sheet .qcard{margin-top:0}
 #trip-sheet ul{margin:0; padding-left:18px}
 #trip-confirm{z-index:2; inset:0; top:0; max-height:none; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
 #trip-confirm .banner{width:100%}
+#trip-confirm[hidden]{display:none}   /* display:flex anula [hidden]: sin esto una capa invisible tapa la pantalla */
 @media (orientation:landscape){#trip-sheet{max-height:85dvh}}
 </style>
 <div class="shell" id="app"></div>
@@ -523,7 +525,11 @@ const MODULES = [
       o.qs[k] = { a: a, c: Math.min(c, a), q: r.q === true, g: Math.floor(num(r.g, 0)), gs: (typeof r.gs === 'number' && isFinite(r.gs)) ? r.gs : -1 };
     });
     if (!plainObj(o.boss)) o.boss = {};
-    Object.keys(o.boss).forEach(function (k) { if (!plainObj(o.boss[k])) delete o.boss[k]; });
+    Object.keys(o.boss).forEach(function (k) {
+      var b = o.boss[k];
+      if (!plainObj(b)) { delete o.boss[k]; return; }
+      o.boss[k] = { best: Math.min(20, Math.floor(num(b.best, 0))), passed: b.passed === true };   // best llega a innerHTML: siempre un entero
+    });
     o.stats.cleared = Math.floor(num(o.stats.cleared, 0)); o.stats.roundsNoPower = Math.floor(num(o.stats.roundsNoPower, 0));
     Object.keys(o.hero.look).forEach(function (k) {
       if (k === 'hc' || k === 'capec') { if (!hex(o.hero.look[k])) delete o.hero.look[k]; }
@@ -879,6 +885,9 @@ const MODULES = [
 
   /* Registro de progreso de una respuesta: solo escribe en S (XP, historial del tema, cola de repaso).
      Quien la llame debe hacer antes touch() y calcular gain, y después checkVirtues() y save(). */
+  /* XP de una respuesta correcta: base por dificultad (+5 con racha de 3) y el porcentaje pasivo de Constancia */
+  function xpBase(q, consec) { return 10 * q.difficulty + (consec >= 3 ? 5 : 0); }
+  function xpWithPassive(base) { return base + Math.floor(base * passivePct() / 100); }
   function recordAnswer(q, ok, assisted, gain) {
     S.xp += gain;
     var hk = qmap[q.id].m.id + ':' + q.topic;
@@ -905,12 +914,12 @@ const MODULES = [
     touch();
     if (ok) {
       R.ok++; R.consec++;
-      var base = 10 * q.difficulty + (R.consec >= 3 ? 5 : 0);
+      var base = xpBase(q, R.consec);
       if (R.cfg.kind === 'tf' && !st.noBonus) base += Math.round(left / TF_MS * 5);
       if (assisted) { gain = Math.floor(base / 2); R.assisted++; }
       else {
         R.baseXp += base;
-        gain = base + Math.floor(base * passivePct() / 100);
+        gain = xpWithPassive(base);
         if (R.cfg.kind === 'review' && S.virtues.humildad) gain += 5;
       }
     } else if (st.shield && R.pw.shield > 0) { R.pw.shield--; shielded = true; }
@@ -1353,8 +1362,8 @@ const MODULES = [
   function tHudQuit() { return document.querySelector('#trip-ui [data-act="tripquit"]'); }
   function tripRecord(r) {
     touch();
-    var base = r.ok ? 10 * r.q.difficulty + (r.consec >= 3 ? 5 : 0) : 0;
-    var gain = base + Math.floor(base * passivePct() / 100);
+    var base = r.ok ? xpBase(r.q, r.consec) : 0;
+    var gain = xpWithPassive(base);
     recordAnswer(r.q, r.ok, false, gain);
     checkVirtues(); save();
     return gain;
@@ -1385,7 +1394,7 @@ const MODULES = [
     TD.scene.goTo(i).then(function () {
       if (g !== tripGen || !TD) return;
       if (TD.confirm) TD.pendingArrive = arrive; else arrive();
-    });
+    }).then(null, function () { if (g === tripGen) tripFail(); });
   }
   function tripOpts(item, picked) {
     return '<div class="opts" role="group" aria-label="Opciones de respuesta">' + item.labels.map(function (l, i) {
@@ -1444,6 +1453,8 @@ const MODULES = [
     var f = TD.pendingArrive; TD.pendingArrive = null;
     if (f) f();
   }
+  function tripFail() { if (TD) { tripStop(); tripFallback(); } }   // la escena falló a mitad del viaje: se libera y se ofrece el respaldo
+  function tripSafe(fn) { try { fn(); } catch (e) { tripFail(); } }
   function tripQuit() {
     if (TD && TD.confirm) tripCloseConfirm();
     else if (TD && TD.answered) tripOpenConfirm();
@@ -1453,6 +1464,9 @@ const MODULES = [
     var b = e.target.closest('[data-act]');
     if (!b || b.disabled || V.name !== 'trip') return;
     var a = b.dataset.act;
+    tripSafe(function () { tripAct(a, b); });
+  });
+  function tripAct(a, b) {
     if (a === 'tripquit') tripQuit();
     else if (a === 'tripback' || a === 'tripend' || a === 'tripconfirm') tripExit();
     else if (a === 'tripcancel') tripCloseConfirm();
@@ -1466,10 +1480,13 @@ const MODULES = [
       tripStop();
       startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fails));
     }
-  });
+  }
   var TRIP_LOOK = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 10], ArrowDown: [0, -10] };
   document.addEventListener('keydown', function (e) {
     if (V.name !== 'trip' || e.ctrlKey || e.metaKey || e.altKey) return;
+    tripSafe(function () { tripKey(e); });
+  });
+  function tripKey(e) {
     if (e.key === 'Escape') { e.preventDefault(); tripQuit(); return; }
     if (!TD) return;
     if (TRIP_LOOK[e.key]) { if (TD.scene && !TD.confirm) { e.preventDefault(); TD.scene.look(TRIP_LOOK[e.key][0], TRIP_LOOK[e.key][1]); } return; }
@@ -1483,7 +1500,7 @@ const MODULES = [
       if (el && el.tagName === 'BUTTON') return;
       if (st.phase === 'result') { e.preventDefault(); TD.flow.next(); }
     }
-  });
+  }
   window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
   document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); });
 

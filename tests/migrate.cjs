@@ -86,6 +86,9 @@ function diff(a, b, p = '') {
     ok('N10 stats inválidos → valores frescos', Array.isArray(out.stats.learnTopics) && out.stats.cleared === 0 && out.stats.roundsNoPower === 0 && same(out.stats.bossFailed, {}), JSON.stringify(out.stats)); }
   { const { out, errors } = norm1({ world: { at: 5, pos: null, talked: 'x', beaten: [], run: 'yes' } });
     ok('N11 world inválido → at "hub", pos/talked objetos y run booleano', out.world.at === 'hub' && same(out.world.pos, {}) && same(out.world.talked, {}) && out.world.run === true && !errors.length, JSON.stringify(out.world)); }
+  { const { out } = norm1({ boss: { M01: { best: '<img src=x onerror=alert(1)>', passed: 'yes' }, M02: [], M03: { best: 99, passed: true }, M04: { best: 7.9, passed: false } } });
+    ok('N15 boss: best no numérico → 0 y passed no booleano → false', out.boss.M01 && out.boss.M01.best === 0 && out.boss.M01.passed === false, JSON.stringify(out.boss.M01));
+    ok('N15 boss: arreglo descartado; best acotado a 0..20 y entero', out.boss.M02 === undefined && out.boss.M03.best === 20 && out.boss.M03.passed === true && out.boss.M04.best === 7, JSON.stringify(out.boss)); }
   // Arreglos en lugar de objetos (como R10-R12 de attacks.cjs): las claves con nombre se pierden en JSON.stringify
   { const env = L.boot(JSON.stringify(base({ virtues: [], days: { last: yest, count: 2 } }))); L.openQuiz(env.w, env.d); L.answerOne(env.w, env.d, 'right');
     const out = load(env.w);

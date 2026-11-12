@@ -36,8 +36,8 @@ function boot(opts = {}) {
           create(THREE, canvas, stations, o) {
             st.creates++; st.lastOpts = o; st.canvases.push(canvas);
             const api = {
-              goTo: (i) => { st.calls.push(['goTo', i]); if (st.pendingGoTo) return new Promise((r) => st.goToResolvers.push(r)); return Promise.resolve(); },
-              setLayers: (n) => st.calls.push(['setLayers', n]),
+              goTo: (i) => { st.calls.push(['goTo', i]); if (opts.goToRejectAt === i) return Promise.reject(new Error('goTo falló')); if (st.pendingGoTo) return new Promise((r) => st.goToResolvers.push(r)); return Promise.resolve(); },
+              setLayers: (n) => { st.calls.push(['setLayers', n]); if (opts.layersThrow) throw new Error('setLayers falló'); },
               lost: () => st.calls.push(['lost']),
               look: (dx, dy) => st.calls.push(['look', dx, dy]),
               resize: () => st.calls.push(['resize']),
@@ -344,6 +344,22 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
     ok('s3 al cerrar se quita inert de la hoja y del HUD', !e.d.getElementById('trip-sheet').hasAttribute('inert') && !e.d.querySelector('.trip-hud').hasAttribute('inert'));
     ok('s3 al cerrar el foco vuelve a tripquit', e.d.activeElement && e.d.activeElement.dataset.act === 'tripquit'); }
   e.w.close();
+
+  // (c5) CSS: aviso de guardado por encima del viaje, Salir con fondo propio, hoja que no tapa el paquete
+  ok('c5 #savewarn queda por encima de #trip-root (fixed y z-index > 50)', /#savewarn\{[^}]*position:fixed[^}]*z-index:(6\d|[7-9]\d|\d{3})/.test(html));
+  ok('c5 .trip-quit tiene fondo propio', /\.trip-quit\{[^}]*background:var\(--surface\)/.test(html));
+  ok('c5 #trip-confirm oculto no intercepta toques (display:none con [hidden])', /#trip-confirm\[hidden\]\{[^}]*display:none/.test(html));
+  ok('c5 la hoja mide como mucho 50dvh', /#trip-sheet\{[^}]*max-height:50dvh/.test(html));
+
+  // (g1) un error de la escena a mitad del viaje cae al respaldo
+  e = boot({ imp: 'ok', goToRejectAt: 1 }); enter(e); await tick();
+  click(e.w, btn(e.d, 'tripask')); answerRight(e); click(e.w, btn(e.d, 'tripnext')); await tick(4);
+  ok('g1 goTo rechaza en la estación 2: aparece el respaldo y se libera la escena', !!root(e).querySelector('[role="alert"]') && e.st.disposed === 1, 'disposed=' + e.st.disposed);
+  ok('g1 sin errores no capturados', !e.errors.length, e.errors.join(' | ')); e.w.close();
+  e = boot({ imp: 'ok', layersThrow: true }); enter(e); await tick();
+  click(e.w, btn(e.d, 'tripask')); answerRight(e); click(e.w, btn(e.d, 'tripnext')); await tick(2);
+  ok('g1 setLayers lanza al pulsar Continuar: aparece el respaldo', !!root(e).querySelector('[role="alert"]') && e.st.disposed === 1, 'disposed=' + e.st.disposed);
+  ok('g1 el respaldo ofrece volver y el viaje se puede abandonar', !!btn(e.d, 'tripback')); e.w.close();
 
   // (z) escena real sin WebGL: si create falla, el motor muestra el respaldo sin errores
   e = boot({ imp: 'ok', scene: false }); enter(e); await tick();

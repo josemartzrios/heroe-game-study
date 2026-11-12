@@ -43,6 +43,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const inst = drawn.filter((o) => o.isInstancedMesh);
     ok('f la geometría de cada InstancedMesh se liberó', inst.length > 0 && inst.every((o) => gd.has(o.geometry))); }
 
+  // buildWorld usa stations.length (no un 10 fijo)
+  { const fake = Array.from({ length: 12 }, (_, i) => Object.assign({}, stations[i % 10], { id: 'X' + i }));
+    const W2 = S.buildWorld(THREE, fake);
+    ok('a2 buildWorld con 12 estaciones: 12 stops crecientes', W2.stops.length === 12 && W2.stops.every((t, i) => i === 0 || t > W2.stops[i - 1]) && W2.stops[11] === 1, JSON.stringify(W2.stops.length));
+    W2.dispose(); }
+
   // ---- Pauser ----
   { const P = S.Pauser();
     ok('g Pauser corre sin motivos', P.running());
