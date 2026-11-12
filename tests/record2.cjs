@@ -53,7 +53,7 @@ const TID = 'T04';
 const HK = 'M08:' + TID;
 const load = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const fresh = (o = {}) => Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {},
-  hero: { name: 'Zed', look: { skin: 1, suit: 1, head: 1, eyes: 1, emblem: 1, cape: 0, hand: 0 }, welcomed: true } }, o);
+  hero: { name: 'Zed' } }, o);
 const dayStr = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
 const daysAgo = (n) => { const x = new Date(); x.setDate(x.getDate() - n); return dayStr(x); };
 

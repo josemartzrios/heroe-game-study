@@ -14,7 +14,7 @@ function validState(r, ids) {
     v: 1, xp: r.pick([0, r.int(0, 300), r.int(0, 12000)]), days: { last: r.bool(0.8) ? ds(dd) : null, count: r.int(0, 30) },
     session: r.int(0, 50), lastActive: r.pick([0, Date.now() - r.int(0, 3600000), Date.now() - 86400000 * 3]),
     topics: hist.length || r.bool() ? { [HK]: hist } : {}, qs, boss: r.bool(0.2) ? { M08: { best: r.int(0, 10), passed: r.bool() } } : {},
-    hero: { name: 'Zed', look: { skin: r.int(0, 3), suit: r.int(0, 3), head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: r.bool(0.9) },
+    hero: { name: 'Zed' },
     virtues: virt, stats: { learnTopics: [], cleared: r.int(0, 12), roundsNoPower: r.int(0, 12), bossFailed: {} },
   };
 }

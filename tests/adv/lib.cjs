@@ -30,6 +30,7 @@ function boot(raw, opts = {}) {
     beforeParse(w) {
       if (raw != null) w.localStorage.setItem(KEY, raw);
       w.scrollTo = () => {};
+      w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({ canvas: this }, { get(o, k) { return k in o ? o[k] : () => {}; }, set(o, k, v) { o[k] = v; return true; } }); };   // los iconos del héroe pintan en canvas
       if (clock) {
         const RD = w.Date;
         class FD extends RD {

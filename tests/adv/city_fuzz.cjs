@@ -61,7 +61,7 @@ async function session(seed) {
   const M = D.districts.M02;
   const spots = [D.plaza.director, D.plaza.mirror].concat(M.mentors, M.repairs, M.apprentices, M.creatures.map((c) => ({ x: c.area.x, z: c.area.z })), [{ x: M.tower.x, z: M.tower.z + 5.2 }, { x: M.bridge.x, z: M.bridge.z + 6.2 }]);
   const six = {}; for (let i = 1; i <= 23; i++) six['M02:T' + String(i).padStart(2, '0')] = [1, 1, 1, 1, 1, 1];
-  const seedState = r.bool(0.5) ? { v: 1, xp: r.pick([0, 450, 1000, 2500]), days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: r.bool() ? six : {}, qs: {}, boss: r.bool(0.2) ? { M02: { best: 20, passed: true } } : {}, hero: { name: 'Zed', look: { skin: 1, suit: 1, head: 1, eyes: 1, emblem: 1, cape: 0, hand: 0 }, welcomed: true }, city: { prologue: r.bool(0.7) } } : null;
+  const seedState = r.bool(0.5) ? { v: 1, xp: r.pick([0, 450, 1000, 2500]), days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: r.bool() ? six : {}, qs: {}, boss: r.bool(0.2) ? { M02: { best: 20, passed: true } } : {}, hero: { name: 'Zed' }, city: { prologue: r.bool(0.7) } } : null;
   const e = boot(cfg, r, seedState), { w, d, st } = e;
   const trace = [], viol = [];
   const cityOn = () => d.body.classList.contains('city-on');

@@ -5,7 +5,7 @@ const results = [];
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
 const load = (w) => JSON.parse(L.rawState(w));
 const base = (o = {}) => JSON.stringify(Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {},
-  hero: { name: 'Zed', look: { skin: 1, suit: 1, head: 1, eyes: 1, emblem: 1, cape: 0, hand: 0 }, welcomed: true } }, o));
+  hero: { name: 'Zed' } }, o));
 const pill = (d) => (d.querySelector('.playtop .pill') || {}).textContent;
 const sumA = (s) => Object.values(s.qs).reduce((n, r) => n + r.a, 0);
 const dstr = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');

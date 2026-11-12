@@ -65,7 +65,7 @@ function findQ(w, d) {
 const correctText = (q) => (q.type === 'tf' ? (q.answer ? 'Verdadero' : 'Falso') : q.options[q.answer]);
 function answerRight(w, d) { const q = findQ(w, d); const b = [...d.querySelectorAll('.opt')].find((x) => norm(x.querySelector('span:last-child').textContent) === norm(correctText(q))); click(w, b); const n = d.querySelector('#nextbtn'); if (n) click(w, n); }
 
-const base = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H', look: { skin: 0, suit: 0, head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: true } }, o);
+const base = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o);
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const $ = (e, s) => e.d.querySelector(s);
 const root = (e) => $(e, '#city-root');
@@ -447,7 +447,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         ok('(q) 8 ids basura en taught y planos sin jefe: "Becario" y puente cerrado', $(e4, '#city-rank').textContent === 'Becario' && e4.st.lastOpts.state().flags.restored === false && (click(e4.w, $(e4, '#city-pause')), !saved(e4.w).city.powers.planos && !saved(e4.w).city.restored.M02));
         e4.w.close(); }
       // nombre malicioso
-      { const e4 = boot({ seed: base({ hero: { name: '<img id=pwn src=x>', look: { skin: 0, suit: 0, head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: true }, topics: six(['T01']), city: { prologue: true } }) }); await enter(e4);
+      { const e4 = boot({ seed: base({ hero: { name: '<img id=pwn src=x>' }, topics: six(['T01']), city: { prologue: true } }) }); await enter(e4);
         near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
         const m1 = D4.mentors[0]; click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')); near(e4, m1); click(e4.w, $(e4, '#city-act'));
         ok('(q) nombre del héroe malicioso: sin #pwn en el HUD ni en las hojas', !e4.d.querySelector('#pwn') && e4.errors.length === 0, e4.errors.join('|'));

@@ -7,7 +7,7 @@ const load = (w) => JSON.parse(L.rawState(w));
 const DAY = 86400000;
 const dstr = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
 const base = (o = {}) => Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {},
-  hero: { name: 'Zed', look: { skin: 1, suit: 1, head: 1, eyes: 1, emblem: 1, cape: 0, hand: 0 }, welcomed: true } }, o);
+  hero: { name: 'Zed' } }, o);
 
 // Fuerza un save() sin cambiar datos: abre "Tu héroe" y reescribe el mismo nombre en #hero-name
 function resave(e) {
@@ -40,7 +40,7 @@ function diff(a, b, p = '') {
     topics: { 'M08:T04': [1, 0.5, 0, 1], 'M01:T01': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'M02:T03': [] },
     qs: { 'M08-001': { a: 3, c: 2, q: true, g: 1, gs: 6 }, 'M01-002': { a: 1, c: 1, q: false, g: 0, gs: -1 }, 'M02-010': { a: 0, c: 0, q: false, g: 0, gs: -1 } },
     boss: { M01: { best: 17, passed: true }, M08: { best: 9, passed: false } },
-    hero: { name: 'Zoë Ñandú 🚀', look: { skin: 1, suit: 2, head: 0, eyes: 1, emblem: 0, cape: 0, hand: 0, hc: '#AABBCC', capec: '#7a52c4' }, welcomed: true },
+    hero: { name: 'Zoë Ñandú 🚀' },
     virtues: { constancia: 1700000000000, valentia: 1700000001000 },
     stats: { learnTopics: ['M01:T01', 'M01:T02'], cleared: 3, roundsNoPower: 2, bossFailed: { M08: true } },
     city: { prologue: true, run: true, bridgeSeen: false, beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true }, restored: {}, powers: {}, at: { x: 3, z: 5, yaw: 1 } }
@@ -80,9 +80,8 @@ function diff(a, b, p = '') {
     ok('N7 qs como arreglo se borra', !('C' in out.qs)); }
   { const { out } = norm1({ boss: { M01: { best: 3, passed: false }, M02: [1], M03: 'x' } });
     ok('N8 boss: arreglo y texto se borran, el objeto se conserva', same(out.boss, { M01: { best: 3, passed: false } }), JSON.stringify(out.boss)); }
-  { const { out } = norm1({ hero: { name: 'Zed', look: { skin: -1, suit: '2', head: 1.7, eyes: 1, emblem: 1, cape: 0, hand: 0, hc: 'red', capec: '#12345G' }, welcomed: true } });
-    ok('N9 look: negativos y textos → 0, decimales → entero, colores inválidos se borran', out.hero.look.skin === 0 && out.hero.look.suit === 0 && out.hero.look.head === 1 && !('hc' in out.hero.look) && !('capec' in out.hero.look), JSON.stringify(out.hero.look)); }
-  { const { out } = norm1({ stats: { learnTopics: 'x', cleared: 'x', roundsNoPower: -2, bossFailed: null } });
+  { const { out, errors } = norm1({ hero: { name: 'Zed', look: { skin: -1, suit: '2', head: 1.7, hc: 'red', capec: '#12345G' }, welcomed: true } });
+    ok('N9 un look viejo y hostil se descarta sin errores: el héroe queda como { name }', JSON.stringify(out.hero) === '{"name":"Zed"}' && !errors.length, JSON.stringify(out.hero)); }  { const { out } = norm1({ stats: { learnTopics: 'x', cleared: 'x', roundsNoPower: -2, bossFailed: null } });
     ok('N10 stats inválidos → valores frescos', Array.isArray(out.stats.learnTopics) && out.stats.cleared === 0 && out.stats.roundsNoPower === 0 && same(out.stats.bossFailed, {}), JSON.stringify(out.stats)); }
   { const { out, errors } = norm1({ world: { at: 5, pos: null, talked: 'x', beaten: [], run: 'yes' } });
     ok('N11 world inválido: world desaparece del guardado y city.run toma su valor', out.world === undefined && out.city.run === true && !errors.length, JSON.stringify([out.world, out.city.run])); }
@@ -90,13 +89,20 @@ function diff(a, b, p = '') {
     ok('N15 boss: best no numérico → 0 y passed no booleano → false', out.boss.M01 && out.boss.M01.best === 0 && out.boss.M01.passed === false, JSON.stringify(out.boss.M01));
     ok('N15 boss: arreglo descartado; best acotado a 0..20 y entero', out.boss.M02 === undefined && out.boss.M03.best === 20 && out.boss.M03.passed === true && out.boss.M04.best === 7, JSON.stringify(out.boss)); }
   { const evil = JSON.parse('{"skin":1,"cape":1,"__proto__":{"hc":"\\"/><img id=pwn src=x>","capec":"\\"/><img id=pwn2 src=x>"}}');
-    const env = L.boot(JSON.stringify(base({ hero: { name: 'Zed', welcomed: true, look: evil } })));
+    const env = L.boot(JSON.stringify(base({ hero: { name: 'Zed', welcomed: true, look: evil, extra: 1 } })));
     const out = resave(env);
-    ok('N16 hero.look con __proto__: el guardado no trae capec y el prototipo queda intacto', out.hero.look.capec === undefined && out.hero.look.hc === undefined && Object.getPrototypeOf(out.hero.look) === Object.prototype, JSON.stringify(out.hero.look));
-    ok('N16 al abrir "Tu héroe" no aparece #pwn ni #pwn2', !env.d.getElementById('pwn') && !env.d.getElementById('pwn2'));
+    ok('N16 el héroe se reconstruye con lista blanca: solo { name }, sin look, welcomed ni claves extra', JSON.stringify(out.hero) === '{"name":"Zed"}' && Object.getPrototypeOf(out.hero) === Object.prototype, JSON.stringify(out.hero));
+    ok('N16 al abrir "Tu héroe" no aparece #pwn ni #pwn2', (L.click(env.w, L.btn(env.d, 'hero')), !env.d.getElementById('pwn') && !env.d.getElementById('pwn2')));
     env.w.close(); }
-  { const { out } = norm1({ hero: { name: 'Zed', welcomed: true, look: { skin: 2, constructor: { x: 1 }, extra: 'z' } } });
-    ok('N17 hero.look: solo claves de slot y skin conservado', out.hero.look.skin === 2 && out.hero.look.extra === undefined && Object.keys(out.hero.look).every((k) => ['skin','suit','head','eyes','emblem','cape','hand','hc','capec'].includes(k)), JSON.stringify(out.hero.look)); }
+  { const raw = '{"v":1,"xp":0,"days":{"last":null,"count":0},"session":1,"lastActive":0,"topics":{},"qs":{},"boss":{},"hero":{"name":"Zed","__proto__":{"polluted":3,"look":{"skin":4}},"welcomed":true}}';
+    const env = L.boot(raw); const out = resave(env);
+    ok('N17 hero con __proto__ propio: sin contaminación y solo name', JSON.stringify(out.hero) === '{"name":"Zed"}' && env.w.eval('({}).polluted === undefined && ({}).look === undefined'), JSON.stringify(out.hero));
+    env.w.close(); }
+  { const long = 'x'.repeat(5000); const { out } = norm1({ hero: { name: long } });
+    ok('N17b nombre de 5000 caracteres → recortado a 20', out.hero.name === long.slice(0, 20), String(out.hero.name.length));
+    const o2 = norm1({ hero: { name: 42 } }).out; ok('N17c nombre no textual → "Héroe"', o2.hero.name === 'Héroe');
+    const o3 = norm1({ hero: [] }).out; ok('N17d hero arreglo → { name: "Héroe" }', JSON.stringify(o3.hero) === '{"name":"Héroe"}');
+    const f = norm1({ hero: undefined }).out; ok('N17e guardado sin hero: { name: "Héroe" }', JSON.stringify(f.hero) === '{"name":"Héroe"}'); }
   { const st = JSON.parse('{"__proto__":{"cleared":99},"cleared":3}');
     const { out } = norm1({ stats: st });
     ok('N18 stats con __proto__: cleared 3, prototipo intacto y solo claves conocidas', out.stats.cleared === 3 && Object.getPrototypeOf(out.stats) === Object.prototype && Object.keys(out.stats).every((k) => ['learnTopics','cleared','roundsNoPower','bossFailed'].includes(k)), JSON.stringify(out.stats)); }

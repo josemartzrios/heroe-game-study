@@ -29,7 +29,7 @@ function boot(seed, opts = {}) {
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
 }
-const fresh = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H', look: { skin: 0, suit: 0, head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: true } }, o);
+const fresh = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o);
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const hud = (d, sel) => { const e = d.querySelector(sel); return e ? e.getAttribute('aria-label') : null; };
 const nums = (s) => (s || '').match(/\d+/g).map(Number);

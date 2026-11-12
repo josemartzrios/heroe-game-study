@@ -15,7 +15,7 @@ function boot(opts = {}) {
     beforeParse(w) {
       if (opts.brokenStorage) Object.defineProperty(w, 'localStorage', { get() { throw new Error('blocked'); } });
       else if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
-      w.scrollTo = () => {};
+      w.scrollTo = () => {}; w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };   // iconos del héroe
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };

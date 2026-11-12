@@ -70,9 +70,9 @@ function forceSave(w, d) {
         if (/hero\.look|\.welcomed|S\.hero\.look|opts\.look|\blook\b\s*[,)]/.test(ln) && !/lookAt|TRIP_LOOK|scene\.look/.test(ln)) hits.push(f + ':' + (i + 1));
       }));
       console.log('INVENTARIO lectores de look/welcomed (' + hits.length + '): ' + hits.join(' '));
-      // fixLook() corre al cargar y hace S.hero.look[slot] sin guarda: si migrate() borra look y fixLook sigue, el arranque lanza.
       const eng = fs.readFileSync(path.join(ROOT, 'engine.html'), 'utf8');
-      ok('A1 [línea base] fixLook() se ejecuta en el arranque (debe irse junto con hero.look)', /\n\s*fixLook\(\);/.test(eng));
+      ok('A1 fixLook, avatarSvg y PARTS ya no existen en el motor', !/fixLook|avatarSvg|\bPARTS\b/.test(eng));
+      ok('A2 solo queda el comentario de la lista blanca como mención de look/welcomed', hits.length <= 1 && hits.every((h) => /^engine\.html:/.test(h)), hits.join(' '));
     }
 
     // ================= B) guardados hostiles en hero =================
@@ -116,24 +116,21 @@ function forceSave(w, d) {
       forceSave(w, d);
       let s = null; try { s = saved(w); } catch (x) { /* sin guardar */ }
       const h = s && s.hero;
-      const look = h && h.look;
-      const lookOk = !!look && SLOTS.every((k) => Number.isInteger(look[k]) && look[k] >= 0 && look[k] < 50) &&
-        Object.keys(look).every((k) => SLOTS.includes(k) || ((k === 'hc' || k === 'capec') && /^#[0-9a-f]{6}$/i.test(look[k])));
+
       const bad = [];
       if (e.errors.length) bad.push('errores: ' + e.errors.slice(0, 2).join(' / '));
       if (!homeOk) bad.push('inicio vacío');
       if (polluted) bad.push('Object.prototype contaminado');
       if (!hb) bad.push('sin botón héroe');
-      if (/undefined|NaN/.test(heroHtml.match(/<svg[\s\S]*?<\/svg>/g)?.join('') || '')) bad.push('SVG con undefined/NaN');
+      if (!/data-spr="hero"/.test(heroHtml)) bad.push('sin icono del héroe');
       if (injected) bad.push('HTML inyectado');
       if (!h) bad.push('no se guardó hero');
       else {
-        if (!lookOk) bad.push('look no normalizado: ' + JSON.stringify(look).slice(0, 120));
-        if (typeof h.welcomed !== 'boolean') bad.push('welcomed no booleano');
-        if (typeof h.name !== 'string') bad.push('name no string');
+        if (Object.keys(h).join() !== 'name') bad.push('el héroe debe ser solo { name }: ' + Object.keys(h).join());
+        if (typeof h.name !== 'string' || h.name.length > 20) bad.push('name inválido: ' + typeof h.name + ' ' + String(h.name).length);
         if (Object.getPrototypeOf(h) !== Object.prototype) bad.push('proto');
       }
-      if (wantWelcome !== undefined && card !== wantWelcome) bad.push('tarjeta "Llegó el modo héroe" = ' + card + ' (esperado ' + wantWelcome + ')');
+      if (card) bad.push('la tarjeta de bienvenida ya no debe existir');
       if (Date.now() - t0 > 15000) bad.push('lento ' + (Date.now() - t0) + ' ms');
       ok('B hero hostil: ' + label + ' → arranca, normaliza y renderiza', !bad.length, bad.join('; '));
       w.close();
@@ -141,8 +138,7 @@ function forceSave(w, d) {
     };
     for (const [label, mut] of heroCases) {
       const s = base(); mut(s);
-      const want = /welcomed/.test(label) ? true : undefined;   // welcomed no booleano => false => con progreso, la tarjeta aparece
-      await runHero(label, JSON.stringify(s), want);
+      await runHero(label, JSON.stringify(s));
     }
     for (const [label, frag, where] of rawCases) {
       const s = JSON.stringify(base());
@@ -150,14 +146,7 @@ function forceSave(w, d) {
       if (raw === s) { ok('B ' + label + ' (armado del payload)', false, 'no se pudo inyectar'); continue; }
       await runHero(label, raw);
     }
-    // ATAQUE: rollback desde la versión del spec — el jugador ya veterano ve otra vez "Llegó el modo héroe"
-    {
-      const s = base({ xp: 500 }); delete s.hero.look; delete s.hero.welcomed;
-      const e = boot(JSON.stringify(s));
-      const card = !!e.d.querySelector('[data-act="welcome"]');
-      console.log('INFO rollback post-spec: la tarjeta "Llegó el modo héroe" ' + (card ? 'REAPARECE' : 'no aparece') + ' para un guardado sin welcomed con progreso');
-      e.w.close();
-    }
+    // línea base del rollback: un guardado nuevo cargado por una versión anterior solo vuelve a mostrar la tarjeta (se documenta en el spec §4)
 
     // ================= C) guardados hostiles en city =================
     const today = (w) => { const x = new w.Date(), p = (n) => String(n).padStart(2, '0'); return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()); };

@@ -44,7 +44,7 @@ function boot(raw, opts = {}) {
   return { dom, w: dom.window, d: dom.window.document, errors };
 }
 const fresh = (o = {}) => JSON.stringify(Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {},
-  hero: { name: 'Zed', look: { skin: 1, suit: 1, head: 1, eyes: 1, emblem: 1, cape: 0, hand: 0 }, welcomed: true },
+  hero: { name: 'Zed' },
   stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: {} } }, o));
 const st = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const click = L.click;

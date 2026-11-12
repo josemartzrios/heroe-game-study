@@ -18,7 +18,7 @@ function boot(opts = {}) {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
-      w.scrollTo = () => {};
+      w.scrollTo = () => {}; w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };   // iconos del héroe
       w.Element.prototype.scrollIntoView = function () { if (opts.spyScroll) (w.__scrolled = w.__scrolled || []).push(this); };
       if (opts.rndSeed) { let a = opts.rndSeed; w.Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });

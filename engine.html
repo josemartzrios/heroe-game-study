@@ -383,46 +383,6 @@ const MODULES = [
   }
   function lvlText(i) { return i.max ? 'Nivel máximo' : i.into + ' / ' + i.span + ' XP'; }
 
-  var PARTS = {
-    skin: [
-      { n: 'Claro', nv: 1, f: '#f8dcc2', s: '#d9ac86' }, { n: 'Beige', nv: 1, f: '#efc29c', s: '#c9946b' },
-      { n: 'Dorado', nv: 1, f: '#e0a878', s: '#b9825a' }, { n: 'Canela', nv: 1, f: '#c68b5e', s: '#9a6540' },
-      { n: 'Marrón', nv: 1, f: '#a06b45', s: '#774b2d' }, { n: 'Oscuro', nv: 1, f: '#6e4630', s: '#4c2e1d' }
-    ],
-    suit: [
-      { n: 'Azul acero', nv: 1, f: '#4a7fb0', s: '#2f5878' }, { n: 'Verde bosque', nv: 1, f: '#3f7a52', s: '#27523a' },
-      { n: 'Gris grafito', nv: 1, f: '#5b6270', s: '#3a3f4a' }, { n: 'Arena', nv: 1, f: '#d2b48c', s: '#a58a62' },
-      { n: 'Vino', nv: 3, f: '#8a2f4a', s: '#5e1d32' }, { n: 'Turquesa', nv: 6, f: '#1fa39a', s: '#127068' },
-      { n: 'Morado', nv: 9, f: '#7a52c4', s: '#523590' }, { n: 'Dorado', nv: 15, f: '#e0b13a', s: '#a97f1c' }
-    ],
-    head: [
-      { n: 'Cabello corto', nv: 1, k: 'hair_s' }, { n: 'Cabello largo', nv: 1, k: 'hair_l' },
-      { n: 'Casco de aviador', nv: 4, k: 'aviator' }, { n: 'Casco con antena', nv: 8, k: 'antenna' },
-      { n: 'Casco de cristal', nv: 12, k: 'crystal' }
-    ],
-    eyes: [
-      { n: 'Ninguno', nv: 1, k: 'none' }, { n: 'Lentes redondos', nv: 1, k: 'round' },
-      { n: 'Visor láser', nv: 2, k: 'laser' }, { n: 'Antifaz', nv: 5, k: 'mask' },
-      { n: 'Gafas de laboratorio', v: 'curiosidad', k: 'lab' }, { n: 'Visor dorado', v: 'enfoque', k: 'gold' }
-    ],
-    emblem: [
-      { n: 'Ninguno', nv: 1, k: 'none' }, { n: 'Círculo', nv: 1, k: 'circle' }, { n: 'Llaves { }', nv: 2, k: 'braces' },
-      { n: 'Rayo', nv: 5, k: 'bolt' }, { n: 'Hexágono', nv: 7, k: 'hex' }, { n: 'Engrane', v: 'humildad', k: 'gear' },
-      { n: '01', v: 'constancia', k: 'bin' }, { n: 'Nube', nv: 10, k: 'cloud' }, { n: 'Etiqueta </>', v: 'sabiduria', k: 'tag' },
-      { n: 'Escudo', v: 'integridad', k: 'shield' }
-    ],
-    cape: [
-      { n: 'Ninguna', nv: 1, k: 'none' }, { n: 'Capa corta', nv: 5, k: 'short' },
-      { n: 'Capa larga', nv: 11, k: 'long' }, { n: 'Capa con borde', v: 'valentia', k: 'trim' }
-    ],
-    hand: [
-      { n: 'Ninguno', nv: 1, k: 'none' }, { n: 'Lanzador de telaraña', nv: 3, k: 'web' }, { n: 'Lupa', nv: 4, k: 'lens' },
-      { n: 'Escudo redondo', nv: 6, k: 'shield' }, { n: 'Laptop', nv: 13, k: 'laptop' },
-      { n: 'Banda de brazo', v: 'liderazgo', k: 'band' }, { n: 'Reloj de arena', v: 'resiliencia', k: 'hourglass' }
-    ]
-  };
-  var SLOTS = [['skin', 'Piel'], ['suit', 'Traje'], ['head', 'Cabeza'], ['eyes', 'Ojos'], ['emblem', 'Emblema'], ['cape', 'Capa'], ['hand', 'Accesorio de mano']];
-
   var POWERS = [
     { id: 'laser', n: 'Visión láser', lv: 2, d: 'Elimina dos opciones incorrectas. Respuesta asistida.' },
     { id: 'web', n: 'Telaraña', lv: 3, d: 'Manda la pregunta al final de la ronda para responderla después.' },
@@ -471,25 +431,17 @@ const MODULES = [
   function fresh() {
     return {
       v: 1, xp: 0, days: { last: null, count: 0 }, session: 0, lastActive: 0, topics: {}, qs: {}, boss: {},
-      hero: { name: 'Héroe', look: { skin: 0, suit: 0, head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: false },
+      hero: { name: 'Héroe' },
       virtues: {}, city: CityStory.normalizeCity({}, CITY_DATA, false, today()),
       stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: {} }
     };
   }
-  function brandNew() { var f = fresh(); f.hero.welcomed = true; return f; }
   function migrate(o) {
     var f = fresh(), cityRaw = o.city, worldRaw = o.world;
     for (var k in f) if (!(k in o)) o[k] = f[k];
-    if (!plainObj(o.hero)) o.hero = f.hero;
-    /* hero.look se reconstruye con lista blanca: Object.assign con datos guardados deja que un "__proto__" propio cambie el prototipo */
-    var lookSrc = plainObj(o.hero.look) ? o.hero.look : {}, lookNew = {}, ownp = Object.prototype.hasOwnProperty;
-    ['skin', 'suit', 'head', 'eyes', 'emblem', 'cape', 'hand'].forEach(function (k) {
-      lookNew[k] = ownp.call(lookSrc, k) ? Math.floor(num(lookSrc[k], f.hero.look[k])) : f.hero.look[k];
-    });
-    ['hc', 'capec'].forEach(function (k) { if (ownp.call(lookSrc, k) && hex(lookSrc[k])) lookNew[k] = lookSrc[k]; });
-    o.hero.look = lookNew;
-    if (typeof o.hero.name !== 'string') o.hero.name = 'Héroe';
-    if (typeof o.hero.welcomed !== 'boolean') o.hero.welcomed = false;
+    /* el héroe se reconstruye con lista blanca: solo el nombre (sin look, welcomed ni claves extra o __proto__) */
+    var ownp = Object.prototype.hasOwnProperty;
+    o.hero = { name: (plainObj(o.hero) && ownp.call(o.hero, 'name') && typeof o.hero.name === 'string') ? o.hero.name.slice(0, 20) : 'Héroe' };
     if (!plainObj(o.virtues)) o.virtues = {};
     var stSrc = plainObj(o.stats) ? o.stats : {}, bfNew = {};
     if (plainObj(stSrc.bossFailed)) Object.keys(stSrc.bossFailed).forEach(function (k) { if (/^M\d{2}$/.test(k) && stSrc.bossFailed[k] === true) bfNew[k] = true; });
@@ -500,7 +452,6 @@ const MODULES = [
     /* normalización de tipos: un estado corrupto nunca debe impedir arrancar ni congelar una respuesta */
     function num(x, d) { return (typeof x === 'number' && isFinite(x) && x >= 0) ? x : d; }
     function plainObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype; }
-    function hex(x) { return typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x); }
     o.xp = num(o.xp, 0); o.session = Math.floor(num(o.session, 0)); o.lastActive = num(o.lastActive, 0);
     if (!plainObj(o.days)) o.days = { last: null, count: 0 };
     if (typeof o.days.last !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(o.days.last)) o.days.last = null;
@@ -550,7 +501,7 @@ const MODULES = [
       document.body.insertBefore(d, document.body.firstChild);
     } catch (e) {}
   }
-  var S = load() || brandNew();
+  var S = load() || fresh();
   var PEND = [];
 
   function earn(id) {
@@ -580,130 +531,15 @@ const MODULES = [
   }
   function streak() { return (S.days.last === today() || S.days.last === yesterday()) ? S.days.count : 0; }
 
-  /* ---------- piezas desbloqueadas ---------- */
-  function unlocked(slot, i) {
-    var p = PARTS[slot][i];
-    if (!p) return false;
-    if (p.nv) return levelOf(S.xp) >= p.nv;
-    return !!S.virtues[p.v];
-  }
-  function reqText(p) { return p.nv ? 'Nivel ' + p.nv : 'Virtud: ' + virtue(p.v).n; }
-  function fixLook() {
-    SLOTS.forEach(function (s) {
-      var slot = s[0];
-      if (!unlocked(slot, S.hero.look[slot])) {
-        for (var i = 0; i < PARTS[slot].length; i++) if (unlocked(slot, i)) { S.hero.look[slot] = i; break; }
-      }
-    });
-  }
-  fixLook();
   function heroName() { return (S.hero.name || '').trim() || 'Héroe'; }
-  function unlockCount() {
-    var n = 0;
-    SLOTS.forEach(function (s) { PARTS[s[0]].forEach(function (p, i) { if (unlocked(s[0], i)) n++; }); });
-    return n;
-  }
-  function unlocksAt(lv) {
-    var pw = POWERS.filter(function (p) { return p.lv === lv; }).map(function (p) { return p.n; });
-    var pc = [];
-    SLOTS.forEach(function (s) { PARTS[s[0]].forEach(function (p) { if (p.nv === lv && lv > 1) pc.push(p.n); }); });
-    return { powers: pw, pieces: pc };
-  }
+  function unlocksAt(lv) { return POWERS.filter(function (p) { return p.lv === lv; }).map(function (p) { return p.n; }); }
   function nextUnlockText() {
     var lv = levelOf(S.xp);
     for (var l = lv + 1; l <= LEVELS.length; l++) {
-      var u = unlocksAt(l), names = u.powers.concat(u.pieces);
+      var names = unlocksAt(l);
       if (names.length) return 'Nivel ' + l + ': ' + (names.length > 3 ? names.slice(0, 3).join(', ') + ' y más' : names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1] : names[0]);
     }
     return 'Ya desbloqueaste todo lo que da el nivel.';
-  }
-
-  /* ---------- avatar SVG ---------- */
-  function shade(hex, amt) {
-    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-    function c(x) { return Math.max(0, Math.min(255, Math.round(amt < 0 ? x * (1 + amt) : x + (255 - x) * amt))); }
-    return '#' + [c(r), c(g), c(b)].map(function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
-  }
-  function lay(t) {
-    return t.replace(/%C/g, '#1d2230').replace(/%W/g, '4.6') + t.replace(/%C/g, '#f5f5f5').replace(/%W/g, '2');
-  }
-  function avatarSvg(look, size, vb, label) {
-    var sk = PARTS.skin[look.skin] || PARTS.skin[0], su = PARTS.suit[look.suit] || PARTS.suit[0];
-    var hk = (PARTS.head[look.head] || PARTS.head[0]).k, ek = (PARTS.eyes[look.eyes] || PARTS.eyes[0]).k;
-    var mk = (PARTS.emblem[look.emblem] || PARTS.emblem[0]).k, ck = (PARTS.cape[look.cape] || PARTS.cape[0]).k;
-    var ak = (PARTS.hand[look.hand] || PARTS.hand[0]).k;
-    var o = [], hair = look.hc || '#3b2a20', hairS = shade(hair, -0.4), dark = '#1d2230', capeC = look.capec || su.s, boot = shade(su.s, -0.35), bootS = shade(su.s, -0.6);
-    var box = vb || '0 0 120 160', bp = box.split(' ').map(Number);
-    // capa
-    if (ck !== 'none') {
-      var pts = ck === 'short' ? '34,62 86,62 94,114 26,114' : '34,62 86,62 100,142 20,142';
-      o.push('<polygon points="' + pts + '" fill="' + capeC + '" stroke="' + (ck === 'trim' ? '#e0b13a' : shade(capeC, -0.25)) + '" stroke-width="' + (ck === 'trim' ? 4 : 2) + '" stroke-linejoin="round"/>');
-      var cb = ck === 'short' ? 108 : 136;
-      o.push('<path d="M30 70L' + (ck === 'short' ? 28 : 24) + ' ' + cb + 'M90 70L' + (ck === 'short' ? 92 : 96) + ' ' + cb + '" fill="none" stroke="' + shade(capeC, -0.3) + '" stroke-width="2" stroke-linecap="round" stroke-opacity="0.6"/>');
-    }
-    // piernas y calzado
-    o.push('<rect x="36" y="100" width="22" height="42" rx="6" fill="' + su.f + '" stroke="' + su.s + '" stroke-width="2"/>');
-    o.push('<rect x="62" y="100" width="22" height="42" rx="6" fill="' + su.f + '" stroke="' + su.s + '" stroke-width="2"/>');
-    o.push('<rect x="50" y="106" width="7" height="32" rx="3" fill="' + su.s + '" fill-opacity="0.35"/><rect x="76" y="106" width="7" height="32" rx="3" fill="' + su.s + '" fill-opacity="0.35"/>');
-    o.push('<rect x="33" y="136" width="27" height="18" rx="6" fill="' + boot + '" stroke="' + bootS + '" stroke-width="2"/><rect x="60" y="136" width="27" height="18" rx="6" fill="' + boot + '" stroke="' + bootS + '" stroke-width="2"/>');
-    o.push('<rect x="32" y="150" width="29" height="5" rx="2.5" fill="' + bootS + '"/><rect x="59" y="150" width="29" height="5" rx="2.5" fill="' + bootS + '"/>');
-    o.push('<path d="M36 141h21M63 141h21" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2.5" stroke-linecap="round"/>');
-    // cuello
-    o.push('<rect x="52" y="50" width="16" height="14" rx="4" fill="' + sk.s + '" stroke="' + shade(sk.s, -0.2) + '" stroke-width="2"/>');
-    // torso
-    o.push('<path d="M30 68Q30 60 39 60H81Q90 60 90 68L85 99Q84.5 104 79 104H41Q35.5 104 35 99Z" fill="' + su.f + '" stroke="' + su.s + '" stroke-width="2" stroke-linejoin="round"/>');
-    o.push('<path d="M76 61H81Q89 61 89 68L84 99Q83.5 103 79 103H73Q79 84 76 61Z" fill="' + su.s + '" fill-opacity="0.38"/>');
-    o.push('<rect x="36" y="65" width="5" height="24" rx="2.5" fill="#ffffff" fill-opacity="0.22"/>');
-    o.push('<polygon points="50,60 70,60 60,69" fill="' + sk.f + '" stroke="' + shade(su.s, -0.25) + '" stroke-width="2" stroke-linejoin="round"/>');
-    o.push('<rect x="35.5" y="97" width="49" height="7" rx="2" fill="' + shade(su.s, -0.35) + '"/><rect x="55" y="96" width="10" height="9" rx="2" fill="#e0b13a" stroke="#a97f1c" stroke-width="1.4"/>');
-    // emblema
-    if (mk === 'circle') o.push('<circle cx="60" cy="82" r="9" fill="#f5f5f5" stroke="' + dark + '" stroke-width="2"/>');
-    else if (mk === 'braces') o.push(lay('<path d="M54 72Q49 72 49 77V80Q49 82 46 82Q49 82 49 84V87Q49 92 54 92M66 72Q71 72 71 77V80Q71 82 74 82Q71 82 71 84V87Q71 92 66 92" fill="none" stroke="%C" stroke-width="%W" stroke-linecap="round" stroke-linejoin="round"/>'));
-    else if (mk === 'bolt') o.push('<polygon points="63,70 52,84 59,84 56,95 68,79 61,79" fill="#f5f5f5" stroke="' + dark + '" stroke-width="1.6" stroke-linejoin="round"/>');
-    else if (mk === 'hex') o.push('<polygon points="60,71 69.5,76.5 69.5,87.5 60,93 50.5,87.5 50.5,76.5" fill="#f5f5f5" stroke="' + dark + '" stroke-width="2" stroke-linejoin="round"/>');
-    else if (mk === 'gear') {
-      var g = '';
-      for (var a = 0; a < 8; a++) g += '<rect x="58" y="71" width="4" height="6" rx="1" fill="#f5f5f5" stroke="' + dark + '" stroke-width="1.2" transform="rotate(' + (a * 45) + ' 60 82)"/>';
-      o.push(g + '<circle cx="60" cy="82" r="8" fill="#f5f5f5" stroke="' + dark + '" stroke-width="2"/><circle cx="60" cy="82" r="3" fill="' + dark + '"/>');
-    }
-    else if (mk === 'bin') o.push(lay('<ellipse cx="53" cy="82" rx="4.5" ry="7.5" fill="none" stroke="%C" stroke-width="%W"/>') + lay('<path d="M64 77L68 74V90" fill="none" stroke="%C" stroke-width="%W" stroke-linecap="round" stroke-linejoin="round"/>'));
-    else if (mk === 'cloud') o.push('<path d="M48 90Q42 90 42 84Q42 78 49 78Q50 70 59 70Q68 70 69 78Q76 78 76 84Q76 90 70 90Z" fill="#f5f5f5" stroke="' + dark + '" stroke-width="1.8" stroke-linejoin="round"/>');
-    else if (mk === 'tag') o.push(lay('<path d="M52 74L44 82L52 90M68 74L76 82L68 90M63 72L57 92" fill="none" stroke="%C" stroke-width="%W" stroke-linecap="round" stroke-linejoin="round"/>'));
-    else if (mk === 'shield') o.push('<path d="M60 70L72 74V83Q72 92 60 96Q48 92 48 83V74Z" fill="#f5f5f5" stroke="' + dark + '" stroke-width="1.8" stroke-linejoin="round"/>');
-    // brazos y manos
-    var band = ak === 'band' ? '<rect x="16" y="78" width="18" height="7" rx="2" fill="#e0b13a" stroke="#a97f1c" stroke-width="1.5"/>' : '';
-    o.push('<g transform="rotate(5 25 64)"><rect x="18" y="64" width="14" height="40" rx="7" fill="' + su.f + '" stroke="' + su.s + '" stroke-width="2"/>' + '<rect x="19.5" y="68" width="4" height="26" rx="2" fill="#ffffff" fill-opacity="0.2"/><rect x="17" y="96" width="16" height="6" rx="2" fill="' + shade(su.s, -0.3) + '"/>' + band + '<rect x="17.5" y="101" width="15" height="14" rx="6.5" fill="' + sk.f + '" stroke="' + sk.s + '" stroke-width="2"/><path d="M30 104q4 2 2 7" fill="none" stroke="' + sk.s + '" stroke-width="2" stroke-linecap="round"/></g>');
-    o.push('<g transform="rotate(-5 95 64)"><rect x="88" y="64" width="14" height="40" rx="7" fill="' + su.f + '" stroke="' + su.s + '" stroke-width="2"/><rect x="96.5" y="68" width="4.5" height="30" rx="2" fill="' + su.s + '" fill-opacity="0.4"/><rect x="87" y="96" width="16" height="6" rx="2" fill="' + shade(su.s, -0.3) + '"/><rect x="87.5" y="101" width="15" height="14" rx="6.5" fill="' + sk.f + '" stroke="' + sk.s + '" stroke-width="2"/><path d="M90 104q-4 2 -2 7" fill="none" stroke="' + sk.s + '" stroke-width="2" stroke-linecap="round"/></g>');
-    // cabeza
-    o.push('<ellipse cx="37" cy="40" rx="4.5" ry="6.5" fill="' + sk.f + '" stroke="' + sk.s + '" stroke-width="2"/><ellipse cx="83" cy="40" rx="4.5" ry="6.5" fill="' + sk.s + '" stroke="' + shade(sk.s, -0.2) + '" stroke-width="2"/>');
-    o.push('<rect x="37" y="16" width="46" height="42" rx="13" fill="' + sk.f + '" stroke="' + sk.s + '" stroke-width="2"/>');
-    o.push('<path d="M74 18Q82 20 82 29V45Q82 56 71 57Q78 40 74 18Z" fill="' + sk.s + '" fill-opacity="0.4"/>');
-    o.push('<circle cx="45.5" cy="46.5" r="3.8" fill="#e8736a" fill-opacity="0.3"/><circle cx="74.5" cy="46.5" r="3.8" fill="#e8736a" fill-opacity="0.3"/>');
-    if (hk === 'hair_l') o.push('<rect x="33" y="18" width="9" height="38" rx="4" fill="' + hair + '" stroke="' + hairS + '" stroke-width="1.5"/><rect x="78" y="18" width="9" height="38" rx="4" fill="' + hair + '" stroke="' + hairS + '" stroke-width="1.5"/>');
-    if (hk === 'hair_s' || hk === 'hair_l') o.push('<path d="M35 31V23Q35 9.5 60 9.500Q85 9.5 85 23V31Q79 24.5 71 27.500Q62 22.5 52 27.500Q43 24 35 31Z" fill="' + hair + '" stroke="' + hairS + '" stroke-width="1.5" stroke-linejoin="round"/><path d="M45 16Q54 12 65 14.5" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round"/>');
-    // ojos y boca
-    o.push('<path d="M45.5 32.500Q50 30.2 54.5 32.500M65.5 32.500Q70 30.2 74.5 32.5" fill="none" stroke="' + hairS + '" stroke-width="2" stroke-linecap="round"/>');
-    o.push('<ellipse cx="50" cy="38.5" rx="3.3" ry="3.8" fill="' + dark + '"/><ellipse cx="70" cy="38.5" rx="3.3" ry="3.8" fill="' + dark + '"/><circle cx="51.2" cy="37" r="1.1" fill="#ffffff"/><circle cx="71.2" cy="37" r="1.1" fill="#ffffff"/>');
-    o.push('<path d="M60 42.500q2.2 3 -0.8 4.2" fill="none" stroke="' + sk.s + '" stroke-width="1.7" stroke-linecap="round"/>');
-    o.push('<path d="M53.5 50Q60 54.5 66.5 50" fill="none" stroke="' + dark + '" stroke-width="2" stroke-linecap="round"/>');
-    // cascos
-    if (hk === 'aviator') o.push('<rect x="32" y="26" width="9" height="26" rx="4" fill="#8b6a45" stroke="#5a4329" stroke-width="1.5"/><rect x="79" y="26" width="9" height="26" rx="4" fill="#8b6a45" stroke="#5a4329" stroke-width="1.5"/><rect x="34" y="11" width="52" height="26" rx="13" fill="#8b6a45" stroke="#5a4329" stroke-width="2"/><rect x="36" y="27" width="48" height="5" fill="#5a4329"/>');
-    if (hk === 'antenna') o.push('<rect x="34" y="11" width="52" height="26" rx="13" fill="#6b7c93" stroke="#44526a" stroke-width="2"/><path d="M60 11V4" stroke="#44526a" stroke-width="2" stroke-linecap="round"/><circle cx="60" cy="4" r="3" fill="#e0b13a" stroke="#a97f1c" stroke-width="1.2"/>');
-    // accesorios de ojos
-    if (ek === 'round') o.push('<g fill="none" stroke="' + dark + '" stroke-width="2"><circle cx="50" cy="38" r="7"/><circle cx="70" cy="38" r="7"/><path d="M57 38h6"/></g>');
-    else if (ek === 'laser') o.push('<rect x="41" y="32" width="38" height="12" rx="5" fill="#19b5c9" stroke="#0d6f7c" stroke-width="2"/><path d="M45 36h14" stroke="#c9f4fa" stroke-width="2" stroke-linecap="round"/>');
-    else if (ek === 'gold') o.push('<rect x="41" y="32" width="38" height="12" rx="5" fill="#e0b13a" stroke="#a97f1c" stroke-width="2"/><path d="M45 36h14" stroke="#fff3c4" stroke-width="2" stroke-linecap="round"/>');
-    else if (ek === 'mask') o.push('<path d="M40 32Q60 27 80 32L80 42Q71 46 66 42Q60 40 54 42Q49 46 40 42Z" fill="#2b2f3a" stroke="#14171d" stroke-width="1.5" stroke-linejoin="round"/><circle cx="50" cy="38" r="2.8" fill="#fff"/><circle cx="70" cy="38" r="2.8" fill="#fff"/>');
-    else if (ek === 'lab') o.push('<rect x="40" y="31" width="40" height="15" rx="7" fill="#c8f0ff" fill-opacity="0.45" stroke="' + dark + '" stroke-width="2"/><path d="M37 38h3M80 38h3" stroke="' + dark + '" stroke-width="2" stroke-linecap="round"/>');
-    if (hk === 'crystal') o.push('<ellipse cx="60" cy="37" rx="33" ry="32" fill="#bfe8ff" fill-opacity="0.28" stroke="#7ab8d8" stroke-width="2"/><path d="M38 24Q44 14 54 12" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-opacity="0.8"/>');
-    // accesorios de mano
-    if (ak === 'web') o.push('<rect x="90" y="99" width="14" height="9" rx="3" fill="#5d6b7d" stroke="#2f3947" stroke-width="1.6"/><rect x="104" y="101" width="5" height="5" rx="1" fill="#2f3947"/><path d="M109 103Q117 96 112 88" fill="none" stroke="#8a93a3" stroke-width="1.6" stroke-dasharray="2 2" stroke-linecap="round"/>');
-    else if (ak === 'lens') o.push('<circle cx="103" cy="100" r="8" fill="#bfe8ff" fill-opacity="0.5" stroke="#333b47" stroke-width="3"/><path d="M97 106L92 113" stroke="#5a4329" stroke-width="3.2" stroke-linecap="round"/>');
-    else if (ak === 'shield') o.push('<circle cx="24" cy="110" r="14" fill="#7a8aa0" stroke="#3a4658" stroke-width="3"/><polygon points="24,104 29.2,107 29.2,113 24,116 18.8,113 18.8,107" fill="#dfe6ef" stroke="#3a4658" stroke-width="1.4" stroke-linejoin="round"/>');
-    else if (ak === 'laptop') o.push('<rect x="88" y="98" width="22" height="14" rx="2" fill="#cfd6df" stroke="#333b47" stroke-width="2"/><rect x="91" y="100.5" width="16" height="9" fill="#2b3547"/><rect x="85" y="112" width="28" height="4" rx="2" fill="#9aa5b3" stroke="#333b47" stroke-width="1.2"/>');
-    else if (ak === 'hourglass') o.push('<polygon points="91,97 109,97 100,106 109,115 91,115 100,106" fill="#ffffff" fill-opacity="0.45" stroke="#333b47" stroke-width="2" stroke-linejoin="round"/><polygon points="95,113 105,113 100,109" fill="#e0b13a"/><rect x="89" y="94" width="22" height="3" rx="1" fill="#5a4329"/><rect x="89" y="115" width="22" height="3" rx="1" fill="#5a4329"/>');
-    var w = size, h = Math.round(size * bp[3] / bp[2]);
-    return '<svg viewBox="' + box + '" width="' + w + '" height="' + h + '" ' + (label ? 'role="img" aria-label="' + esc(label) + '"' : 'aria-hidden="true"') + ' focusable="false">' + o.join('') + '</svg>';
   }
 
   /* ---------- índice de contenido ---------- */
@@ -729,7 +565,6 @@ const MODULES = [
   function dominio(m) { return Math.round(100 * totalStars(m) / (3 * m.topics.length)); }
   function bossUnlocked(m) { return m.topics.every(function (t) { return starsOf(m, t.id) >= 1; }); }
   function queue() { return Object.keys(S.qs).filter(function (id) { return S.qs[id].q && qmap[id]; }).map(function (id) { return qmap[id].q; }); }
-  function hasProgress() { return S.xp > 0 || Object.keys(S.topics).length > 0 || Object.keys(S.qs).length > 0 || Object.keys(S.boss).length > 0; }
 
   /* ---------- rondas ---------- */
   var V = { name: 'home' };
@@ -1009,7 +844,7 @@ const MODULES = [
     return '<header class="top"><button class="brand" data-act="home" aria-label="Ir al inicio"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Estudio ISW</span></button>' +
       '<div class="stats"><span class="pill" title="Puntos de experiencia"><b>' + nf(S.xp) + '</b> XP</span>' +
       '<span class="pill" title="Días seguidos estudiando"><b>' + st + '</b> ' + (st === 1 ? 'día' : 'días') + '</span>' +
-      '<div class="lvlbox"><button class="avbtn" data-act="hero" aria-label="Abrir pantalla Héroe, nivel ' + info.lv + '">' + avatarSvg(S.hero.look, 28, null, null) + '</button>' +
+      '<div class="lvlbox"><button class="herobtn" data-act="hero" aria-label="Abrir pantalla Héroe, nivel ' + info.lv + '"><canvas class="heroic" data-spr="hero" width="28" height="28" aria-hidden="true"></canvas></button>' +
       '<div class="lvlcol"><span class="pill"><b>Nv ' + info.lv + '</b></span><span class="minibar" role="img" aria-label="' + esc(txt) + '" title="' + esc(txt) + '"><i style="width:' + info.pct + '%"></i></span></div></div></div></header>';
   }
 
@@ -1020,28 +855,21 @@ const MODULES = [
     }).join('');
   }
 
-  function heroCard() {
+  function heroSummary() {
     var info = lvlInfo(S.xp);
-    return '<section class="herocard"><button class="avwrap" data-act="hero" aria-label="Editar mi héroe">' + avatarSvg(S.hero.look, 120, null, null) + '</button>' +
+    return '<section class="herosum"><button class="herobtn big" data-act="hero" aria-label="Abrir pantalla Héroe"><canvas class="heroic" data-spr="hero" width="64" height="64" aria-hidden="true"></canvas></button>' +
       '<div class="info"><span class="eyebrow">Tu héroe</span><h2>' + esc(heroName()) + '</h2>' +
       '<p class="meta"><b>Nivel ' + info.lv + '</b> · ' + esc(lvlText(info)) + '</p>' +
       '<span class="bar" role="img" aria-label="' + esc(lvlText(info)) + '"><i style="width:' + info.pct + '%"></i></span>' +
-      '<p class="meta">' + esc(nextUnlockText()) + '</p>' +
-      '<div><button class="btn sm" data-act="hero">Editar héroe</button></div></div></section>';
+      '<p class="meta">' + esc(nextUnlockText()) + '</p></div></section>';
   }
 
   function vHome() {
     var q = queue();
-    var info = lvlInfo(S.xp);
     var h = header() + '<main>' + bannersVirtues(takePend());
-    if (!S.hero.welcomed && hasProgress()) {
-      h += '<section class="card welcome"><span class="eyebrow">Novedad</span><strong>Llegó el modo héroe</strong>' +
-        '<p>Ya estás en el nivel ' + info.lv + '. Tienes ' + POWERS.filter(function (p) { return info.lv >= p.lv; }).length + ' poderes y ' + unlockCount() + ' piezas desbloqueadas para tu avatar.</p>' +
-        '<div class="actions"><button class="btn primary" data-act="welcome">Crear mi héroe</button><button class="btn" data-act="welcomeclose">Ahora no</button></div></section>';
-    }
     h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Estudia jugando</h1>' +
-      '<p class="lead">Un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroCard() +
-      '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad en 3D: aprende con los mentores, ponte a prueba y enseña.</p><div><button class="btn primary" data-act="city">Entrar a la ciudad</button></div></section>' +
+      '<p class="lead">Un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroSummary() +
+      '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad: aprende con los mentores, ponte a prueba y enseña a tus vecinos.</p><div><button class="btn primary" data-act="city">Entrar a la ciudad</button></div></section>' +
       '<h2 class="h2">Módulos</h2><div class="mods">' + MODULES.map(function (m) {
         var b = S.boss[m.id];
         return '<button class="card" data-act="mod" data-id="' + esc(m.id) + '"><span class="tag">' + esc(m.id) + '</span>' +
@@ -1194,10 +1022,10 @@ const MODULES = [
     if (boss) h += '<div class="banner ' + (R.passed ? 'good' : 'bad') + '">' + (R.passed ? 'Jefe superado. Dominas este módulo.' : 'Todavía no: necesitas 16 de 20. Repasa los temas débiles y vuelve a intentarlo.') + '</div>';
     else if (!miss.length) h += '<div class="banner good">Ronda perfecta.</div>';
     if (R.lvl1 > R.lvl0) {
-      var pws = [], pcs = [];
-      for (var l = R.lvl0 + 1; l <= R.lvl1; l++) { var u = unlocksAt(l); pws = pws.concat(u.powers); pcs = pcs.concat(u.pieces); }
+      var pws = [];
+      for (var l = R.lvl0 + 1; l <= R.lvl1; l++) pws = pws.concat(unlocksAt(l));
       h += '<div class="banner up">Subiste a nivel ' + R.lvl1 + '<small>' +
-        ((pws.length || pcs.length) ? (pws.length ? 'Poderes nuevos: ' + esc(pws.join(', ')) + '. ' : '') + (pcs.length ? 'Piezas nuevas: ' + esc(pcs.join(', ')) + '.' : '') : 'Sin desbloqueos nuevos en este nivel.') +
+        (pws.length ? 'Poderes nuevos: ' + esc(pws.join(', ')) + '.' : 'Sin desbloqueos nuevos en este nivel.') +
         '</small></div>';
     }
     h += bannersVirtues(takePend());
@@ -1235,31 +1063,15 @@ const MODULES = [
     }
     el.textContent = '+0'; requestAnimationFrame(step);
   }
-  function slotBox(slot) {
-    if (slot === 'head' || slot === 'eyes') return '30 8 60 56';
-    if (slot === 'emblem') return '32 58 56 48';
-    if (slot === 'hand') return '0 60 120 70';
-    return null;
-  }
   function vHero() {
-    fixLook();
-    var info = lvlInfo(S.xp), L = S.hero.look, lv = info.lv;
+    var info = lvlInfo(S.xp), lv = info.lv;
     var h = header() + '<main class="stack"><div class="crumb"><button class="btn sm ghost" data-act="home">← Inicio</button></div>' +
       '<div class="head"><span class="tag">HÉROE</span><h1>Tu héroe</h1></div>' + bannersVirtues(takePend()) +
-      '<div class="herolay"><div class="avwrap">' + avatarSvg(L, 184, null, 'Avatar de ' + heroName()) + '</div><div class="stack">' +
+      '<div class="herolay"><canvas class="heroic" data-spr="hero" width="96" height="96" aria-hidden="true"></canvas><div class="stack">' +
       '<div class="namefield"><label class="meta" for="hero-name">Nombre del héroe</label><input id="hero-name" type="text" maxlength="20" autocomplete="off" value="' + esc(S.hero.name) + '"></div>' +
       '<p><b>Nivel ' + lv + '</b> <span class="meta">· ' + esc(lvlText(info)) + '</span></p>' +
       '<span class="bar" role="img" aria-label="' + esc(lvlText(info)) + '"><i style="width:' + info.pct + '%"></i></span>' +
-      '<p class="meta">' + esc(nextUnlockText()) + '</p>' +
-      '<div><button class="btn" data-act="random">Aleatorio</button></div></div></div>';
-    SLOTS.forEach(function (s) {
-      var slot = s[0];
-      h += '<section><h2 class="h2">' + esc(s[1]) + '</h2><div class="pieces">' + PARTS[slot].map(function (p, i) {
-        var open = unlocked(slot, i), look = Object.assign({}, L); look[slot] = i;
-        return '<button class="piece" data-act="piece" data-slot="' + slot + '" data-i="' + i + '" aria-pressed="' + (L[slot] === i ? 'true' : 'false') + '"' + (open ? '' : ' disabled') + '>' +
-          avatarSvg(look, slotBox(slot) ? 72 : 44, slotBox(slot), null) + '<span>' + esc(p.n) + '</span>' + (open ? '' : '<small>Bloqueado · ' + esc(reqText(p)) + '</small>') + '</button>';
-      }).join('') + '</div></section>';
-    });
+      '<p class="meta">' + esc(nextUnlockText()) + '</p></div></div>';
     h += '<section><h2 class="h2">Poderes</h2><ul class="vlist">' + POWERS.map(function (p) {
       var open = lv >= p.lv;
       return '<li class="vitem' + (open ? '' : ' off') + '"><span><b>' + esc(p.n) + '</b> <span class="st">' + (open ? 'Desbloqueado · ' + powerUses(p.id) + (powerUses(p.id) === 1 ? ' uso por ronda' : ' usos por ronda') : 'Nivel ' + p.lv) + '</span></span><span class="meta">' + esc(p.d) + '</span></li>';
@@ -1289,6 +1101,7 @@ const MODULES = [
     if (V.name === 'trip') tripStart();
     if (V.name === 'city') { if (CD && CD.suspended) cityResume(); else cityStart(); }
     if (R) R.fx = null;
+    CitySprites.paintIcons(document.body);
     if (V.name === 'results') xpCount();
     var nb = document.getElementById('nextbtn');
     if (nb) { try { nb.focus({ preventScroll: true }); } catch (e) { nb.focus(); } }
@@ -1543,7 +1356,7 @@ const MODULES = [
     for (i = 0; i < B.max; i++) hearts += '<span class="' + (i < B.en ? 'on' : 'off') + '">♥</span>';
     for (i = 0; i < 4; i++) hp += '<i class="' + (i < B.hp ? 'on' : '') + '"></i>';
     var dome = (R.st.shield && !R.answered) || fx === 'shield';
-    return '<div class="arena' + (fx ? ' fx-' + fx : '') + '"><div class="fighter hero' + (dome ? ' domed' : '') + '"><span class="fig" aria-hidden="true">' + avatarSvg(S.hero.look, 56, null, null) + '</span>' +
+    return '<div class="arena' + (fx ? ' fx-' + fx : '') + '"><div class="fighter hero' + (dome ? ' domed' : '') + '"><span class="fig" aria-hidden="true"><canvas class="heroic" data-spr="hero" width="56" height="56"></canvas></span>' +
       '<div><span class="gname">' + esc(heroName()) + '</span><span class="hearts" role="img" aria-label="Energía ' + B.en + ' de ' + B.max + '">' + hearts + '</span></div></div>' +
       '<span class="vs" aria-hidden="true">VS</span>' +
       '<div class="fighter vil"><span class="fig vfig" aria-hidden="true">' + esc(String(v.name).charAt(0)) + '</span>' +
@@ -1587,23 +1400,9 @@ const MODULES = [
       var again = R.log.filter(function (l) { return !l.ok; }).map(function (l) { return l.q; });
       startRound({ kind: 'replay', title: 'Repaso de fallos', mid: R.cfg.mid, back: R.cfg.back }, shuffle(again));
     }
-    else if (a === 'piece') {
-      var slot = d.slot, idx = parseInt(d.i, 10);
-      if (unlocked(slot, idx)) { S.hero.look[slot] = idx; save(); render(); }
-    }
-    else if (a === 'random') {
-      SLOTS.forEach(function (s) {
-        var open = [];
-        PARTS[s[0]].forEach(function (p, i) { if (unlocked(s[0], i)) open.push(i); });
-        S.hero.look[s[0]] = open[Math.floor(Math.random() * open.length)];
-      });
-      save(); render();
-    }
-    else if (a === 'welcome') { S.hero.welcomed = true; save(); go('hero'); }
-    else if (a === 'welcomeclose') { S.hero.welcomed = true; save(); go('home'); }
     else if (a === 'reset') go('home', { confirm: true });
     else if (a === 'resetno') go('home');
-    else if (a === 'resetyes') { S = brandNew(); PEND = []; fixLook(); save(); go('home'); }
+    else if (a === 'resetyes') { S = fresh(); PEND = []; save(); go('home'); }
   });
 
   app.addEventListener('input', function (e) {

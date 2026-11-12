@@ -20,7 +20,7 @@ function boot(opts = {}) {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem(KEY, JSON.stringify(opts.seed));
-      w.scrollTo = () => {};
+      w.scrollTo = () => {}; w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };   // iconos del héroe
       w.Element.prototype.scrollIntoView = function () {};
       if (opts.full) {
         const proto = Object.getPrototypeOf(w.localStorage), orig = proto.setItem;

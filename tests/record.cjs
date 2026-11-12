@@ -16,7 +16,7 @@ function boot(opts = {}) {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
-      w.scrollTo = () => {};
+      w.scrollTo = () => {}; w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };   // iconos del héroe
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
@@ -41,7 +41,7 @@ const TID = 'T04'; // único tema de M08 con quiz de 8 preguntas (4 mcq + 3 esce
 const HK = 'M08:' + TID;
 const load = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const fresh = (o = {}) => Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {},
-  hero: { name: 'Zed', look: { skin: 1, suit: 1, head: 1, eyes: 1, emblem: 1, cape: 0, hand: 0 }, welcomed: true } }, o);
+  hero: { name: 'Zed' } }, o);
 const dayStr = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
 
 // Abre el quiz del tema M08:T04 (preguntas mcq/escenario/error, sin bono de tiempo).

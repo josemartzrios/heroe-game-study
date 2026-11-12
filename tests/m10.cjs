@@ -15,7 +15,7 @@ function boot(opts = {}) {
     beforeParse(w) {
       if (opts.brokenStorage) Object.defineProperty(w, 'localStorage', { get() { throw new Error('blocked'); } });
       else if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
-      w.scrollTo = () => {};
+      w.scrollTo = () => {}; w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };   // iconos del héroe
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
@@ -74,7 +74,7 @@ function pw(d,id){ return d.querySelector('[data-pw="'+id+'"]'); }
   const n=playRound(w,d,'right',{boss:true}); ok('M10: jefe 20 preguntas', n===20);
   const sb=JSON.parse(w.localStorage.getItem('estudio_isw_v1')); ok('M10: jefe superado guardado', sb.boss.M10 && sb.boss.M10.passed===true);
   // progreso M01/héroe conservado
-  ({w,d,errors}=boot({seed:fresh({xp:300,topics:{'M01:T01':[1,1,1,1,1,1]},hero:{name:'Zed',look:{skin:1,suit:1,head:1,eyes:1,emblem:1,cape:0,hand:0},welcomed:true}})}));
+  ({w,d,errors}=boot({seed:fresh({xp:300,topics:{'M01:T01':[1,1,1,1,1,1]},hero:{name:'Zed'}})}));
   ok('progreso previo y héroe intactos', /300/.test(d.querySelector('.pill b').textContent) && /Zed/.test(d.body.textContent));
   ok('sin errores de consola', errors.length===0, errors.join('|'));
   const fails=results.filter(r=>r[0]==='FAIL'); results.forEach(r=>console.log(r.join(' ')));

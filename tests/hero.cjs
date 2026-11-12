@@ -16,6 +16,7 @@ function boot(opts = {}) {
       if (opts.brokenStorage) Object.defineProperty(w, 'localStorage', { get() { throw new Error('blocked'); } });
       else if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
       w.scrollTo = () => {};
+      w.HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: () => () => {}, set: () => true }); };
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
@@ -62,33 +63,23 @@ function pw(d,id){ return d.querySelector('[data-pw="'+id+'"]'); }
   for (const [xp,l] of [[99,'Nv 1'],[100,'Nv 2'],[9199,'Nv 14'],[9200,'Nv 15']]) {
     const {d}=boot({seed:fresh({xp, hero:undefined})}); ok('nivel '+xp, lvl(d)===l, lvl(d));
   }
-  // bienvenida / migración
+  // sin tarjeta de bienvenida y sin editor de aspecto
   let b=boot({seed:fresh({xp:300})});
-  ok('migración: tarjeta de bienvenida', !!btn(b.d,'welcome'));
-  click(b.w, btn(b.d,'welcomeclose'));
-  const saved=JSON.parse(b.w.localStorage.getItem('estudio_isw_v1'));
-  ok('migración: hero/virtues/stats', saved.hero && saved.hero.welcomed===true && saved.virtues && saved.stats.learnTopics);
-  b=boot({seed:saved}); ok('bienvenida solo una vez', !btn(b.d,'welcome'));
-  b=boot(); ok('instalación nueva sin bienvenida', !btn(b.d,'welcome') && !!btn(b.d,'hero'));
-  // piezas bloqueadas y editor
+  ok('sin tarjeta de bienvenida ni acciones welcome', !btn(b.d,'welcome') && !btn(b.d,'welcomeclose') && !/Crear mi héroe/.test(b.d.body.textContent));
+  b=boot(); ok('instalación nueva: botón del héroe con icono pixel', !!btn(b.d,'hero') && !!b.d.querySelector('.herobtn canvas[data-spr="hero"][aria-hidden="true"]'));
   b=boot(); click(b.w, btn(b.d,'hero'));
-  ok('editor: input nombre', !!b.d.querySelector('#hero-name'));
-  const locked=[...b.d.querySelectorAll('.piece')].filter(x=>x.disabled);
-  ok('editor: piezas bloqueadas con requisito', locked.length>10 && locked.every(x=>/Bloqueado ·/.test(x.textContent)), locked.length);
-  const pcs=[...b.d.querySelectorAll('.piece[data-slot="suit"]')]; click(b.w, pcs[1]);
-  ok('editor: elegir traje', b.d.querySelectorAll('.piece[data-slot="suit"]')[1].getAttribute('aria-pressed')==='true');
+  ok('Tu héroe: nombre editable, nivel, poderes y virtudes', !!b.d.querySelector('#hero-name') && /Nivel 1/.test(b.d.querySelector('main').textContent) && b.d.querySelectorAll('main h2').length>=2);
+  ok('Tu héroe: no hay piezas, Aleatorio ni avatar grande', !b.d.querySelector('.piece') && !btn(b.d,'random') && !btn(b.d,'piece') && !b.d.querySelector('.avwrap'));
+  ok('Tu héroe: icono del héroe con aria-hidden', !!b.d.querySelector('main canvas[data-spr="hero"][aria-hidden="true"]'));
+  ok('Tu héroe: 9 virtudes y 8 poderes', b.d.querySelectorAll('main .vlist')[1].querySelectorAll('.vitem').length===9 && b.d.querySelectorAll('main .vlist')[0].querySelectorAll('.vitem').length===8);
   const inp=b.d.querySelector('#hero-name'); inp.value='Zeta'; inp.dispatchEvent(new b.w.Event('input',{bubbles:true}));
-  click(b.w, btn(b.d,'random'));
   const sv=JSON.parse(b.w.localStorage.getItem('estudio_isw_v1'));
-  ok('editor: nombre y look guardados', sv.hero.name==='Zeta' && Object.values(sv.hero.look).every(i=>Number.isInteger(i)));
-  ok('aleatorio solo desbloqueadas', [...b.d.querySelectorAll('.piece[aria-pressed="true"]')].every(x=>!x.disabled));
-  // look bloqueado se restablece
-  b=boot({seed:fresh({xp:0,hero:{name:'X',look:{skin:0,suit:7,head:4,eyes:5,emblem:9,cape:3,hand:6},welcomed:true}})});
-  click(b.w, btn(b.d,'hero'));
-  ok('look bloqueado reseteado', [...b.d.querySelectorAll('.piece[aria-pressed="true"]')].every(x=>!x.disabled));
+  ok('el nombre se guarda y el héroe es solo { name }', JSON.stringify(sv.hero)==='{"name":"Zeta"}', JSON.stringify(sv.hero));
+  b=boot({seed:fresh({xp:95})}); startQuiz(b.w,b.d,'M01'); playRound(b.w,b.d,'right');
+  ok('subir de nivel menciona poderes y no piezas', /Poderes nuevos/.test(b.d.querySelector('main').textContent) && !/Piezas nuevas/.test(b.d.querySelector('main').textContent));
 
   // poderes por nivel
-  const avail=(xp)=>{const x=boot({seed:fresh({xp,hero:{name:'H',look:{skin:0,suit:0,head:0,eyes:0,emblem:0,cape:0,hand:0},welcomed:true}})}); startQuiz(x.w,x.d,'M01'); return x;};
+  const avail=(xp)=>{const x=boot({seed:fresh({xp,hero:{name:'H'}})}); startQuiz(x.w,x.d,'M01'); return x;};
   let x=avail(0); ok('Nv1 sin poderes', !x.d.querySelector('.powers'));
   x=avail(100); ok('Nv2 solo láser', !!pw(x.d,'laser') && !pw(x.d,'web'));
   click(x.w, pw(x.d,'laser'));
@@ -121,16 +112,16 @@ function pw(d,id){ return d.querySelector('[data-pw="'+id+'"]'); }
     ok('regen: acierto asistido', /con ayuda/.test(x.d.querySelector('.fb').textContent)); }
   // fotográfica y teletransportación
   x=avail(4000); click(x.w, pw(x.d,'photo')); ok('fotográfica muestra puntos clave', !!x.d.querySelector('.hint ul'));
-  { const y=boot({seed:fresh({xp:7600,hero:{name:'H',look:{skin:0,suit:0,head:0,eyes:0,emblem:0,cape:0,hand:0},welcomed:true}})}); click(y.w,modBtn(y.d,'M01')); click(y.w,btn(y.d,'start',b=>b.dataset.kind==='tf'));
+  { const y=boot({seed:fresh({xp:7600,hero:{name:'H'}})}); click(y.w,modBtn(y.d,'M01')); click(y.w,btn(y.d,'start',b=>b.dataset.kind==='tf'));
     const p0=y.d.querySelector('.prompt').textContent; const n0=y.d.querySelector('.playtop').textContent; click(y.w, pw(y.d,'tele'));
     ok('teletransportación cambia pregunta', y.d.querySelector('.prompt').textContent!==p0 && y.d.querySelector('.playtop').textContent===n0 && !!findQ(y.w,y.d)); }
   // supervelocidad en Relámpago
-  { const y=boot({seed:fresh({xp:2500,hero:{name:'H',look:{skin:0,suit:0,head:0,eyes:0,emblem:0,cape:0,hand:0},welcomed:true}})}); click(y.w,modBtn(y.d,'M01')); click(y.w,btn(y.d,'start',b=>b.dataset.kind==='tf'));
+  { const y=boot({seed:fresh({xp:2500,hero:{name:'H'}})}); click(y.w,modBtn(y.d,'M01')); click(y.w,btn(y.d,'start',b=>b.dataset.kind==='tf'));
     ok('velocidad habilitada en Relámpago', pw(y.d,'speed') && !pw(y.d,'speed').disabled); click(y.w,pw(y.d,'speed')); ok('velocidad se consume', pw(y.d,'speed').disabled);
     ok('regen no aplica en V/F', pw(y.d,'regen')?.getAttribute('aria-disabled')==='true'); y.w.close(); }
   // jefe sin poderes
   const m1=boot().w.eval('MODULES[0]'); const tp={}; m1.topics.forEach(t=>tp['M01:'+t.id]=[1,1,1,1,1,1,1,1,1,1]);
-  b=boot({seed:fresh({xp:9200,topics:tp,hero:{name:'H',look:{skin:0,suit:0,head:0,eyes:0,emblem:0,cape:0,hand:0},welcomed:true}})});
+  b=boot({seed:fresh({xp:9200,topics:tp,hero:{name:'H'}})});
   click(b.w,modBtn(b.d,'M01')); click(b.w,btn(b.d,'start',x=>x.dataset.kind==='boss'));
   ok('jefe sin poderes', !b.d.querySelector('.powers') && !!b.d.querySelector('.prompt'));
   playRound(b.w,b.d,'wrong',{boss:true});
@@ -175,7 +166,7 @@ function pw(d,id){ return d.querySelector('[data-pw="'+id+'"]'); }
   b=boot({brokenStorage:true}); startQuiz(b.w,b.d,'M01'); playRound(b.w,b.d,'right'); click(b.w,btn(b.d,'hero'));
   ok('sin storage: funciona', !!b.d.querySelector('#hero-name') && b.errors.length===0, b.errors.join('|'));
   // accesibilidad
-  b=boot(); ok('aria en cabecera', !!b.d.querySelector('.avbtn[aria-label]') && !!b.d.querySelector('.minibar[aria-label]'));
+  b=boot(); ok('aria en cabecera', !!b.d.querySelector('.herobtn[aria-label]') && !!b.d.querySelector('.minibar[aria-label]'));
   // sin errores
   const allErr=[]; 
   for (const r of results) {}

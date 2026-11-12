@@ -36,7 +36,7 @@ function boot(seed) {
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
 }
-const fresh = (o = {}) => Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H', welcomed: true } }, o);
+const fresh = (o = {}) => Object.assign({ v: 1, xp: 0, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o);
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const pad = (n) => (n < 10 ? '0' : '') + n;
 const dstr = (x) => x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
