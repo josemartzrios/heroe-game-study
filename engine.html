@@ -353,9 +353,34 @@ body.trip-on{overflow:hidden}
 #trip-confirm .banner{width:100%}
 #trip-confirm[hidden]{display:none}   /* display:flex anula [hidden]: sin esto una capa invisible tapa la pantalla */
 @media (orientation:landscape){#trip-sheet{max-height:85dvh}}
+/* ciudad 3D: capa a pantalla completa fuera de #app */
+#city-root{position:fixed; inset:0; height:100dvh; z-index:50; background:var(--bg); touch-action:none; overscroll-behavior:none}
+#city-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}
+body.city-on{overflow:hidden}
+#city-ui-main{position:absolute; inset:0; pointer-events:none}
+#city-ui-main > *, #city-ui-main .city-hud > *{pointer-events:auto}
+.city-hud{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); pointer-events:none}
+#city-pause,#city-run,#city-act{min-height:44px; min-width:44px}
+.city-objrow{position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 52px); left:max(16px, env(safe-area-inset-left)); margin:0; display:flex; align-items:center; gap:8px; font-weight:600; background:var(--surface); border-radius:10px; padding:4px 10px; pointer-events:none}
+#city-arrow{display:inline-block; transition:transform .1s}
+#city-act{position:absolute; right:max(16px, env(safe-area-inset-right)); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 64px)}
+#city-act[hidden]{display:none}
+#city-loadbox{position:absolute; top:50%; left:0; right:0; text-align:center; font-weight:600}
+#city-sheet{position:absolute; left:0; right:0; bottom:0; max-height:50dvh; overflow:auto; background:var(--surface); border-top:2px solid var(--line); padding:12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); z-index:2}
+#city-sheet[hidden]{display:none}
+#city-sheet .qcard{margin-top:0}
+#city-pausebox{position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
+#city-pausebox[hidden]{display:none}
+#city-pausebox .banner{width:100%; background:var(--surface)}
+#city-pausebox .actions.col{flex-direction:column; align-items:stretch}
+#city-rotate{position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center; background:var(--bg); font-weight:700; text-align:center}
+#city-rotate[hidden]{display:none}
+#city-root .banner{background:var(--surface)}
+@media (orientation:landscape) and (min-height:500px){#city-sheet{max-height:85dvh}}
 </style>
 <div class="shell" id="app"></div>
 <div id="trip-root" hidden></div>
+<div id="city-root" hidden></div>
 <!--__THREE__-->
 <script>
 const MODULES = [
@@ -1049,6 +1074,7 @@ const MODULES = [
     }
     h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Estudia jugando</h1>' +
       '<p class="lead">Un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroCard() +
+      '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad en 3D: aprende con los mentores, ponte a prueba y enseña.</p><div><button class="btn primary" data-act="city">Entrar a la ciudad</button></div></section>' +
       '<section class="card adv"><span class="eyebrow">Modo aventura</span><strong>Explora el mundo</strong><p>Explora el mundo y aprende hablando con mentores.</p><div><button class="btn primary" data-act="world">Entrar al mundo</button></div></section>' +
       '<h2 class="h2">Módulos</h2><div class="mods">' + MODULES.map(function (m) {
         var b = S.boss[m.id];
@@ -1282,9 +1308,11 @@ const MODULES = [
 
   function render() {
     var h = '';
+    var keepCity = V.name === 'city' || ((V.name === 'play' || V.name === 'results') && R && R.cfg && R.cfg.back && R.cfg.back.name === 'city');
     worldStop();
     tripStop();
-    try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results' || V.name === 'trip'); document.body.classList.toggle('trip-on', V.name === 'trip'); } catch (e) {}
+    if (!keepCity) cityStop(); else if (V.name !== 'city') citySuspend();
+    try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results' || V.name === 'trip' || V.name === 'city'); document.body.classList.toggle('trip-on', V.name === 'trip'); document.body.classList.toggle('city-on', V.name === 'city'); } catch (e) {}
     if (V.name === 'home') h = vHome();
     else if (V.name === 'module') h = vModule();
     else if (V.name === 'topic') h = vTopic();
@@ -1296,6 +1324,7 @@ const MODULES = [
     app.innerHTML = h;
     if (V.name === 'world') worldStart();
     if (V.name === 'trip') tripStart();
+    if (V.name === 'city') { if (CD && CD.suspended) cityResume(); else cityStart(); }
     if (R) R.fx = null;
     paintSprites();
     if (V.name === 'results') xpCount();
@@ -1531,7 +1560,7 @@ const MODULES = [
     }
   }
   window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
-  document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); });
+  document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); if (CD && CD.world) CD.world.setPaused('hidden', document.hidden); });
 
   var MNAMES = ['Ana', 'Bruno', 'Carla', 'Diego', 'Elena', 'Fermín', 'Gala', 'Héctor', 'Inés', 'Joaquín', 'Karla', 'Luis', 'Marta', 'Nico', 'Olga', 'Pablo', 'Rosa', 'Sergio', 'Tere', 'Víctor'];
   var MFEM = { Ana: 1, Carla: 1, Elena: 1, Gala: 1, 'Inés': 1, Karla: 1, Marta: 1, Olga: 1, Rosa: 1, Tere: 1 };
@@ -2409,6 +2438,7 @@ const MODULES = [
     else if (a === 'world') go('world', { to: d.id || null });
     else if (a === 'w') worldAct(d.w, d);
     else if (a === 'trip') go('trip');
+    else if (a === 'city') go('city');
     else if (a === 'hero') go('hero');
     else if (a === 'mod') go('module', { mod: d.id });
     else if (a === 'topic') go('topic', { mod: V.mod, topic: d.id });
