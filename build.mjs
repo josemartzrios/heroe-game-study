@@ -90,7 +90,8 @@ const cityStory = fs.readFileSync(new URL('./city/story.js', import.meta.url), '
 const cityInput = fs.readFileSync(new URL('./city/input.js', import.meta.url), 'utf8');
 out = out.replace('/*__CITY_CODE__*/', () => cityMove + '\n' + cityStory + '\n' + cityInput + '\n  /*__CITY_CODE__*/');
 const cityView = fs.readFileSync(new URL('./city/view.js', import.meta.url), 'utf8');
-out = out.replace('/*__CITY_VIEW__*/', () => cityView + '\n  /*__CITY_VIEW_CODE__*/');
+const cityHero = fs.readFileSync(new URL('./city/hero3d.js', import.meta.url), 'utf8');
+out = out.replace('/*__CITY_VIEW__*/', () => cityHero + '\n' + cityView + '\n  /*__CITY_VIEW_CODE__*/');
 out = out.split('/*__CITY_CODE__*/').join('').split('/*__CITY_VIEW_CODE__*/').join('');
 
 // Three.js r169 como texto inerte (se importa solo al entrar al viaje)
