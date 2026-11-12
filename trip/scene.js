@@ -190,7 +190,7 @@ var TripScene = (function () {
     function frameNow() { wantFrame = true; requestFrame(); }
 
     function goTo(i) {
-      if (disposed) return Promise.resolve();
+      if (disposed || !(i >= 0 && i < W.stops.length && Math.floor(i) === i)) return Promise.resolve();   // índice fuera de rango: no hay a dónde ir
       if (travel) { var old = travel.res; travel = null; old(); }
       yaw = 0; pitch = 0;
       var to = W.stops[i];
@@ -198,6 +198,7 @@ var TripScene = (function () {
       return new Promise(function (res) { travel = { from: camT, to: to, el: 0, dur: camT === to ? 600 : 2500, res: res }; frameNow(); });
     }
     function setLayers(n) {
+      if (disposed) return;
       ringState.forEach(function (r, k) {
         var tgt = k < n ? 1 : 0;
         if (tgt === r.tgt) return;
@@ -207,6 +208,7 @@ var TripScene = (function () {
       frameNow();
     }
     function lost() {
+      if (disposed) return;
       W.mats.packet.color.setHex(LOST); W.mats.points.color.setHex(LOST); W.mats.core.color.setHex(LOST);
       if (lostTimer) clearTimeout(lostTimer);
       lostTimer = setTimeout(function () {
@@ -216,9 +218,10 @@ var TripScene = (function () {
       }, 600);
       frameNow();
     }
-    function look(dx, dy) { yaw = clamp(yaw + dx, -60, 60); pitch = clamp(pitch + dy, -25, 25); applyCamera(); frameNow(); }
-    function resize() { fit(); frameNow(); }
+    function look(dx, dy) { if (disposed) return; yaw = clamp(yaw + dx, -60, 60); pitch = clamp(pitch + dy, -25, 25); applyCamera(); frameNow(); }
+    function resize() { if (disposed) return; fit(); frameNow(); }
     function setPaused(reason, on) {
+      if (disposed) return;
       var was = pauser.running();
       pauser.set(reason, on);
       if (!was && pauser.running()) frameNow();

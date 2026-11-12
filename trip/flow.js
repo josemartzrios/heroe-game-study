@@ -25,6 +25,7 @@ var TripFlow = (function () {
       return t[Math.floor(rnd() * t.length)];
     }
     function start() {
+      if (s.phase !== 'idle') return;
       s.phase = 'arrive';
       deps.onStation(s.station);
     }

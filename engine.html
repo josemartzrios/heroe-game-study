@@ -348,7 +348,8 @@ body.trip-on{overflow:hidden}
 #trip-sheet{max-height:60dvh; background:var(--surface); border-top:2px solid var(--line)}
 #trip-sheet .qcard{margin-top:0}
 #trip-sheet ul{margin:0; padding-left:18px}
-#trip-confirm{z-index:2}
+#trip-confirm{z-index:2; inset:0; top:0; max-height:none; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
+#trip-confirm .banner{width:100%}
 @media (orientation:landscape){#trip-sheet{max-height:85dvh}}
 </style>
 <div class="shell" id="app"></div>
@@ -486,19 +487,19 @@ const MODULES = [
   function migrate(o) {
     var f = fresh();
     for (var k in f) if (!(k in o)) o[k] = f[k];
-    if (!o.hero || typeof o.hero !== 'object') o.hero = f.hero;
-    o.hero.look = Object.assign({}, f.hero.look, o.hero.look || {});
+    if (!plainObj(o.hero)) o.hero = f.hero;
+    o.hero.look = Object.assign({}, f.hero.look, plainObj(o.hero.look) ? o.hero.look : {});
     if (typeof o.hero.name !== 'string') o.hero.name = 'Héroe';
     if (typeof o.hero.welcomed !== 'boolean') o.hero.welcomed = false;
-    if (!o.virtues || typeof o.virtues !== 'object') o.virtues = {};
-    o.stats = Object.assign({}, f.stats, o.stats || {});
+    if (!plainObj(o.virtues)) o.virtues = {};
+    o.stats = Object.assign({}, f.stats, plainObj(o.stats) ? o.stats : {});
     if (!Array.isArray(o.stats.learnTopics)) o.stats.learnTopics = [];
-    if (!o.stats.bossFailed || typeof o.stats.bossFailed !== 'object') o.stats.bossFailed = {};
-    if (!o.world || typeof o.world !== 'object') o.world = worldFresh();
-    if (!o.world.pos || typeof o.world.pos !== 'object') o.world.pos = {};
-    if (!o.world.talked || typeof o.world.talked !== 'object') o.world.talked = {};
+    if (!plainObj(o.stats.bossFailed)) o.stats.bossFailed = {};
+    if (!plainObj(o.world)) o.world = worldFresh();
+    if (!plainObj(o.world.pos)) o.world.pos = {};
+    if (!plainObj(o.world.talked)) o.world.talked = {};
     if (typeof o.world.at !== 'string') o.world.at = 'hub';
-    if (!o.world.beaten || typeof o.world.beaten !== 'object') o.world.beaten = {};
+    if (!plainObj(o.world.beaten)) o.world.beaten = {};
     o.world.run = !!o.world.run;
     /* normalización de tipos: un estado corrupto nunca debe impedir arrancar ni congelar una respuesta */
     function num(x, d) { return (typeof x === 'number' && isFinite(x) && x >= 0) ? x : d; }
@@ -1344,7 +1345,11 @@ const MODULES = [
   /* --- juego dentro del viaje --- */
   var TRIP_LAYERS = ['Datos', 'Puerto', 'IP', 'Trama'];
   function tId(id) { return document.getElementById(id); }
-  function tFocus(el) { if (!el) return; try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } }
+  function tFocus(el) {
+    if (!el) return;
+    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+    if (el.scrollIntoView && el.closest && el.closest('#trip-sheet')) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e2) {} }   // la hoja tiene scroll propio: que el foco quede a la vista
+  }
   function tHudQuit() { return document.querySelector('#trip-ui [data-act="tripquit"]'); }
   function tripRecord(r) {
     touch();
@@ -1418,16 +1423,23 @@ const MODULES = [
     if (TD && TD.scene) TD.scene.setPaused('sheet', true);
     tFocus(sheet.querySelector('[data-act="tripend"]'));
   }
+  function tripInert(on) {   // con la confirmación abierta, lo de atrás no recibe foco ni toques
+    ['trip-sheet'].forEach(function (id) { var x = tId(id); if (x) { if (on) x.setAttribute('inert', ''); else x.removeAttribute('inert'); } });
+    var hud = document.querySelector('#trip-ui .trip-hud');
+    if (hud) { if (on) hud.setAttribute('inert', ''); else hud.removeAttribute('inert'); }
+  }
   function tripOpenConfirm() {
     var c = tId('trip-confirm'); if (!c || !TD) return;
-    c.innerHTML = '<div class="banner up"><p>¿Salir del viaje? Lo que respondiste ya quedó guardado.</p><div class="actions">' +
+    c.innerHTML = '<div class="banner up" role="alertdialog" aria-labelledby="trip-confirm-msg"><p id="trip-confirm-msg">¿Salir del viaje? Lo que respondiste ya quedó guardado.</p><div class="actions">' +
       '<button class="btn" data-act="tripconfirm">Salir</button><button class="btn primary" data-act="tripcancel">Seguir</button></div></div>';
     c.hidden = false; TD.confirm = true;
+    tripInert(true);
     tFocus(c.querySelector('[data-act="tripcancel"]'));
   }
   function tripCloseConfirm() {
     var c = tId('trip-confirm'); if (!c || !TD) return;
     c.hidden = true; c.innerHTML = ''; TD.confirm = false;
+    tripInert(false);
     tFocus(tHudQuit());
     var f = TD.pendingArrive; TD.pendingArrive = null;
     if (f) f();

@@ -19,7 +19,7 @@ function boot(opts = {}) {
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem('estudio_isw_v1', JSON.stringify(opts.seed));
       w.scrollTo = () => {};
-      w.Element.prototype.scrollIntoView = function () {};
+      w.Element.prototype.scrollIntoView = function () { if (opts.spyScroll) (w.__scrolled = w.__scrolled || []).push(this); };
       if (opts.rndSeed) { let a = opts.rndSeed; w.Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });
       if (opts.objUrl !== false) { w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => { st.revokes++; }; }
@@ -286,7 +286,7 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
   e.w.close();
 
   // (t) recorrido completo acertando todo + (x) S.boss sin cambios
-  e = boot({ imp: 'ok' }); enter(e); await tick();
+  e = boot({ imp: 'ok', spyScroll: true }); enter(e); await tick();
   { const n = await runTrip(e, () => true);
     ok('t el recorrido llega al resumen con 18 respuestas', n === 18 && !!btn(e.d, 'tripend'), 'n=' + n);
     ok('t .pill y .bar[aria-label] dicen "Estación 10 de 10"', e.d.getElementById('trip-pill').textContent === 'Estación 10 de 10' && e.d.querySelector('.bar[aria-label]').getAttribute('aria-label') === 'Estación 10 de 10');
@@ -294,6 +294,7 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
     ok('t el resumen muestra la XP igual a S.xp', !!m && Number(m[1]) === stored(e).xp && stored(e).xp > 0, (m && m[1]) + ' vs ' + stored(e).xp);
     ok('t el foco está en tripend y no hay tripreplay', e.d.activeElement === btn(e.d, 'tripend') && !btn(e.d, 'tripreplay'));
     ok('t el resumen lista 10 estaciones', e.d.querySelectorAll('#trip-sheet li').length === 10);
+    ok('f5 "Continuar" y "Terminar" se llevan a la vista dentro de la hoja con scroll', (e.w.__scrolled || []).some((el) => el.dataset && el.dataset.act === 'tripnext') && (e.w.__scrolled || []).some((el) => el.dataset && el.dataset.act === 'tripend'));
     ok('x S.boss sin cambios', JSON.stringify(stored(e).boss) === '{}');
     ok('t recorrido completo sin errores de consola', !e.errors.length, e.errors.join(' | '));
     click(e.w, btn(e.d, 'tripend'));
@@ -331,6 +332,18 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
     ok('v tras 13 s simulados y 300 ms reales no hay .fb', !e.d.querySelector('.fb')); }
   e.w.close();
 
+
+  // (s3) la confirmación de salida bloquea lo que hay detrás
+  e = await toQuestion(); answerWrong(e); click(e.w, btn(e.d, 'tripnext'));
+  click(e.w, e.d.querySelector('#trip-ui [data-act="tripquit"]'));
+  { const dlg = e.d.querySelector('#trip-confirm [role="alertdialog"]');
+    ok('s3 la confirmación es un alertdialog con aria-labelledby válido', !!dlg && !!e.d.getElementById(dlg.getAttribute('aria-labelledby') || '_'));
+    ok('s3 con la confirmación abierta la hoja y el HUD están inert', e.d.getElementById('trip-sheet').hasAttribute('inert') && e.d.querySelector('.trip-hud').hasAttribute('inert'));
+    ok('s3 el CSS de #trip-confirm cubre toda la pantalla (inset:0)', /#trip-confirm\{[^}]*inset:0/.test(html));
+    click(e.w, btn(e.d, 'tripcancel'));
+    ok('s3 al cerrar se quita inert de la hoja y del HUD', !e.d.getElementById('trip-sheet').hasAttribute('inert') && !e.d.querySelector('.trip-hud').hasAttribute('inert'));
+    ok('s3 al cerrar el foco vuelve a tripquit', e.d.activeElement && e.d.activeElement.dataset.act === 'tripquit'); }
+  e.w.close();
 
   // (z) escena real sin WebGL: si create falla, el motor muestra el respaldo sin errores
   e = boot({ imp: 'ok', scene: false }); enter(e); await tick();
