@@ -314,13 +314,32 @@ function citySheetHtml(sub, title, body, actions) {
   return '<article class="qcard"><div class="chips"><span class="chip">' + esc(sub) + '</span></div><h2 class="prompt">' + esc(title) + '</h2>' + body +
     '<div class="actions">' + (actions || '') + '<button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>';
 }
+/* Lección del mentor: resumen y puntos clave del tema; abrirla cuenta como lección vista */
+function cityLesson(o) {
+  var m = mod('M02'), t = m.tById[o.topic];
+  if (!t) return;
+  var lk = 'M02:' + t.id;
+  if (S.stats.learnTopics.indexOf(lk) < 0) { S.stats.learnTopics.push(lk); checkVirtues(); save(); }
+  var body = '<p class="lead">' + fmt(t.summary) + '</p><ul class="kp">' + t.keyPoints.map(function (k) { return '<li>' + fmt(k) + '</li>'; }).join('') + '</ul>' +
+    '<p class="meta">' + esc('Para la primera estrella hacen falta al menos 6 respuestas') + '</p>';
+  cityOpenSheet(citySheetHtml(o.name + ' · ' + t.id, t.title, body, '<button class="btn primary" data-act="cx" data-c="practice" data-id="' + esc(o.id) + '">Practicar</button>'), '[data-c="practice"]', o.id);
+}
+function cityPractice(id) {
+  var o = cityItem(id); if (!CD || !o) return;
+  var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
+  CD.sheet = false; CD.sheetFor = null;
+  startRound({ kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'city' }, city: { kind: 'practice', id: id } }, itemsFor('quiz', mod('M02'), o.topic));
+}
 /* Punto de extensión: cada tarea posterior reemplaza la rama de su tipo (mentor, criatura, reparación, aprendiz, torre, puente). */
 function cityOpen(o) {
   if (!CD || !o) return;
   if (o.kind === 'director') {
-    cityOpenSheet(citySheetHtml('Directora', o.name, '<p>' + fmt('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>'), '[data-c="sheetclose"]', o.id);
+    var ob = cityObjective();
+    cityOpenSheet(citySheetHtml('Directora', o.name, '<p>' + esc('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>' + (ob && ob.label ? '<p><b>' + esc(ob.label) + '</b></p>' : '')), '[data-c="sheetclose"]', o.id);
   } else if (o.kind === 'mirror') {
-    cityOpenSheet(citySheetHtml('Espejo', 'Tu héroe', '<p>' + fmt('Mira cómo vas: rango ' + CityStory.rankOf(S.city, CITY_DATA) + '.') + '</p>'), '[data-c="sheetclose"]', o.id);
+    citySave(); go('hero');
+  } else if (o.kind === 'mentor') {
+    cityLesson(o);
   } else if (o.kind === 'creature') {
     startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: o.id, name: o.name, mod: 'M02', topics: o.topics }, city: { kind: 'battle', id: o.id } }, battleItems({ mod: 'M02', topics: o.topics, n: 8 }));
   } else if (o.kind === 'repair') {
@@ -369,12 +388,13 @@ function cityPauseAct(a) {
     var list = CityMove.within(CD.hero, cityItems(), 15);
     cityPauseList('Lugares cercanos', list.map(function (o) { return '<button class="btn" data-act="cx" data-c="go" data-id="' + esc(o.id) + '">' + esc(o.label) + ' · ' + Math.round(o.dist) + ' m</button>'; }), 'No hay lugares a menos de 15 m.');
   } else if (a === 'learned') {
-    var m = mod('M02'), rows = S.stats.learnTopics.filter(function (k) { return k.indexOf('M02:') === 0 && m.tById[k.slice(4)]; })
-      .map(function (k) { var t = m.tById[k.slice(4)]; return '<p class="meta">' + esc(t.id + ' ' + t.title) + ' ' + starsHtml(starsOf(m, t.id)) + '</p>'; });
-    var pb = cId('city-pausebox');
-    pb.innerHTML = '<div class="banner"><h2 class="h2">Lecciones vistas</h2>' + (rows.length ? rows.join('') : '<p>Todavía no has visto lecciones de este distrito.</p>') +
-      '<div class="actions"><button class="btn" data-act="cx" data-c="pausemain">Volver</button></div></div>';
-    cFocus(pb.querySelector('button'));
+    var m = mod('M02'), M = CITY_DATA.districts.M02, rows = [];
+    S.stats.learnTopics.forEach(function (k) {
+      if (k.indexOf('M02:') !== 0 || !m.tById[k.slice(4)]) return;
+      var tp = m.tById[k.slice(4)], mm = M.mentors.filter(function (x) { return x.topic === tp.id; })[0];
+      if (mm) rows.push('<button class="btn" data-act="cx" data-c="lesson" data-id="' + esc(mm.id) + '">' + esc(tp.id + ' ' + tp.title) + ' · ' + starStr(starsOf(m, tp.id)) + '</button>');
+    });
+    cityPauseList('Lecciones vistas', rows, 'Todavía no has visto lecciones de este distrito.');
   } else if (a === 'review') {
     var q = queue();
     if (!q.length) { cityPauseList('Repaso', [], 'No tienes preguntas pendientes de repaso.'); return; }
@@ -396,6 +416,8 @@ function cityAct(c, b) {
   else if (c === 'go') { var o = cityItem(b.dataset.id); if (CD && o) { cityClosePause(); cityOpen(o); } }
   else if (c === 'act') { if (CD && CD.world && !CD.sheet && !CD.paused && CD.nearId) { var n = cityItem(CD.nearId); if (n) cityOpen(n); } }
   else if (c === 'sheetclose') cityCloseSheet();
+  else if (c === 'practice') cityPractice(b.dataset.id);
+  else if (c === 'lesson') { var lo = cityItem(b.dataset.id); if (CD && lo) { cityClosePause(); cityOpen(lo); } }
   else if (c === 'run') { S.city.run = !S.city.run; save(); b.setAttribute('aria-pressed', S.city.run ? 'true' : 'false'); }
 }
 cityRootEl().addEventListener('click', function (e) {

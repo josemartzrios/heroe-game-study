@@ -251,6 +251,49 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     ok('(l) state(): cam y flags con la forma del contrato', typeof st.cam.yaw === 'number' && typeof st.cam.pitch === 'number' && st.cam.arm > 0 && !!st.flags && typeof st.flags.restored === 'boolean' && typeof st.flags.lit === 'number' && !!st.flags.beatenToday && !!st.flags.repairs && !!st.flags.apprenticesVisible && !!st.flags.stars);
     e.w.close();
 
+    // (o) mentores: lección, práctica, lugares cercanos, objetivo, espejo
+    { const e2 = boot({ seed: base() }); await enter(e2);
+      const D2 = (await import('../city/districts.mjs')).city.districts.M02, m1 = D2.mentors[0], m2 = D2.mentors[1];
+      const M2 = e2.w.eval('MODULES').find((m) => m.id === 'M02'), T1 = M2.topics.find((x) => x.id === 'T01');
+      api(e2).teleport(m1.x, m1.z + 1);
+      ok('(o) junto a m01: "Hablar con {nombre}"', $(e2, '#city-act').textContent === 'Hablar con ' + m1.name, $(e2, '#city-act').textContent);
+      key(e2, 'e'); tickW(e2); keyUp(e2, 'e');
+      const sh = $(e2, '#city-sheet');
+      ok('(o) E abre la Lección con el título de T01 y el aviso de las 6 respuestas', !sh.hidden && sh.textContent.includes(T1.title) && /Para la primera estrella hacen falta al menos 6 respuestas/.test(sh.textContent));
+      ok('(o) la Lección marca M02:T01 como vista y lo guarda', saved(e2.w).stats.learnTopics.includes('M02:T01'));
+      ok('(o) el foco queda en "Practicar" y hay "Cerrar"', e2.d.activeElement && /^Practicar$/.test(e2.d.activeElement.textContent) && !!btnText(e2, /^Cerrar$/, '#city-sheet'));
+      const kpBold = T1.keyPoints.find((k) => /\*\*/.test(k));
+      if (kpBold) ok('(o) un keyPoint con **negritas** se muestra como <strong>', sh.innerHTML.includes('<strong>'));
+      const pos = e2.st.lastOpts.state().hero, h0 = (saved(e2.w).topics['M02:T01'] || []).length;
+      click(e2.w, btnText(e2, /^Practicar$/, '#city-sheet'));
+      ok('(o) Practicar abre la ronda con la ciudad suspendida', !!$(e2, '.prompt') && root(e2).hidden && e2.st.disposed === 0);
+      for (let i = 0; i < 3; i++) { answerRight(e2.w, e2.d); }
+      click(e2.w, $(e2, '[data-act="quit"]')); await tick();
+      const pos2 = e2.st.lastOpts.state().hero;
+      ok('(o) al volver la posición es la misma y el historial de T01 creció', Math.abs(pos.x - pos2.x) < 1e-9 && Math.abs(pos.z - pos2.z) < 1e-9 && (saved(e2.w).topics['M02:T01'] || []).length > h0 && !root(e2).hidden);
+      api(e2).teleport(m2.x, m2.z + 3);
+      click(e2.w, $(e2, '#city-pause')); click(e2.w, btnText(e2, /^Lugares cercanos$/, '#city-pausebox'));
+      click(e2.w, [...e2.d.querySelectorAll('#city-pausebox button')].find((b) => b.textContent.includes(m2.name)));
+      ok('(o) desde Lugares cercanos el mentor abre su Lección', !$(e2, '#city-sheet').hidden && $(e2, '#city-sheet').textContent.includes(M2.topics.find((x) => x.id === m2.topic).title));
+      click(e2.w, btnText(e2, /^Cerrar$/, '#city-sheet'));
+      click(e2.w, $(e2, '#city-pause')); click(e2.w, btnText(e2, /^Lecciones vistas$/, '#city-pausebox'));
+      const les = [...e2.d.querySelectorAll('#city-pausebox [data-c="lesson"]')];
+      ok('(o) Lecciones vistas: un botón por tema visto', les.length === 2, String(les.length));
+      click(e2.w, les[0]);
+      ok('(o) cada botón abre su Lección', !$(e2, '#city-sheet').hidden && $(e2, '#city-pausebox').hidden);
+      click(e2.w, btnText(e2, /^Cerrar$/, '#city-sheet'));
+      e2.w.close(); }
+    { // Ir al objetivo con T01 visto y 0 estrellas en T02 abre la Lección del mentor de T02
+      const e2 = boot({ seed: base({ stats: { learnTopics: ['M02:T01'], cleared: 0, roundsNoPower: 0, bossFailed: {} }, topics: { 'M02:T01': [1, 1, 1, 1, 1, 1] }, city: { prologue: true } }) }); await enter(e2);
+      click(e2.w, $(e2, '#city-pause')); click(e2.w, btnText(e2, /^Ir al objetivo$/, '#city-pausebox'));
+      const M2 = e2.w.eval('MODULES').find((m) => m.id === 'M02');
+      ok('(o) "Ir al objetivo" abre la Lección del mentor de T02', !$(e2, '#city-sheet').hidden && $(e2, '#city-sheet').textContent.includes(M2.topics.find((x) => x.id === 'T02').title), $(e2, '#city-sheet').textContent.slice(0, 80));
+      e2.w.close(); }
+    { const e2 = boot({ seed: base() }); await enter(e2);
+      api(e2).teleport(6, -2.5); click(e2.w, $(e2, '#city-act'));
+      ok('(o) el espejo va a "Tu héroe" y libera la ciudad', e2.st.disposed === 1 && /Héroe|héroe/.test(e2.d.body.textContent) && root(e2).hidden);
+      e2.w.close(); }
+
     // (n) el mundo 2D ya no existe
     { const e2 = boot({ seed: base() });
       ok('(n) Inicio sin "Explora el mundo" y con una sola tarjeta de aventura', !/Explora el mundo/.test(e2.d.body.textContent) && e2.d.querySelectorAll('.card.adv').length === 1 && !e2.d.querySelector('[data-act="world"]'));
