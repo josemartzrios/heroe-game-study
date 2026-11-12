@@ -6,15 +6,16 @@ const html = fs.readFileSync(require('path').join(__dirname, '..', 'juego_estudi
 const results = [];
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
 const tick = async (n = 6) => { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const KEY = 'estudio_isw_v1';
 
-// opts: seed, imp: 'ok'|'reject'|'pending', world: false (sin mundo), createReject, matchMedia: bool|undefined
+// opts: seed, createPending (create no resuelve hasta st.resolveCreate), createReject, noCtx (getContext nulo), matchMedia: bool|undefined
 function boot(opts = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push('jsdomError: ' + (e.detail || e.message)));
   vc.on('error', (e) => errors.push('console.error: ' + e));
-  const st = { imports: 0, creates: 0, disposed: 0, rendererDisposed: 0, ctxLoss: 0, calls: [], worlds: [], canvases: [], lastOpts: null, resolveImport: null };
+  const st = { creates: 0, disposed: 0, calls: [], worlds: [], canvases: [], lastOpts: null, resolveCreate: null, trips: 0 };
   const dom = new JSDOM(html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
@@ -27,28 +28,22 @@ function boot(opts = {}) {
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });
       w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
-      w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
-      const imp = opts.imp || 'ok';
-      w.__TRIP_IMPORT__ = () => {
-        st.imports++;
-        if (imp === 'reject') return Promise.reject(new Error('import falso'));
-        if (imp === 'pending') return new Promise((res) => { st.resolveImport = () => res({ THREE_FAKE: true }); });
-        return Promise.resolve({ THREE_FAKE: true });
-      };
-      if (opts.world !== false) {
+      w.HTMLCanvasElement.prototype.getContext = function () { return opts.noCtx ? null : fake(this); };
+      w.__TRIP_IMPORT__ = () => { st.trips++; return Promise.resolve({ THREE_FAKE: true }); };
+      {
         w.__CITY_WORLD__ = {
-          create(THREE, canvas, D, o) {
+          create(canvas, D, o) {
             st.creates++; st.lastOpts = o; st.canvases.push(canvas);
             if (opts.createReject) return Promise.reject(new Error('create falló'));
             const api = {
               resize: () => st.calls.push(['resize']),
               setPaused: (r, on) => st.calls.push(['setPaused', r, on]),
               dissolve: (id) => st.calls.push(['dissolve', id]),
-              setLook: () => st.calls.push(['setLook']),
               encounter: () => Promise.resolve(),
-              dispose: () => { st.disposed++; st.calls.push(['dispose']); st.rendererDisposed++; st.ctxLoss++; if (st.disposed === 1) canvas.dispatchEvent(new w.Event('webglcontextlost')); }
+              dispose: () => { st.disposed++; st.calls.push(['dispose']); if (st.disposed === 1 && st.lastOpts.onLost) st.lastOpts.onLost(); }
             };
             st.worlds.push(api);
+            if (opts.createPending) return new Promise((res) => { st.resolveCreate = () => res(api); });
             return Promise.resolve(api);
           }
         };
@@ -87,35 +82,40 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
 (async () => {
   let e;
   try {
-    // (a) entrada, carga y creación del mundo
-    e = boot({ imp: 'pending', seed: base() });
+    // (a) entrada, carga diferida y creación del mundo
+    e = boot({ createPending: true, seed: base() });
     const home = $(e, '[data-act="city"]');
     ok('(a) Inicio tiene "Entrar a la ciudad"', !!home && /Entrar a la ciudad/.test(home.textContent));
     click(e.w, home); await tick();
-    ok('(a) carga: "Preparando la ciudad…" en role=status con "Salir"', !!root(e) && !root(e).hidden && /Preparando la ciudad…/.test(($(e, '#city-load') || {}).textContent || '') && $(e, '#city-load').getAttribute('role') === 'status' && !!btnText(e, /^Salir$/));
-    ok('(a) el mundo aún no se crea durante la carga', e.st.creates === 0);
-    e.st.resolveImport(); await tick();
-    ok('(a) después de la carga se crea el mundo y desaparece "Preparando"', e.st.creates === 1 && !$(e, '#city-load') && e.d.body.classList.contains('city-on'), String(e.st.creates));
-    ok('(a) opts del mundo: tick, state, look y portrait', typeof e.st.lastOpts.tick === 'function' && typeof e.st.lastOpts.state === 'function' && !!e.st.lastOpts.look && typeof e.st.lastOpts.portrait === 'boolean');
+    ok('(a) con el mundo pendiente < 250 ms todavía no se muestra "Preparando la ciudad…"', !$(e, '#city-load') && !root(e).hidden);
+    await sleep(320);
+    ok('(a) pasado ese tiempo aparece "Preparando la ciudad…" en role=status con "Salir"', /Preparando la ciudad…/.test(($(e, '#city-load') || {}).textContent || '') && $(e, '#city-load').getAttribute('role') === 'status' && !!btnText(e, /^Salir$/));
+    e.st.resolveCreate(); await tick();
+    ok('(a) al resolver desaparece "Preparando" y la vista queda activa', !$(e, '#city-load') && e.d.body.classList.contains('city-on') && e.st.creates === 1);
+    ok('(a) la ciudad nunca pide el import de Three (e.trips = 0)', e.st.trips === 0);
+    ok('(a) opts del mundo: exactamente reducedMotion, tick, state y onLost', JSON.stringify(Object.keys(e.st.lastOpts).sort()) === JSON.stringify(['onLost', 'reducedMotion', 'state', 'tick']), Object.keys(e.st.lastOpts).join());
     ok('(a) sin errores de consola', e.errors.length === 0, e.errors.join('|'));
+    e.w.close();
+    e = boot({ seed: base() }); click(e.w, $(e, '[data-act="city"]')); await sleep(320);
+    ok('(a) con el mundo inmediato "Preparando la ciudad…" nunca aparece', !$(e, '#city-load') && e.st.creates === 1);
     e.w.close();
 
     // (a2) "Salir" durante la carga
-    e = boot({ imp: 'pending', seed: base() });
-    click(e.w, $(e, '[data-act="city"]')); await tick();
-    click(e.w, btnText(e, /^Salir$/)); e.st.resolveImport(); await tick();
-    ok('(a2) Salir durante la carga: Inicio, nada creado, raíz oculta y vacía', e.st.creates === 0 && !!$(e, '[data-act="city"]') && root(e).hidden && root(e).innerHTML === '');
+    e = boot({ createPending: true, seed: base() });
+    click(e.w, $(e, '[data-act="city"]')); await sleep(320);
+    click(e.w, btnText(e, /^Salir$/)); e.st.resolveCreate && e.st.resolveCreate(); await tick();
+    ok('(a2) Salir durante la carga: Inicio, raíz oculta y vacía, y el mundo tardío se libera', !!$(e, '[data-act="city"]') && root(e).hidden && root(e).innerHTML === '' && e.st.disposed === e.st.creates);
     e.w.close();
 
-    // (b) sin WebGL: import o create rechazados
-    for (const mode of ['import', 'create', 'sinMundo']) {
-      e = boot({ seed: base(), imp: mode === 'import' ? 'reject' : 'ok', createReject: mode === 'create', world: mode !== 'sinMundo' });
+    // (b) sin canvas 2D: create rechazado o getContext nulo
+    for (const mode of ['create', 'sinCanvas']) {
+      e = boot({ seed: base(), createReject: mode === 'create', noCtx: mode === 'sinCanvas', noTest: mode === 'sinCanvas' });
       await enter(e);
-      ok('(b/' + mode + ') "Tu equipo no puede mostrar la ciudad 3D." con las dos salidas', /Tu equipo no puede mostrar la ciudad 3D\./.test(root(e).textContent) && !!btnText(e, /^Ir a los módulos$/) && !!btnText(e, /^Volver$/), root(e).textContent.slice(0, 80));
-      if (mode === 'import') {
+      ok('(b/' + mode + ') "No se pudo mostrar la ciudad." con las dos salidas y sin "3D"', /No se pudo mostrar la ciudad\./.test(root(e).textContent) && !/3D/.test(root(e).textContent) && !!btnText(e, /^Ir a los módulos$/) && !!btnText(e, /^Volver$/), root(e).textContent.slice(0, 80));
+      if (mode === 'create') {
         click(e.w, btnText(e, /^Ir a los módulos$/));
         ok('(b) "Ir a los módulos" abre M02 y libera la raíz', /Fundamentos de ingeniería de software/.test(e.d.body.textContent) && root(e).hidden && root(e).innerHTML === '');
-      } else if (mode === 'create') {
+      } else {
         click(e.w, btnText(e, /^Volver$/));
         ok('(b) "Volver" abre Inicio', !!$(e, '[data-act="city"]') && root(e).hidden);
       }
@@ -125,11 +125,11 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     // (c) pérdida de contexto y reintento en la posición guardada
     e = boot({ seed: base() }); await enter(e);
     api(e).teleport(10, 5);
-    e.st.canvases[0].dispatchEvent(new e.w.Event('webglcontextlost')); await tick();
-    ok('(c) webglcontextlost: "Se perdió la vista 3D." con Reintentar y Salir', /Se perdió la vista 3D\./.test(root(e).textContent) && !!btnText(e, /^Reintentar$/) && !!btnText(e, /^Salir$/));
+    e.st.lastOpts.onLost(); await tick();
+    ok('(c) onLost: "Se perdió la vista de la ciudad." con Reintentar y Salir y sin "3D"', !/3D/.test(root(e).textContent) && /Se perdió la vista de la ciudad\./.test(root(e).textContent) && !!btnText(e, /^Reintentar$/) && !!btnText(e, /^Salir$/));
     ok('(c) la posición se guardó antes de liberar', Math.abs(saved(e.w).city.at.x - 10) < 1e-6 && Math.abs(saved(e.w).city.at.z - 5) < 1e-6, JSON.stringify(saved(e.w).city.at));
     click(e.w, btnText(e, /^Reintentar$/)); await tick();
-    const hs = e.st.lastOpts.state().hero;
+    const hs = Object.assign({}, e.st.lastOpts.state().hero);
     ok('(c) Reintentar: create ×2, dispose ×1 y héroe en la posición guardada', e.st.creates === 2 && e.st.disposed === 1 && Math.abs(hs.x - 10) < 1e-6 && Math.abs(hs.z - 5) < 1e-6, e.st.creates + '/' + e.st.disposed + ' ' + JSON.stringify(hs));
     e.w.close();
 
@@ -137,10 +137,10 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e = boot({ seed: base() }); await enter(e);
     const RND = () => e.w.__CITY_ROUND__;
     RND().startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09' } }, RND().repairItems('M02', 'T15'));
-    e.st.canvases[0].dispatchEvent(new e.w.Event('webglcontextlost'));
+    e.st.lastOpts.onLost();
     answerRight(e.w, e.d); answerRight(e.w, e.d);
     click(e.w, $(e, '[data-act="back"]')); await tick();
-    ok('(c2) volver con contexto perdido: aviso, sin reanudar ni redimensionar', /Se perdió la vista 3D\./.test(root(e).textContent) && callsOf(e, 'setPaused', 'suspended').filter((c) => c[2] === false).length === 0 && callsOf(e, 'resize').length === 0, JSON.stringify(e.st.calls));
+    ok('(c2) volver con contexto perdido: aviso, sin reanudar ni redimensionar', /Se perdió la vista de la ciudad\./.test(root(e).textContent) && callsOf(e, 'setPaused', 'suspended').filter((c) => c[2] === false).length === 0 && callsOf(e, 'resize').length === 0, JSON.stringify(e.st.calls));
     e.w.close();
 
     // (d) pausa y salir al inicio
@@ -150,7 +150,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     ok('(d) Pausa: diálogo modal con las 6 opciones', !pb.hidden && pb.getAttribute('role') === 'dialog' && pb.getAttribute('aria-modal') === 'true' && ['Ir al objetivo', 'Lugares cercanos', 'Lecciones vistas', 'Repaso', 'Tu héroe', 'Salir al inicio'].every((t) => [...pb.querySelectorAll('button')].some((b) => b.textContent.trim() === t)));
     ok('(d) Pausa: #city-ui-main inert y el mundo en pausa', $(e, '#city-ui-main').hasAttribute('inert') && callsOf(e, 'setPaused', 'pause').some((c) => c[2] === true));
     click(e.w, [...pb.querySelectorAll('button')].find((b) => /^Salir al inicio$/.test(b.textContent.trim()))); await tick();
-    ok('(d) Salir al inicio: dispose (renderer + pérdida de contexto) y raíz oculta y vacía', e.st.disposed === 1 && e.st.rendererDisposed === 1 && e.st.ctxLoss === 1 && root(e).hidden && root(e).innerHTML === '' && !!$(e, '[data-act="city"]') && !e.d.body.classList.contains('city-on'));
+    ok('(d) Salir al inicio: dispose y raíz oculta y vacía', e.st.disposed === 1 && root(e).hidden && root(e).innerHTML === '' && !!$(e, '[data-act="city"]') && !e.d.body.classList.contains('city-on'));
     e.w.close();
 
     // (e) ir 5 veces a "Tu héroe" y volver
@@ -243,14 +243,14 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
 
     // (l) tick: movimiento con teclado y guardado periódico
     e = boot({ seed: base() }); await enter(e);
-    const p0 = e.st.lastOpts.state().hero;
+    const p0 = Object.assign({}, e.st.lastOpts.state().hero);
     key(e, 'w'); for (let i = 0; i < 20; i++) tickW(e, 50);
-    const p1 = e.st.lastOpts.state().hero;
+    const p1 = Object.assign({}, e.st.lastOpts.state().hero);
     for (let i = 0; i < 100; i++) tickW(e, 50); keyUp(e, 'w');
     ok('(l) W mueve al héroe hacia el norte (z baja)', p1.z < p0.z - 1, JSON.stringify([p0, p1]));
     ok('(l) tras 5 s de juego S.city.at se guarda', !!saved(e.w).city.at && saved(e.w).city.at.z < p0.z - 1, JSON.stringify(saved(e.w).city.at));
     const st = e.st.lastOpts.state();
-    ok('(l) state(): cam y flags con la forma del contrato', typeof st.cam.yaw === 'number' && typeof st.cam.pitch === 'number' && st.cam.arm > 0 && !!st.flags && typeof st.flags.restored === 'boolean' && typeof st.flags.lit === 'number' && !!st.flags.beatenToday && !!st.flags.repairs && !!st.flags.apprenticesVisible && !!st.flags.stars);
+    ok('(l) state(): hero, zoom y flags con la forma del contrato', typeof st.hero.x === 'number' && ['up', 'down', 'left', 'right'].includes(st.hero.face) && st.zoom === 1 && !('cam' in st) && !!st.flags && typeof st.flags.restored === 'boolean' && typeof st.flags.lit === 'number' && !!st.flags.beatenToday && !!st.flags.repairs && !!st.flags.apprenticesVisible && !!st.flags.stars);
     e.w.close();
 
     // (o) mentores: lección, práctica, lugares cercanos, objetivo, espejo
@@ -266,12 +266,12 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       ok('(o) el foco queda en "Practicar" y hay "Cerrar"', e2.d.activeElement && /^Practicar$/.test(e2.d.activeElement.textContent) && !!btnText(e2, /^Cerrar$/, '#city-sheet'));
       const kpBold = T1.keyPoints.find((k) => /\*\*/.test(k));
       if (kpBold) ok('(o) un keyPoint con **negritas** se muestra como <strong>', sh.innerHTML.includes('<strong>'));
-      const pos = e2.st.lastOpts.state().hero, h0 = (saved(e2.w).topics['M02:T01'] || []).length;
+      const pos = Object.assign({}, e2.st.lastOpts.state().hero), h0 = (saved(e2.w).topics['M02:T01'] || []).length;
       click(e2.w, btnText(e2, /^Practicar$/, '#city-sheet'));
       ok('(o) Practicar abre la ronda con la ciudad suspendida', !!$(e2, '.prompt') && root(e2).hidden && e2.st.disposed === 0);
       for (let i = 0; i < 3; i++) { answerRight(e2.w, e2.d); }
       click(e2.w, $(e2, '[data-act="quit"]')); await tick();
-      const pos2 = e2.st.lastOpts.state().hero;
+      const pos2 = Object.assign({}, e2.st.lastOpts.state().hero);
       ok('(o) al volver la posición es la misma y el historial de T01 creció', Math.abs(pos.x - pos2.x) < 1e-9 && Math.abs(pos.z - pos2.z) < 1e-9 && (saved(e2.w).topics['M02:T01'] || []).length > h0 && !root(e2).hidden);
       api(e2).teleport(m2.x, m2.z + 3);
       click(e2.w, $(e2, '#city-pause')); click(e2.w, btnText(e2, /^Lugares cercanos$/, '#city-pausebox'));
@@ -454,6 +454,54 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         e4.w.close(); }
     }
 
+    // (u) zoom, dirección, flecha, estado reutilizado y guardado periódico (vista 2D)
+    { const e5 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e5);
+      const zoom = () => e5.st.lastOpts.state().zoom;
+      ok('(u) el zoom inicial es 1', zoom() === 1);
+      key(e5, '+'); tickW(e5);
+      ok('(u) la tecla + acerca un paso: 1.25', zoom() === 1.25, String(zoom()));
+      key(e5, '+'); key(e5, '+'); key(e5, '+'); key(e5, '+'); tickW(e5);
+      ok('(u) el zoom no pasa de 1.75', zoom() === 1.75, String(zoom()));
+      for (let i = 0; i < 8; i++) key(e5, '-'); tickW(e5);
+      ok('(u) ni baja de 1', zoom() === 1);
+      root(e5).getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 844, right: 390, bottom: 844, x: 0, y: 0 });
+      const ptr = (type, x, y, id) => root(e5).dispatchEvent(new e5.w.PointerEvent(type, { bubbles: true, pointerId: id, clientX: x, clientY: y, pointerType: 'touch' }));
+      ptr('pointerdown', 150, 300, 7); ptr('pointerdown', 250, 300, 8); ptr('pointermove', 50, 300, 7); ptr('pointermove', 350, 300, 8); tickW(e5);
+      ok('(u) un pellizco enorme se limita a 1.75', zoom() === 1.75, String(zoom()));
+      ptr('pointerup', 50, 300, 7); ptr('pointerup', 350, 300, 8);
+      click(e5.w, $(e5, '#city-pause')); const zo = btnText(e5, /^Alejar$/, '#city-pausebox'), zi = btnText(e5, /^Acercar$/, '#city-pausebox');
+      ok('(u) la pausa tiene "Acercar" y "Alejar" de ≥ 44 px', !!zo && !!zi);
+      click(e5.w, zo); ok('(u) "Alejar" baja 0.25 y la pausa sigue abierta', zoom() === 1.5 && !$(e5, '#city-pausebox').hidden, String(zoom()));
+      click(e5.w, btnText(e5, /^Acercar$/, '#city-pausebox')); ok('(u) "Acercar" sube 0.25', zoom() === 1.75);
+      ok('(u) state() devuelve siempre el mismo objeto', e5.st.lastOpts.state() === e5.st.lastOpts.state());
+      e5.w.close(); }
+    { const e5 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e5);
+      key(e5, 'w'); for (let i = 0; i < 20; i++) tickW(e5, 50); keyUp(e5, 'w');
+      ok('(u) caminando con W la dirección es "up"', e5.st.lastOpts.state().hero.face === 'up');
+      key(e5, 'a'); for (let i = 0; i < 20; i++) tickW(e5, 50); keyUp(e5, 'a');
+      ok('(u) con A es "left"', e5.st.lastOpts.state().hero.face === 'left', e5.st.lastOpts.state().hero.face);
+      for (let i = 0; i < 20; i++) tickW(e5, 50);
+      ok('(u) quieto mantiene la última dirección', e5.st.lastOpts.state().hero.face === 'left');
+      e5.w.close();
+      const e6 = boot({ seed: base({ city: { prologue: true, at: { x: 0, z: 8, yaw: Math.PI } } }) }); await enter(e6);
+      ok('(u) al entrar con at.yaw = π la dirección es "down"', e6.st.lastOpts.state().hero.face === 'down');
+      e6.w.close(); }
+    { const e5 = boot({ seed: base() }); await enter(e5);   // objetivo: Iris en (-6, -4)
+      const arrow = () => $(e5, '#city-arrow');
+      api(e5).teleport(-6, 6); ok('(u) flecha: objetivo arriba → 0°', arrow().style.transform === 'rotate(0deg)' && !arrow().hidden, arrow().style.transform);
+      api(e5).teleport(-16, -4); ok('(u) objetivo a la derecha → 90°', arrow().style.transform === 'rotate(90deg)', arrow().style.transform);
+      api(e5).teleport(-6, -14); ok('(u) objetivo abajo → 180°', arrow().style.transform === 'rotate(180deg)', arrow().style.transform);
+      api(e5).teleport(4, -4); ok('(u) objetivo a la izquierda → 270°', arrow().style.transform === 'rotate(270deg)', arrow().style.transform);
+      api(e5).teleport(-6, -3.5); ok('(u) a menos de 1 m la flecha se oculta', arrow().hidden === true);
+      e5.w.close(); }
+    { const e5 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e5);
+      let writes = 0; const orig = e5.w.Storage.prototype.setItem; e5.w.Storage.prototype.setItem = function (k, v) { writes++; return orig.call(this, k, v); };
+      for (let i = 0; i < 60; i++) tickW(e5, 100);
+      ok('(u) quieto 6 s no escribe en localStorage', writes === 0, String(writes));
+      key(e5, 'w'); for (let i = 0; i < 70; i++) tickW(e5, 100); keyUp(e5, 'w');
+      ok('(u) caminando 7 s sí guarda', writes > 0, String(writes));
+      e5.w.close(); }
+
     // (n) el mundo 2D ya no existe
     { const e2 = boot({ seed: base() });
       ok('(n) Inicio sin "Explora el mundo" y con una sola tarjeta de aventura', !/Explora el mundo/.test(e2.d.body.textContent) && e2.d.querySelectorAll('.card.adv').length === 1 && !e2.d.querySelector('[data-act="world"]'));
@@ -465,8 +513,8 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     { const e2 = boot({ seed: base() });
       ok('(m) ganchos de prueba presentes con __CITY_TEST__', !!e2.w.__CITY_TEST_API__ && typeof e2.w.__CITY_TEST_API__.teleport === 'function');
       e2.w.close(); }
-    { const e2 = boot({ seed: base(), noTest: true }); await enter(e2);
-      ok('(m) sin __CITY_TEST__ no hay ganchos y el mundo falso se ignora', e2.w.__CITY_TEST_API__ === undefined && e2.st.creates === 0 && /Tu equipo no puede mostrar la ciudad 3D\./.test(root(e2).textContent));
+    { const e2 = boot({ seed: base(), noTest: true, noCtx: true }); await enter(e2);
+      ok('(m) sin __CITY_TEST__ no hay ganchos y el mundo falso se ignora', e2.w.__CITY_TEST_API__ === undefined && e2.st.creates === 0 && /No se pudo mostrar la ciudad\./.test(root(e2).textContent));
       e2.w.close(); }
   } catch (x) { results.push(['FAIL', 'excepción', x.stack]); }
   const fails = results.filter((r) => r[0] === 'FAIL');

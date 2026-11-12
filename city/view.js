@@ -1,9 +1,9 @@
 /* Vista `city` de Ciudad Núcleo (se inserta DENTRO de la IIFE del motor: usa S, V, go, esc, fmt, mod, starsOf, queue, sample,
-   startRound, levelOf, loadThree, CITY_DATA, CityMove, CityStory y CityInput). ES5. Texto de datos: solo esc()/fmt() en innerHTML;
+   startRound, levelOf, CITY_DATA, CityMove, CityStory, CityInput y CityWorld2D). ES5. Texto de datos: solo esc()/fmt() en innerHTML;
    el botón de acción, #city-live y #city-obj se escriben solo con textContent. */
 var CD = null, cityGen = 0;
-var CITY_QUIT_HTML = '<div id="city-loadbox"><p role="status" id="city-load">Preparando la ciudad…</p><button class="btn" data-act="cx" data-c="quit">Salir</button></div>';
-var CITY_TILT0 = -15 * Math.PI / 180, CITY_TILT_MIN = -35 * Math.PI / 180, CITY_TILT_MAX = 10 * Math.PI / 180;
+var CITY_LOAD_HTML = '<div id="city-loadbox"><p role="status" id="city-load">Preparando la ciudad…</p><button class="btn" data-act="cx" data-c="quit">Salir</button></div>';
+var CITY_ZMIN = 1, CITY_ZMAX = 1.75, CITY_LOAD_MS = 250, CITY_SAVE_M = 1;
 var CITY_ROTATE_Q = '(orientation: landscape) and (max-height: 499px) and (pointer: coarse)';
 var CITY_NEAR = 2.2;
 
@@ -17,10 +17,9 @@ function cFocus(el) {
 function cityWorldFactory() {
   var f = window.__CITY_WORLD__;
   if (window.__CITY_TEST__ === true && f && typeof f.create === 'function' && !(typeof Node !== 'undefined' && f instanceof Node)) return f;
-  return (typeof CityWorld !== 'undefined') ? CityWorld : null;
+  return (typeof CityWorld2D !== 'undefined') ? CityWorld2D : null;
 }
 function cityBossPassed() { return !!(S.boss.M02 && S.boss.M02.passed === true); }
-function cityPortrait() { return !(window.innerWidth > window.innerHeight && window.innerHeight < 500); }
 
 /* ---------- lugares: interactuables ---------- */
 function cityBase() {
@@ -35,8 +34,9 @@ function cityBase() {
   d = CityMove.door(M.bridge); out.push({ id: M.bridge.id, kind: 'bridge', name: 'Puente', label: 'Cruzar el puente', x: d.x, z: d.z });
   return out;
 }
-function cityItems() {
-  if (!CD) return [];
+/* Lugares disponibles ahora: se recalcula solo en cityRefresh (cambian los flags o el día), nunca por cuadro */
+function cityItems() { return (CD && CD.items) || []; }
+function cityBuildItems() {
   if (!CD.base) CD.base = cityBase();
   var m = mod('M02');
   return CD.base.filter(function (o) {
@@ -45,6 +45,12 @@ function cityItems() {
     if (o.kind === 'apprentice') return S.city.taught[o.id] !== true && starsOf(m, o.topic) >= 1;
     return true;
   });
+}
+/* Recalcula flags, lugares, objetivo y HUD: al iniciar, al reanudar, al cerrar una hoja y al cambiar el día */
+function cityRefresh() {
+  if (!CD) return;
+  CD.flags = cityFlags(); CD.items = cityBuildItems(); CD.day = today(); CD.dayT = Date.now();
+  cityHud(true); cityUpdateNear(true);
 }
 function cityItem(id) {
   if (!CD) return null;
@@ -90,6 +96,7 @@ function citySafe() {
 function cityMakeInput() {
   var inp = CityInput.create(cityRootEl(), {
     safe: citySafe,
+    isActive: function () { return !cityBlocked(); },
     isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate')); }
   });
   /* con la hoja o la pausa abiertas el mundo no agenda cuadros (no hay tick): Esc se atiende aquí, después del listener del input */
@@ -111,7 +118,7 @@ function cityHtml() {
     '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run +
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
-    '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden></button>' + CITY_QUIT_HTML + '</div>' +
+    '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden></button></div>' +
     '<div id="city-sheet" hidden></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
     '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div>' +
     '<div id="city-safe" style="position:fixed;left:0;bottom:0;padding-left:env(safe-area-inset-left);padding-bottom:env(safe-area-inset-bottom);visibility:hidden"></div>';
@@ -120,7 +127,7 @@ function cityTeardown() {
   cityGen++;
   var c = CD; CD = null;
   if (!c) return;
-  if (c.canvas && c.onLost) c.canvas.removeEventListener('webglcontextlost', c.onLost);
+  if (c.loadTimer) clearTimeout(c.loadTimer);
   cityDropInput(c);
   if (c.world) { try { c.world.dispose(); } catch (e2) {} }
 }
@@ -136,9 +143,9 @@ function cityFallback(kind) {
   cityTeardown();
   var r = cityRootEl(); r.hidden = false;
   if (kind === 'lost') {
-    r.innerHTML = '<div class="banner up" role="alert"><p>Se perdió la vista 3D.</p><div class="actions"><button class="btn primary" data-act="cx" data-c="retry">Reintentar</button><button class="btn" data-act="cx" data-c="quit">Salir</button></div></div>';
+    r.innerHTML = '<div class="banner up" role="alert"><p>Se perdió la vista de la ciudad.</p><div class="actions"><button class="btn primary" data-act="cx" data-c="retry">Reintentar</button><button class="btn" data-act="cx" data-c="quit">Salir</button></div></div>';
   } else {
-    r.innerHTML = '<div class="banner up" role="alert"><p>Tu equipo no puede mostrar la ciudad 3D.</p><div class="actions"><button class="btn" data-act="cx" data-c="mods">Ir a los módulos</button><button class="btn primary" data-act="cx" data-c="home">Volver</button></div></div>';
+    r.innerHTML = '<div class="banner up" role="alert"><p>No se pudo mostrar la ciudad.</p><div class="actions"><button class="btn" data-act="cx" data-c="mods">Ir a los módulos</button><button class="btn primary" data-act="cx" data-c="home">Volver</button></div></div>';
   }
   var b = r.querySelector('button.primary'); if (b) cFocus(b);
 }
@@ -148,35 +155,35 @@ function cityStart() {
   var gen = ++cityGen, r = cityRootEl(), at = S.city.at;
   r.hidden = false;
   r.innerHTML = cityHtml();
-  var cv = cId('city-cv');
-  var onLost = function (ev) {
-    if (!CD || ev.target !== CD.canvas) return;
-    if (CD.suspended) CD.lost = true; else cityFallback('lost');
-  };
-  CD = {
-    gen: gen, canvas: cv, world: null, input: null, onLost: onLost, base: null, flags: null,
-    hero: { x: at.x, z: at.z, yaw: at.yaw, vx: 0, vz: 0, speed: 0 }, safe: { x: at.x, z: at.z, yaw: at.yaw },
-    cam: { yaw: at.yaw, tilt: CITY_TILT0, arm: 6 }, boxes: CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true)),
+  var cv = cId('city-cv'), c;
+  c = CD = {
+    gen: gen, canvas: cv, world: null, input: null, base: null, flags: null, items: null, loadTimer: null,
+    hero: { x: at.x, z: at.z, yaw: at.yaw, vx: 0, vz: 0, speed: 0 }, safe: { x: at.x, z: at.z, yaw: at.yaw }, savedAt: { x: at.x, z: at.z },
+    face: CityMove.faceOf(at.yaw), zoom: CITY_ZMIN, boxes: CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true)),
+    st: { hero: { x: at.x, z: at.z, face: 'up', speed: 0 }, zoom: CITY_ZMIN, flags: null },
     paused: false, sheet: false, rotate: false, suspended: false, lost: false, lastObjId: null, lastZone: null, nearId: null,
-    saveT: 0, objT: 1, obj: null, objTarget: null, sheetFor: null
+    saveT: 0, objT: 0, obj: null, objTarget: null, sheetFor: null, day: '', dayT: 0, lastD: -1, lastAng: -1
   };
-  cv.addEventListener('webglcontextlost', onLost);
-  var fail = function () { if (gen === cityGen) { cityFallback('nogl'); } };
-  loadThree().then(function (THREE) {
-    if (gen !== cityGen || V.name !== 'city') return;
-    var F = cityWorldFactory();
-    if (!F) throw new Error('sin mundo');
-    var rm = false;
-    try { rm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
-    return Promise.resolve(F.create(THREE, cv, CITY_DATA, { reducedMotion: rm, portrait: cityPortrait(), look: S.hero.look, PARTS: PARTS, tick: cityTick, state: cityState })).then(function (world) {
-      if (gen !== cityGen || V.name !== 'city') { try { world.dispose(); } catch (e) {} return; }
-      CD.world = world;
-      CD.input = cityMakeInput();
-      var lb = cId('city-loadbox'); if (lb) lb.remove();
-      CD.flags = cityFlags();
-      cityHud(true); cityUpdateNear(true); cityRotateCheck();
-      cityAnnounce();
-    });
+  c.loadTimer = setTimeout(function () {   // el aviso solo se muestra si el mundo tarda más de 250 ms
+    c.loadTimer = null;
+    if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', CITY_LOAD_HTML); }
+  }, CITY_LOAD_MS);
+  var fail = function () { if (gen === cityGen) cityFallback('nogl'); };
+  var F = cityWorldFactory();
+  if (!F) { fail(); return; }
+  var rm = false;
+  try { rm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+  var made;
+  try {
+    made = F.create(cv, CITY_DATA, { reducedMotion: rm, tick: cityTick, state: cityState, onLost: function () { if (CD !== c) return; if (c.suspended) c.lost = true; else cityFallback('lost'); } });
+  } catch (e2) { fail(); return; }
+  Promise.resolve(made).then(function (world) {
+    if (gen !== cityGen || V.name !== 'city') { try { world.dispose(); } catch (e) {} return; }
+    if (c.loadTimer) { clearTimeout(c.loadTimer); c.loadTimer = null; }
+    CD.world = world;
+    CD.input = cityMakeInput();
+    var lb = cId('city-loadbox'); if (lb) lb.remove();
+    cityRefresh(); cityRotateCheck(); cityAnnounce();
   }).then(null, fail);
 }
 function citySuspend() {
@@ -197,9 +204,8 @@ function cityResume() {
   if (CD.sheet) cityCloseSheet(true);
   CD.boxes = CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true));
   if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (S.city.beaten[pb] === today() && CD.world) CD.world.dissolve(pb); }
-  CD.flags = cityFlags(); CD.objT = 1;
   if (CD.world) { CD.world.resize(); CD.world.setPaused('suspended', false); }
-  cityHud(true); cityUpdateNear(true); cityRotateCheck(); cityAnnounce();
+  cityRefresh(); cityRotateCheck(); cityAnnounce();
   if (cityRestorePending) { cityRestorePending = false; cityCelebrate(''); }
 }
 function cityRotateCheck() {
@@ -229,15 +235,20 @@ function cityHud(force) {
 }
 function cityObjUpdate(force) {
   if (!CD) return;
-  if (force || !CD.obj) { CD.obj = cityObjective(); CD.objTarget = cityObjTarget(CD.obj); }
+  if (force || !CD.obj) { CD.obj = cityObjective(); CD.objTarget = cityObjTarget(CD.obj); CD.lastD = -1; CD.lastAng = -1; }
   var o = CD.obj, t = CD.objTarget, el = cId('city-obj'), ar = cId('city-arrow'), txt = '';
   if (o && o.label) {
     if (t) {
-      var d = Math.round(Math.hypot(t.x - CD.hero.x, t.z - CD.hero.z));
+      var dx = t.x - CD.hero.x, dz = t.z - CD.hero.z, dist = Math.hypot(dx, dz), d = Math.round(dist);
       txt = o.label + ' · ' + d + ' m';
-      if (ar) { var ang = Math.atan2(-(t.x - CD.hero.x), -(t.z - CD.hero.z)) - CD.cam.yaw + Math.PI; ar.style.transform = 'rotate(' + Math.round(ang * 180 / Math.PI) + 'deg)'; ar.hidden = false; }
-    } else { txt = o.label; if (ar) ar.hidden = true; }
-  } else if (ar) ar.hidden = true;
+      var ang = Math.round(((Math.atan2(dx, -dz) * 180 / Math.PI) % 360 + 360) % 360);   // ▲ = 0° (arriba), giro horario
+      if (ar) {
+        var hide = dist < 1;
+        if (ar.hidden !== hide) ar.hidden = hide;
+        if (!hide && ang !== CD.lastAng) { ar.style.transform = 'rotate(' + ang + 'deg)'; CD.lastAng = ang; }
+      }
+    } else { txt = o.label; if (ar && !ar.hidden) ar.hidden = true; }
+  } else if (ar && !ar.hidden) ar.hidden = true;
   if (el && el.textContent !== txt) el.textContent = txt;
 }
 function cityAnnounce() {
@@ -249,46 +260,54 @@ function cityAnnounce() {
 }
 function cityUpdateNear(force) {
   if (!CD) return;
-  var n = CityMove.nearest(CD.hero, cityItems(), CITY_NEAR), id = n ? n.id : null, b = cId('city-act');
+  var list = cityItems(), best = null, bd = CITY_NEAR * CITY_NEAR, i, o, dx, dz, d2;
+  for (i = 0; i < list.length; i++) { o = list[i]; dx = o.x - CD.hero.x; dz = o.z - CD.hero.z; d2 = dx * dx + dz * dz; if (d2 <= bd) { bd = d2; best = o; } }
+  var id = best ? best.id : null, b = cId('city-act');
   if (!b || (!force && id === CD.nearId)) return;
   CD.nearId = id;
-  if (n) { b.textContent = n.label; b.hidden = false; } else { b.textContent = ''; b.hidden = true; }
+  if (best) { b.textContent = best.label; b.hidden = false; } else { b.textContent = ''; b.hidden = true; }
 }
-
 /* ---------- contrato con el mundo ---------- */
 function cityState() {
   if (!CD) return null;
-  return { hero: { x: CD.hero.x, z: CD.hero.z, yaw: CD.hero.yaw, speed: CD.hero.speed }, cam: { yaw: CD.cam.yaw, pitch: -CD.cam.tilt, arm: CD.cam.arm }, flags: CD.flags || (CD.flags = cityFlags()) };
+  var s = CD.st;
+  s.hero.x = CD.hero.x; s.hero.z = CD.hero.z; s.hero.face = CD.face; s.hero.speed = CD.hero.speed;
+  s.zoom = CD.zoom; s.flags = CD.flags || (CD.flags = cityFlags());
+  return s;
 }
 function cityBlocked() { return !CD || !CD.world || CD.suspended || CD.paused || CD.sheet || CD.rotate || CD.lost || CD.busy; }
-function cityAngDiff(a, b) { var d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; }
+/* Zoom: dueño único. El pellizco multiplica (continuo); los pasos de rueda y teclas suman 0.25 y encajan en la rejilla de 0.25. NaN cae a 1. No se guarda. */
+function cityZoomBy(factor, steps) {
+  if (!CD) return;
+  var z = CD.zoom * (typeof factor === 'number' && isFinite(factor) && factor > 0 ? factor : 1);
+  if (typeof steps === 'number' && isFinite(steps) && steps !== 0) z = Math.round((z + 0.25 * steps) / 0.25) * 0.25;
+  CD.zoom = (typeof z === 'number' && isFinite(z)) ? Math.max(CITY_ZMIN, Math.min(CITY_ZMAX, z)) : CITY_ZMIN;
+}
 function cityTick(dt) {
   var c = CD;
   if (!c || !c.input || c.suspended) return;
   if (typeof dt !== 'number' || !(dt >= 0)) dt = 0;
   var sec = Math.min(dt, 100) / 1000;
   if (c.input.consumePause()) cityPauseKey();
-  var act = c.input.consumeAction();
-  if (cityBlocked()) { c.input.consumeZoom(); return; }
+  var act = c.input.consumeAction(), zm = c.input.consumeZoom();
+  if (cityBlocked()) return;
+  cityZoomBy(zm.factor, zm.steps);
   var it = c.input.intent();
-  c.input.consumeZoom();   // el zoom 2D llega en la Tarea 4; el mundo 3D no lo usa
   var canRun = levelOf(S.xp) >= 5 && S.city.run === true;
   var nh = CityMove.step(c.hero, { mx: it.mx, mz: it.mz, run: it.run }, sec, c.boxes, { canRun: canRun, radius: CITY_DATA.radius, safe: c.safe });
   c.hero = nh; c.safe = { x: nh.x, z: nh.z, yaw: nh.yaw };
-  var rm = false;
-  if (!c.reducedChecked) { c.reducedChecked = true; try { c.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { c.reduced = false; } }
-  rm = c.reduced;
-  if (nh.speed > 0.5 && !rm) {
-    var df = cityAngDiff(c.cam.yaw, nh.yaw), stp = (Math.PI / 2) * sec;
-    c.cam.yaw += Math.abs(df) <= stp ? df : (df > 0 ? stp : -stp);
-  }
+  if (nh.speed > 0.1) c.face = CityMove.faceOf(nh.yaw);
   c.saveT += sec; c.objT += sec;
-  if (c.saveT >= 5) { c.saveT = 0; citySave(); }
-  if (c.objT >= 0.25) { c.objT = 0; cityObjUpdate(true); cityAnnounce(); }
+  if (c.saveT >= 5) {   // guardado periódico solo si el héroe se movió más de 1 m (al pausar, suspender o salir siempre se guarda)
+    c.saveT = 0;
+    if (Math.hypot(nh.x - c.savedAt.x, nh.z - c.savedAt.z) > CITY_SAVE_M) { citySave(); c.savedAt = { x: nh.x, z: nh.z }; }
+  }
+  var nowMs = Date.now();
+  if (nowMs - c.dayT > 30000 || nowMs < c.dayT) { c.dayT = nowMs; if (today() !== c.day) { cityRefresh(); cityAnnounce(); } }
+  if (c.objT >= 0.25) { c.objT = 0; cityObjUpdate(false); cityAnnounce(); }
   cityUpdateNear(false);
   if (act && c.nearId) { var o = cityItem(c.nearId); if (o) cityOpen(o); }
 }
-
 /* ---------- hojas ---------- */
 function cityOpenSheet(html, focusSel, forId) {
   if (!CD) return;
@@ -306,7 +325,7 @@ function cityCloseSheet(quiet) {
   CD.sheet = false; CD.sheetFor = null;
   if (CD.world && !quiet) CD.world.setPaused('sheet', false);
   if (quiet) return;
-  CD.flags = cityFlags(); cityHud(true); cityUpdateNear(true); cityAnnounce();
+  cityRefresh(); cityAnnounce();
   cityFlush();
   var a = cId('city-act'); cFocus(a && !a.hidden ? a : cId('city-pause'));
 }
@@ -460,6 +479,7 @@ function cityPauseMain() {
   var pb = cId('city-pausebox'); if (!pb) return;
   pb.innerHTML = '<div class="banner"><h2 class="h2">Pausa</h2><div class="actions col">' +
     CITY_PAUSE_OPTS.map(function (p) { return '<button class="btn" data-act="cx" data-c="p-' + p[0] + '">' + esc(p[1]) + '</button>'; }).join('') +
+    '<div class="actions"><button class="btn" data-act="cx" data-c="zoomout">Alejar</button><button class="btn" data-act="cx" data-c="zoomin">Acercar</button></div>' +
     '<button class="btn primary" data-act="cx" data-c="pauseclose">Cerrar</button></div></div>';
 }
 function cityOpenPause() {
@@ -516,6 +536,8 @@ function cityAct(c, b) {
   else if (c === 'retry') { cityStop(); cityStart(); }
   else if (c === 'pause') { if (CD && CD.world) { if (CD.paused) cityClosePause(); else if (!CD.sheet) cityOpenPause(); } }
   else if (c === 'pauseclose') cityClosePause();
+  else if (c === 'zoomin') cityZoomBy(1, 1);
+  else if (c === 'zoomout') cityZoomBy(1, -1);
   else if (c === 'pausemain') { cityPauseMain(); cFocus(cId('city-pausebox').querySelector('button')); }
   else if (c.indexOf('p-') === 0) { if (CD && CD.paused) cityPauseAct(c.slice(2)); }
   else if (c === 'go') { var o = cityItem(b.dataset.id); if (CD && o) { cityClosePause(); cityOpen(o); } }
@@ -541,7 +563,7 @@ if (window.__CITY_TEST__ === true) {
     teleport: function (x, z) {
       if (!CD) return;
       CD.hero = { x: x, z: z, yaw: CD.hero.yaw, vx: 0, vz: 0, speed: 0 }; CD.safe = { x: x, z: z, yaw: CD.hero.yaw };
-      cityObjUpdate(true); cityUpdateNear(true); cityAnnounce();
+      CD.savedAt = { x: CD.savedAt.x, z: CD.savedAt.z }; cityObjUpdate(false); cityUpdateNear(true); cityAnnounce();
     },
     objective: function () { return cityObjective(); }
   };

@@ -23,9 +23,7 @@ function boot(raw, opts = {}) {
       w.scrollTo = () => {};
       w.__CITY_TEST__ = true;
       if (opts.cityWorld) {
-        w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
-        w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
-        w.__CITY_WORLD__ = { create(THREE, canvas, D, o) { w.__fakeOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, setLook() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
+        w.__CITY_WORLD__ = { create(canvas, D, o) { w.__fakeOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
       }
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };

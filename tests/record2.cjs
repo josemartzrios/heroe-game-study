@@ -28,9 +28,7 @@ function boot(opts = {}) {
       w.cancelAnimationFrame = () => {};
       // Ciudad 3D con mundo falso (las batallas empiezan desde la ciudad).
       w.__CITY_TEST__ = true;
-      w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
-      w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
-      w.__CITY_WORLD__ = { create(THREE, canvas, D, o) { return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, setLook() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
+      w.__CITY_WORLD__ = { create(canvas, D, o) { return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };

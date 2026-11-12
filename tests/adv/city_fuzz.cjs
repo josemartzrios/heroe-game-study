@@ -1,6 +1,6 @@
-// Fuzzing de Ciudad Núcleo dentro del motor (jsdom): sesiones de 20-60 eventos aleatorios con import/create controlables,
+// Fuzzing de Ciudad Núcleo dentro del motor (jsdom): sesiones de 20-60 eventos aleatorios con create controlable,
 // movimiento y teclas, teleport a interactuables, hojas, rondas respondidas al azar, Pausa, salir y entrar, resize,
-// visibilitychange, webglcontextlost (canvas actual o viejo) y aviso de girar. Cada sesión corre en un worker con perro guardián.
+// visibilitychange, onLost del mundo (vivo o ya liberado) y aviso de girar. Cada sesión corre en un worker con perro guardián.
 // Uso: node tests/adv/city_fuzz.cjs [SESIONES=150] [SEED=20261111]    (regresión: node tests/adv/city_fuzz.cjs 1 <seed>)
 const { isMainThread, parentPort } = require('worker_threads');
 const L = require('./lib.cjs');
@@ -17,7 +17,7 @@ function boot(cfg, r, seedState) {
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push('jsdomError: ' + (e.detail && e.detail.stack ? String(e.detail.stack).split('\n').slice(0, 3).join(' ') : (e.detail || e.message))));
   vc.on('error', (...a) => errors.push('console.error: ' + a.map(String).join(' ')));
-  const st = { imp: [], cre: [], creates: 0, delivered: 0, disposed: 0, canvases: [], afterDispose: [], hidden: false, rotate: false, opts: null, alive: null };
+  const st = { cre: [], creates: 0, delivered: 0, disposed: 0, canvases: [], afterDispose: [], hidden: false, rotate: false, opts: null, alive: null };
   const dom = new JSDOM(html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
@@ -29,22 +29,15 @@ function boot(cfg, r, seedState) {
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       Object.defineProperty(w.document, 'hidden', { configurable: true, get: () => st.hidden });
-      w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       w.matchMedia = () => ({ matches: st.rotate });
-      w.__TRIP_IMPORT__ = () => {
-        const m = r.pick(cfg.imp);
-        if (m === 'ok') return Promise.resolve({ THREE_FAKE: true });
-        if (m === 'reject') return Promise.reject(new Error('import falso'));
-        return new Promise((res, rej) => st.imp.push({ res: () => res({ THREE_FAKE: true }), rej: () => rej(new Error('import tardío')) }));
-      };
       w.__CITY_WORLD__ = {
-        create(THREE, canvas, D, o) {
+        create(canvas, D, o) {
           st.creates++; st.canvases.push(canvas); let dead = false;
           const live = (n) => { if (dead) st.afterDispose.push(n); };
           const api = {
-            resize: () => live('resize'), setPaused: () => live('setPaused'), dissolve: () => live('dissolve'), setLook: () => live('setLook'),
+            resize: () => live('resize'), setPaused: () => live('setPaused'), dissolve: () => live('dissolve'),
             encounter: () => { live('encounter'); return r.bool(0.3) ? new Promise((res) => st.cre.push({ res, rej: res })) : Promise.resolve(); },
-            dispose: () => { if (dead) return; dead = true; st.disposed++; if (r.bool(0.5)) canvas.dispatchEvent(new w.Event('webglcontextlost')); },
+            dispose: () => { if (dead) return; dead = true; st.disposed++; if (r.bool(0.5) && st.opts && st.opts.onLost) st.opts.onLost(); },
           };
           const m = r.pick(cfg.create);
           const deliver = () => { st.delivered++; st.opts = o; return api; };
@@ -64,7 +57,7 @@ let D = null;
 async function session(seed) {
   if (!D) D = (await import('../../city/districts.mjs')).city;
   const r = L.rng(seed);
-  const cfg = { imp: r.pick([['ok'], ['pending'], ['reject'], ['ok', 'pending', 'reject']]), create: r.pick([['ok'], ['pending'], ['ok', 'pending', 'throw']]), deep: r.bool(0.3) };
+  const cfg = { create: r.pick([['ok'], ['pending'], ['ok', 'pending', 'throw']]), deep: r.bool(0.3) };
   const M = D.districts.M02;
   const spots = [D.plaza.director, D.plaza.mirror].concat(M.mentors, M.repairs, M.apprentices, M.creatures.map((c) => ({ x: c.area.x, z: c.area.z })), [{ x: M.tower.x, z: M.tower.z + 5.2 }, { x: M.bridge.x, z: M.bridge.z + 6.2 }]);
   const six = {}; for (let i = 1; i <= 23; i++) six['M02:T' + String(i).padStart(2, '0')] = [1, 1, 1, 1, 1, 1];
@@ -99,9 +92,8 @@ async function session(seed) {
       else if (p < 0.74) { ev = 'resize'; w.dispatchEvent(new w.Event('resize')); }
       else if (p < 0.78) { st.hidden = !st.hidden; ev = 'visibilitychange hidden=' + st.hidden; d.dispatchEvent(new w.Event('visibilitychange')); }
       else if (p < 0.81) { st.rotate = !st.rotate; ev = 'rotate=' + st.rotate; w.dispatchEvent(new w.Event('resize')); }
-      else if (p < 0.85) { const c = d.getElementById('city-cv'); ev = 'contextlost actual' + (c ? '' : ' (sin canvas)'); if (c) c.dispatchEvent(new w.Event('webglcontextlost')); }
-      else if (p < 0.87) { ev = 'contextlost viejo'; if (st.canvases.length) r.pick(st.canvases).dispatchEvent(new w.Event('webglcontextlost')); }
-      else if (p < 0.91) { const x = st.imp.shift(); const ok = r.bool(0.7); ev = (ok ? 'resolver' : 'rechazar') + ' import' + (x ? '' : ' (no hay)'); if (x) (ok ? x.res : x.rej)(); }
+      else if (p < 0.87) { ev = 'tick+state'; if (st.opts) { try { st.opts.tick(r.int(0, 80)); st.opts.state(); } catch (x) { viol.push('I9 tick/state lanzó: ' + x.message); } } }
+      else if (p < 0.91) { const c = d.getElementById('city-cv'); ev = 'onLost (mundo viejo o actual)'; if (st.opts && st.opts.onLost) st.opts.onLost(); }
       else if (p < 0.95) { const x = st.cre.shift(); const ok = r.bool(0.7); ev = (ok ? 'resolver' : 'rechazar') + ' create/encounter' + (x ? '' : ' (no hay)'); if (x) (ok ? x.res : x.rej)(); }
       else if (p < 0.98) { ev = cityOn() ? 'salir' : 'entrar'; if (cityOn()) goHome(); else enter(); }
       else { ev = 'entrar/salir x3'; for (let k = 0; k < 3; k++) { enter(); goHome(); } enter(); }
@@ -127,7 +119,7 @@ async function session(seed) {
       if (cityOn() && d.querySelectorAll('#city-root canvas').length > 1) viol.push('I8 más de un canvas en #city-root ' + at);
     }
     if (!viol.length) {
-      goHome(); st.imp.splice(0).forEach((x) => x.res()); st.cre.splice(0).forEach((x) => x.res()); await tick(4);
+      goHome(); st.cre.splice(0).forEach((x) => x.res()); await tick(4);
       goHome(); await tick(2);
       if (st.delivered - st.disposed !== 0) viol.push('I3 al salir quedan ' + (st.delivered - st.disposed) + ' mundos sin dispose (city-on=' + cityOn() + ' root=' + d.getElementById('city-root').innerHTML.slice(0, 150).replace(/<[^>]+>/g, ' ') + ' pend imp=' + st.imp.length + ' cre=' + st.cre.length + ')');
       if (e.errors.length) viol.push('I1 error de consola al cerrar: ' + e.errors[0]);
