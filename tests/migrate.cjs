@@ -42,7 +42,6 @@ function diff(a, b, p = '') {
     boss: { M01: { best: 17, passed: true }, M08: { best: 9, passed: false } },
     hero: { name: 'Zoë Ñandú 🚀', look: { skin: 1, suit: 2, head: 0, eyes: 1, emblem: 0, cape: 0, hand: 0, hc: '#AABBCC', capec: '#7a52c4' }, welcomed: true },
     virtues: { constancia: 1700000000000, valentia: 1700000001000 },
-    world: { at: 'M01', pos: { hub: { x: 5, y: 6, d: 'down' }, M01: { x: 1, y: 2, d: 'up' } }, talked: { 'M01:T01': true }, beaten: { v1: yest }, run: true },
     stats: { learnTopics: ['M01:T01', 'M01:T02'], cleared: 3, roundsNoPower: 2, bossFailed: { M08: true } },
     city: { prologue: true, run: true, bridgeSeen: false, beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true }, restored: {}, powers: {}, at: { x: 3, z: 5, yaw: 1 } }
   };
@@ -86,7 +85,7 @@ function diff(a, b, p = '') {
   { const { out } = norm1({ stats: { learnTopics: 'x', cleared: 'x', roundsNoPower: -2, bossFailed: null } });
     ok('N10 stats inválidos → valores frescos', Array.isArray(out.stats.learnTopics) && out.stats.cleared === 0 && out.stats.roundsNoPower === 0 && same(out.stats.bossFailed, {}), JSON.stringify(out.stats)); }
   { const { out, errors } = norm1({ world: { at: 5, pos: null, talked: 'x', beaten: [], run: 'yes' } });
-    ok('N11 world inválido → at "hub", pos/talked objetos y run booleano', out.world.at === 'hub' && same(out.world.pos, {}) && same(out.world.talked, {}) && out.world.run === true && !errors.length, JSON.stringify(out.world)); }
+    ok('N11 world inválido: world desaparece del guardado y city.run toma su valor', out.world === undefined && out.city.run === true && !errors.length, JSON.stringify([out.world, out.city.run])); }
   { const { out } = norm1({ boss: { M01: { best: '<img src=x onerror=alert(1)>', passed: 'yes' }, M02: [], M03: { best: 99, passed: true }, M04: { best: 7.9, passed: false } } });
     ok('N15 boss: best no numérico → 0 y passed no booleano → false', out.boss.M01 && out.boss.M01.best === 0 && out.boss.M01.passed === false, JSON.stringify(out.boss.M01));
     ok('N15 boss: arreglo descartado; best acotado a 0..20 y entero', out.boss.M02 === undefined && out.boss.M03.best === 20 && out.boss.M03.passed === true && out.boss.M04.best === 7, JSON.stringify(out.boss)); }
@@ -105,9 +104,9 @@ function diff(a, b, p = '') {
   { const env = L.boot(JSON.stringify(base({ virtues: [], days: { last: yest, count: 2 } }))); L.openQuiz(env.w, env.d); L.answerOne(env.w, env.d, 'right');
     const out = load(env.w);
     ok('N13 virtues = []: la virtud Constancia ganada (racha 3) queda guardada', !Array.isArray(out.virtues) && !!out.virtues.constancia, 'virtues guardado=' + JSON.stringify(out.virtues) + ' days=' + JSON.stringify(out.days)); env.w.close(); }
-  { const { out } = norm1({ world: { at: 'hub', pos: [], talked: [], beaten: [], run: false }, stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: [] } });
-    const arr = ['world.pos', 'world.talked', 'world.beaten', 'stats.bossFailed'].filter((k) => Array.isArray(k.split('.').reduce((o, p) => o[p], out)));
-    ok('N14 world.pos/talked/beaten y stats.bossFailed como arreglo se normalizan a objeto', arr.length === 0, 'siguen siendo arreglo: ' + arr.join(', ')); }
+  { const { out } = norm1({ city: { beaten: [], repairs: [], taught: [], restored: [], powers: [] }, stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: [] } });
+    const arr = ['city.beaten', 'city.repairs', 'city.taught', 'city.restored', 'city.powers', 'stats.bossFailed'].filter((k) => { const v = k.split('.').reduce((o, p) => o[p], out); return Array.isArray(v) || !v || typeof v !== 'object'; });
+    ok('N14 city.beaten/repairs/taught/restored/powers y stats.bossFailed como arreglo se normalizan a objeto', arr.length === 0, 'siguen mal: ' + arr.join(', ')); }
   { const env = L.boot('{no es json'); const out = resave(env);
     ok('N12 JSON inválido: arranca con estado nuevo y sin errores', out.v === 1 && out.xp === 0 && !env.errors.length, env.errors.join(' | ')); env.w.close(); }
 

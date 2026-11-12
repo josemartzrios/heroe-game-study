@@ -26,6 +26,11 @@ function boot(opts = {}) {
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       w.requestAnimationFrame = () => 1;
       w.cancelAnimationFrame = () => {};
+      // Ciudad 3D con mundo falso (las batallas empiezan desde la ciudad).
+      w.__CITY_TEST__ = true;
+      w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
+      w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
+      w.__CITY_WORLD__ = { create(THREE, canvas, D, o) { return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, setLook() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
@@ -250,16 +255,17 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
   w.close();
 
   // I6. Batalla (R.battle) ganada: R F R R R => villano a 0 tras 4 aciertos, termina antes de 6
-  const VT = ['M01:T06', 'M01:T09', 'M01:T17'];
-  const enterBattle = (w, d) => {
-    click(w, modBtn(d, 'M01'));
-    click(w, [...d.querySelectorAll('[data-act="world"]')].find((b) => b.dataset.id === 'M01'));
-    if (d.querySelector('#wplaces').hidden) click(w, d.querySelector('#wplbtn'));
-    click(w, [...d.querySelectorAll('.wvil')].find((b) => /Cuello de Botella/.test(b.textContent)));
-    click(w, [...d.querySelectorAll('#wdlg button')].find((b) => /A la batalla/.test(b.textContent)));
+  const VT = ['M02:T01', 'M02:T02', 'M02:T03'];
+  const BIT = { x: 0, z: 0 };
+  { const M = (await import('../city/districts.mjs')).city.districts.M02.creatures.find((c) => c.id === 'bit').area; BIT.x = M.x; BIT.z = M.z; }
+  const enterBattle = async (w, d) => {
+    click(w, btn(d, 'city'));
+    for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0));
+    w.__CITY_TEST_API__.teleport(BIT.x, BIT.z);
+    click(w, d.querySelector('#city-act'));
   };
   ({ w, d, errors } = boot({ seed: fresh() }));
-  enterBattle(w, d);
+  await enterBattle(w, d);
   ok('I6 pre: batalla iniciada (HUD de energía)', !!d.querySelector('.hearts'));
   prev = load(w) ? load(w).xp : 0; xp0 = prev; consec = 0;
   const g6 = [], e6 = [], q6 = [];
@@ -270,7 +276,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
     g6.push(st.xp - prev); prev = st.xp;
     if (m === 'right') { consec++; e6.push(10 * qq.difficulty + (consec >= 3 ? 5 : 0)); } else { consec = 0; e6.push(0); }
     if (i === 1) {
-      ok('I6 batalla: fallo guardado al instante (0 al final del historial y en cola)', st.topics['M01:' + qq.topic].slice(-1)[0] === 0 && st.qs[qq.id].q === true, JSON.stringify(st.topics['M01:' + qq.topic]));
+      ok('I6 batalla: fallo guardado al instante (0 al final del historial y en cola)', st.topics['M02:' + qq.topic].slice(-1)[0] === 0 && st.qs[qq.id].q === true, JSON.stringify(st.topics['M01:' + qq.topic]));
       ok('I6 batalla: fallo quita 1 de energía', d.querySelector('.hearts').getAttribute('aria-label') === 'Energía 2 de 3');
     }
     nextQ(w, d);
@@ -286,14 +292,14 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
 
   // I7. Batalla perdida: 3 fallos => energía 0, derrota; todo registrado y XP 0
   ({ w, d, errors } = boot({ seed: fresh({ xp: 50 }) }));
-  enterBattle(w, d);
+  await enterBattle(w, d);
   let n7 = 0;
   while (d.querySelector('.prompt') && n7 < 10) { answerOne(w, d, 'wrong'); nextQ(w, d); n7++; }
   s = load(w);
   ok('I7 derrota tras 3 fallos', n7 === 3 && /Derrota/.test(d.querySelector('.gtitle').textContent), 'n=' + n7);
   ok('I7 derrota: 3 ceros en historial y 3 en cola', histLen(s, VT) === 3 && VT.every((k) => (s.topics[k] || []).every((x) => x === 0)) && Object.values(s.qs).filter((r) => r.q).length === 3, JSON.stringify(s.topics));
   ok('I7 derrota: XP sin cambio y mostrado +0', s.xp === 50 && shownXp(d) === 0, 'xp=' + s.xp + ' mostrado=' + shownXp(d));
-  ok('I7 derrota: villano no marcado como vencido', !s.city.beaten.cuello, JSON.stringify(s.city.beaten));
+  ok('I7 derrota: villano no marcado como vencido', !s.city.beaten.bit, JSON.stringify(s.city.beaten));
   ok('I7 sin errores de consola', errors.length === 0, errors.join(' | '));
   w.close();
 

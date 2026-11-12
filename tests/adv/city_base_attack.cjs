@@ -21,6 +21,12 @@ function boot(raw, opts = {}) {
     beforeParse(w) {
       if (raw != null) w.localStorage.setItem(KEY, raw);
       w.scrollTo = () => {};
+      w.__CITY_TEST__ = true;
+      if (opts.cityWorld) {
+        w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
+        w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
+        w.__CITY_WORLD__ = { create(THREE, canvas, D, o) { w.__fakeOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, setLook() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
+      }
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       const q = [];
@@ -50,18 +56,12 @@ const sumA = (s) => Object.values(s.qs).reduce((n, r) => n + r.a, 0);
 const histN = (s, mid, tops) => tops.reduce((n, t) => n + (s.topics[mid + ':' + t] || []).length, 0);
 const hud = (d) => { const h = d.querySelector('.hearts'), b = d.querySelector('.hpbar'); if (!h || !b) return null;
   const en = +(/Energía (-?\d+) de 3/.exec(h.getAttribute('aria-label')) || [])[1], hp = +(/villano (-?\d+) de 4/.exec(b.getAttribute('aria-label')) || [])[1]; return { en, hp }; };
-const VIL = { cuello: { re: /Cuello de Botella/, topics: ['T06', 'T09', 'T17'] }, lag: { re: /Lagartijo/, topics: ['T01', 'T02', 'T03', 'T04'] },
-  monolito: { re: /Monolito/, topics: ['T15', 'T16', 'T18'] }, clon: { re: /Duplicador/, topics: ['T05', 'T11', 'T19'] } };
+const VIL = { bit: { topics: ['T01', 'T02', 'T03'] }, silicio: { topics: ['T04', 'T05', 'T10'] },
+  kernel: { topics: ['T06', 'T07', 'T08', 'T09'] }, eco: { topics: ['T12', 'T13', 'T14', 'T15', 'T16'] } };
+/* Entra a la batalla por el gancho del motor (la ciudad 3D se prueba en tests/city_engine.cjs): síncrono, sin mundo */
 function enterBattle(w, d, vid) {
-  click(w, L.modBtn(d, 'M01'));
-  const wb = [...d.querySelectorAll('[data-act="world"]')].find((b) => b.dataset.id === 'M01'); if (!wb) throw new Error('sin botón de mundo M01');
-  click(w, wb);
-  if (d.querySelector('#wplaces').hidden) click(w, d.querySelector('#wplbtn'));
-  const vb = [...d.querySelectorAll('.wvil')].find((b) => VIL[vid].re.test(b.textContent)); if (!vb) throw new Error('sin villano ' + vid);
-  click(w, vb);
-  const go = [...d.querySelectorAll('#wdlg button')].find((b) => /A la batalla/.test(b.textContent));
-  if (!go) return false;
-  click(w, go);
+  const R = w.__CITY_ROUND__;
+  R.startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: vid, name: vid }, city: { kind: 'battle', id: vid } }, R.battleItems({ mod: 'M02', topics: VIL[vid].topics, n: 8 }));
   return !!d.querySelector('.hearts');
 }
 function ans(w, d, right) {
@@ -103,15 +103,16 @@ function checkBattleEnd(env, s0, vid, last) {
   if (!m) return ['sin marcador en resultados'];
   const n = +m[2], okN = +m[1];
   if (sumA(s) - sumA(s0) !== n) bad.push('S.qs.a creció ' + (sumA(s) - sumA(s0)) + ' pero la ronda tuvo ' + n);
-  if (histN(s, 'M01', VIL[vid].topics) - histN(s0, 'M01', VIL[vid].topics) !== n) bad.push('historial creció ' + (histN(s, 'M01', VIL[vid].topics) - histN(s0, 'M01', VIL[vid].topics)) + ' vs ' + n);
-  const otherKeys = Object.keys(s.topics).filter((k) => !VIL[vid].topics.map((t) => 'M01:' + t).includes(k) && JSON.stringify(s.topics[k]) !== JSON.stringify(s0.topics[k]));
+  if (histN(s, 'M02', VIL[vid].topics) - histN(s0, 'M02', VIL[vid].topics) !== n) bad.push('historial creció ' + (histN(s, 'M02', VIL[vid].topics) - histN(s0, 'M02', VIL[vid].topics)) + ' vs ' + n);
+  const otherKeys = Object.keys(s.topics).filter((k) => !VIL[vid].topics.map((t) => 'M02:' + t).includes(k) && JSON.stringify(s.topics[k]) !== JSON.stringify(s0.topics[k]));
   if (otherKeys.length) bad.push('se tocaron temas ajenos al villano: ' + otherKeys);
   if (s.xp - s0.xp !== Number(d.querySelector('#xpc').dataset.xp)) bad.push('XP guardado ' + (s.xp - s0.xp) + ' != mostrado ' + d.querySelector('#xpc').dataset.xp);
   const W = won(d), B = (s.city && s.city.beaten || {})[vid];
   if (W && B !== todayW(w)) bad.push('Victoria pero beaten=' + B);
   if (!W && B === todayW(w) && (s0.city && s0.city.beaten || {})[vid] !== B) bad.push('Derrota pero se marcó vencido');
-  if (W && last && !(last.hp === 0 || (last.en > 0 && last.en / 3 > last.hp / 4))) bad.push('Victoria incoherente con HUD final ' + JSON.stringify(last));
+  if (W && last && last.hp !== 0) bad.push('Victoria con vida del villano ' + last.hp + ' (solo se gana con vida 0)');
   if (!W && last && last.hp === 0) bad.push('Derrota con vida del villano 0');
+  if (!W && last && last.en !== 0) bad.push('Derrota con energía ' + last.en + ' (solo se pierde con energía 0)');
   if (okN > n || n < 1) bad.push('marcador imposible ' + big.textContent);
   return bad;
 }
@@ -191,8 +192,8 @@ function runFuzzCase(c) {
       if (!valid) out.problems.push('S.city no quedó normalizado tras la ronda: ' + JSON.stringify(C).slice(0, 80)); }
     // y una batalla del mundo actual con 1 respuesta (la lógica que se reutiliza)
     click(w, L.btn(d, 'home'));
-    if (enterBattle(w, d, 'cuello')) { ans(w, d, true); const h = hud(d); if (!h || h.hp !== 3) out.problems.push('batalla tras migrate: HUD ' + JSON.stringify(h)); click(w, L.btn(d, 'quit')); }
-    else if ((st(w).city.beaten || {}).cuello !== todayW(w)) out.problems.push('no se pudo iniciar batalla con cuello no vencido hoy');
+    if (enterBattle(w, d, 'bit')) { ans(w, d, true); const h = hud(d); if (!h || h.hp !== 3) out.problems.push('batalla tras migrate: HUD ' + JSON.stringify(h)); click(w, L.btn(d, 'quit')); }
+    else if ((st(w).city.beaten || {}).bit !== todayW(w)) out.problems.push('no se pudo iniciar batalla con bit no vencido hoy');
     out.problems.push(...env.errors.slice(0, 3));
   } catch (e) { out.problems.push('excepción: ' + String(e && e.message || e).slice(0, 200)); }
   if (env) try { env.w.close(); } catch (e) {}
@@ -211,10 +212,11 @@ if (!isMainThread) {
   const T = (name, fn) => { counts.adv++; try { fn(); } catch (e) { ok(name + ' (excepción)', false, e.stack.split('\n').slice(0, 2).join(' ')); } };
   const t0 = Date.now();
   let e, s, s0;
+  const D0 = (await import('../../city/districts.mjs')).city;
 
   // ===================== 1. BATALLA =====================
   // ATAQUE: doble clic en la misma opción y luego en otra: una sola respuesta, energía baja como mucho 1
-  T('B1', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'cuello'); s0 = st(e.w);
+  T('B1', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'bit'); s0 = st(e.w);
     const q = L.findQ(e.w, e.d), ct = L.norm(L.correctText(q)); const wrong = [...e.d.querySelectorAll('.opt')].find((b) => L.norm(b.querySelector('span:last-child').textContent) !== ct);
     click(e.w, wrong); click(e.w, wrong); const rb = L.optBtn(e.d, L.correctText(q)); if (rb) click(e.w, rb); L.key(e.w, '1'); L.key(e.w, '2');
     s = st(e.w); const h = hud(e.d);
@@ -222,57 +224,52 @@ if (!isMainThread) {
     ok('B1 sin errores', !e.errors.length, e.errors.join('|')); e.w.close(); });
 
   // ATAQUE: Enter x5 y doble clic en Siguiente tras el golpe final (finish repetido, roundsNoPower doble)
-  T('B2', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'cuello'); s0 = st(e.w);
+  T('B2', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'bit'); s0 = st(e.w);
     for (let i = 0; i < 4; i++) { ans(e.w, e.d, true); if (i < 3) nextB(e.w, e.d); }
     const nb = e.d.querySelector('#nextbtn'); for (let i = 0; i < 5; i++) { L.key(e.w, 'Enter'); } click(e.w, nb); click(e.w, nb);
     s = st(e.w);
     ok('B2 golpe final + Enter x5: resultados una vez', isResults(e.d) && won(e.d) && s.stats.roundsNoPower - s0.stats.roundsNoPower === 1 && e.d.querySelector('.big').textContent === '4/4', 'rnp=' + s.stats.roundsNoPower + ' big=' + (e.d.querySelector('.big') || {}).textContent);
-    ok('B2 vencido hoy', s.city.beaten.cuello === todayW(e.w), JSON.stringify(s.city.beaten));
+    ok('B2 vencido hoy', s.city.beaten.bit === todayW(e.w), JSON.stringify(s.city.beaten));
     e.w.close(); });
 
   // ATAQUE: perder en el último golpe (energía 1, villano con 1 de vida) => derrota, sin marcar vencido
-  T('B3', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'lag'); s0 = st(e.w);
+  T('B3', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'silicio'); s0 = st(e.w);
     ['right', 'wrong', 'right', 'wrong', 'right'].forEach((m) => { ans(e.w, e.d, m === 'right'); nextB(e.w, e.d); });
     const h = hud(e.d); ans(e.w, e.d, false); const h2 = hud(e.d); nextB(e.w, e.d); s = st(e.w);
     ok('B3 pre: vida 1, energía 1 antes del último golpe', h && h.hp === 1 && h.en === 1, JSON.stringify(h));
-    ok('B3 último golpe fallado: derrota, energía 0, no vencido', isResults(e.d) && !won(e.d) && h2.en === 0 && !s.city.beaten.lag, JSON.stringify(h2) + ' ' + JSON.stringify(s.city.beaten));
-    ok('B3 progreso = 6 rondas', sumA(s) - sumA(s0) === 6 && histN(s, 'M01', VIL.lag.topics) === 6, 'a=' + (sumA(s) - sumA(s0)));
+    ok('B3 último golpe fallado: derrota, energía 0, no vencido', isResults(e.d) && !won(e.d) && h2.en === 0 && !s.city.beaten.silicio, JSON.stringify(h2) + ' ' + JSON.stringify(s.city.beaten));
+    ok('B3 progreso = 6 rondas', sumA(s) - sumA(s0) === 6 && histN(s, 'M02', VIL.silicio.topics) === 6, 'a=' + (sumA(s) - sumA(s0)));
     e.w.close(); });
 
   // ATAQUE: ganar en el último golpe (energía 1, vida 1 -> acierto)
-  T('B4', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'lag');
+  T('B4', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'silicio');
     ['right', 'wrong', 'right', 'wrong', 'right'].forEach((m) => { ans(e.w, e.d, m === 'right'); nextB(e.w, e.d); });
     ans(e.w, e.d, true); nextB(e.w, e.d); s = st(e.w);
-    ok('B4 último golpe acertado: victoria y vencido hoy', won(e.d) && s.city.beaten.lag === todayW(e.w) && e.d.querySelector('.big').textContent === '4/6', (e.d.querySelector('.big') || {}).textContent);
+    ok('B4 último golpe acertado: victoria y vencido hoy', won(e.d) && s.city.beaten.silicio === todayW(e.w) && e.d.querySelector('.big').textContent === '4/6', (e.d.querySelector('.big') || {}).textContent);
     e.w.close(); });
 
   // ATAQUE: salir a mitad (2 aciertos), seguir pulsando teclas: nada se registra, no se marca vencido, se puede volver a pelear
-  T('B5', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'cuello'); s0 = st(e.w);
+  T('B5', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'bit'); s0 = st(e.w);
     ans(e.w, e.d, true); nextB(e.w, e.d); ans(e.w, e.d, true);
     click(e.w, L.btn(e.d, 'quit')); ['1', '2', '3', '4', '1'].forEach((k) => L.key(e.w, k)); s = st(e.w);
-    ok('B5 salir a mitad: 2 respuestas, no vencido, roundsNoPower intacto', sumA(s) - sumA(s0) === 2 && !s.city.beaten.cuello && s.stats.roundsNoPower === s0.stats.roundsNoPower, 'a=' + (sumA(s) - sumA(s0)) + ' ' + JSON.stringify(s.city.beaten));
-    ok('B5 tras salir estoy en el mundo', !!e.d.querySelector('#wcv') && !e.d.querySelector('.prompt'));
-    // Enter, Enter junto al villano = interactuar + "¡A la batalla!": nueva batalla limpia
-    L.key(e.w, 'Enter'); L.key(e.w, 'Enter');
-    const again = !!e.d.querySelector('.hearts'); const h = hud(e.d);
-    ok('B5 nueva batalla empieza limpia (4/3)', again && h && h.hp === 4 && h.en === 3, JSON.stringify(h));
+    ok('B5 salir a mitad: 2 respuestas, no vencido, roundsNoPower intacto', sumA(s) - sumA(s0) === 2 && !s.city.beaten.bit && s.stats.roundsNoPower === s0.stats.roundsNoPower, 'a=' + (sumA(s) - sumA(s0)) + ' ' + JSON.stringify(s.city.beaten));
+    ok('B5 tras salir ya no hay ronda y la vista es la ciudad', !e.d.querySelector('.prompt') && !e.d.querySelector('.arena'));
+    ok('B5 nueva batalla empieza limpia (4/3)', enterBattle(e.w, e.d, 'bit') && (() => { const h = hud(e.d); return h && h.hp === 4 && h.en === 3; })(), JSON.stringify(hud(e.d)));
     ok('B5 sin errores', !e.errors.length, e.errors.join('|')); e.w.close(); });
-  function enterBattle2(w, d, vid) { if (d.querySelector('#wplaces').hidden) click(w, d.querySelector('#wplbtn'));
-    const vb = [...d.querySelectorAll('.wvil')].find((b) => VIL[vid].re.test(b.textContent)); click(w, vb);
-    const go = [...d.querySelectorAll('#wdlg button')].find((b) => /A la batalla/.test(b.textContent)); if (!go) return false; click(w, go); return !!d.querySelector('.hearts'); }
+  const enterBattle2 = enterBattle;
 
   // ATAQUE: recargar a mitad de batalla (3 aciertos = villano a 1): el progreso persiste, la batalla no, no hay vencido
-  T('B6', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'cuello');
+  T('B6', () => { e = boot(fresh()); enterBattle(e.w, e.d, 'bit');
     for (let i = 0; i < 3; i++) { ans(e.w, e.d, true); nextB(e.w, e.d); }
     const raw = e.w.localStorage.getItem(KEY); e.w.close();
     const e2 = boot(raw); s = st(e2.w);
-    ok('B6 recarga: 3 respuestas guardadas, sin vencido', sumA(s) === 3 && histN(s, 'M01', VIL.cuello.topics) === 3 && !s.city.beaten.cuello, JSON.stringify(s.city));
-    const in2 = enterBattle(e2.w, e2.d, 'cuello'); const h = hud(e2.d);
+    ok('B6 recarga: 3 respuestas guardadas, sin vencido', sumA(s) === 3 && histN(s, 'M02', VIL.bit.topics) === 3 && !s.city.beaten.bit, JSON.stringify(s.city));
+    const in2 = enterBattle(e2.w, e2.d, 'bit'); const h = hud(e2.d);
     ok('B6 tras recargar la batalla empieza de nuevo 4/3', in2 && h.hp === 4 && h.en === 3, JSON.stringify(h));
     ok('B6 sin errores', !e2.errors.length, e2.errors.join('|')); e2.w.close(); });
 
   // ATAQUE: escudo activo + fallo en el último golpe: ¿se gana una batalla con el villano vivo y una respuesta fallada al final?
-  T('B7', () => { e = boot(fresh({ xp: 1000 })); enterBattle(e.w, e.d, 'monolito');
+  T('B7', () => { e = boot(fresh({ xp: 1000 })); enterBattle(e.w, e.d, 'kernel');
     const seq = [];
     // R R R W(escudo) W W? -> controlamos: 3 aciertos, 1 fallo con escudo, 1 fallo, último fallo
     ans(e.w, e.d, true); nextB(e.w, e.d); ans(e.w, e.d, true); nextB(e.w, e.d); ans(e.w, e.d, true); nextB(e.w, e.d);
@@ -285,12 +282,12 @@ if (!isMainThread) {
     ok('B7 con vida 1 la batalla sigue (el pool aporta preguntas, sin victoria por puntos)', !isResults(e.d) && seq[2].hp === 1);
     { let g = 0; while (!isResults(e.d) && g++ < 8) { ans(e.w, e.d, false); nextB(e.w, e.d); } s = st(e.w); }
     ok('B7 batalla terminó', isResults(e.d));
-    ok('B7 (regla) victoria solo si la vida del villano llega a 0: acabar 3/6 fallando el último golpe NO debe marcar vencido', !won(e.d) && !s.city.beaten.monolito,
+    ok('B7 (regla) victoria solo si la vida del villano llega a 0: acabar 3/6 fallando el último golpe NO debe marcar vencido', !won(e.d) && !s.city.beaten.kernel,
       'resultado=' + (e.d.querySelector('.gtitle') || {}).textContent + ' HUD final=' + JSON.stringify(seq[2]) + ' beaten=' + JSON.stringify(s.city.beaten) + ' big=' + (e.d.querySelector('.big') || {}).textContent);
     e.w.close(); });
 
   // ATAQUE: regeneración pendiente + teclas/poderes/Enter/salir; energía nunca pasa de 3 ni baja de 0
-  T('B8', () => { e = boot(fresh({ xp: 2500 })); enterBattle(e.w, e.d, 'clon'); s0 = st(e.w);
+  T('B8', () => { e = boot(fresh({ xp: 2500 })); enterBattle(e.w, e.d, 'eco'); s0 = st(e.w);
     let pendSeen = false, guard = 0;
     while (!pendSeen && e.d.querySelector('.prompt') && guard++ < 6) {
       const q = L.findQ(e.w, e.d);
@@ -307,42 +304,45 @@ if (!isMainThread) {
     ans(e.w, e.d, true); const h = hud(e.d);
     ok('B8 acierto tras regen: energía ≤ 3, 1 respuesta más', h.en <= 3 && h.en >= 0 && sumA(st(e.w)) === a0 + 1, JSON.stringify(h));
     nextB(e.w, e.d); click(e.w, L.btn(e.d, 'quit'));
-    ok('B8 salir tras regen: no vencido', !st(e.w).city.beaten.clon);
+    ok('B8 salir tras regen: no vencido', !st(e.w).city.beaten.eco);
     ok('B8 sin errores', !e.errors.length, e.errors.join('|')); e.w.close(); });
 
   // ATAQUE: salir con Regeneración pendiente y volver a pelear: el estado pendiente no se arrastra
-  T('B9', () => { e = boot(fresh({ xp: 2500 })); enterBattle(e.w, e.d, 'clon');
+  T('B9', () => { e = boot(fresh({ xp: 2500 })); enterBattle(e.w, e.d, 'eco');
     let pend = false, g = 0; while (!pend && e.d.querySelector('.prompt') && g++ < 6) { const q = L.findQ(e.w, e.d); if (q.type === 'tf') { ans(e.w, e.d, true); nextB(e.w, e.d); continue; } ans(e.w, e.d, false); pend = !!L.btn(e.d, 'regenyes'); }
-    click(e.w, L.btn(e.d, 'quit')); const okIn = enterBattle2(e.w, e.d, 'clon');
+    click(e.w, L.btn(e.d, 'quit')); const okIn = enterBattle2(e.w, e.d, 'eco');
     const a0 = sumA(st(e.w)); L.key(e.w, '1');
     ok('B9 tras salir con regen pendiente, la nueva batalla acepta respuestas', okIn && (sumA(st(e.w)) === a0 + 1 || !!L.btn(e.d, 'regenyes')), 'a=' + sumA(st(e.w)) + ' vs ' + a0);
     ok('B9 sin errores', !e.errors.length, e.errors.join('|')); e.w.close(); });
 
   // ATAQUE: vencido hoy => sin batalla; el reloj salta al día siguiente => batalla disponible; vencido con fecha futura (reloj atrasado)
-  T('B10', () => { const clock = { ms: 0 }; e = boot(fresh({ city: { beaten: { cuello: todayStr() } } }), { clock });
-    ok('B10 vencido hoy: no hay botón A la batalla', enterBattle(e.w, e.d, 'cuello') === false && /Volverá mañana/.test(e.d.querySelector('#wdlg').textContent));
-    clock.ms = 86400000 + 3600000; click(e.w, [...e.d.querySelectorAll('#wdlg button')].find((b) => /Cerrar/.test(b.textContent)));
-    const live = enterBattle2(e.w, e.d, 'cuello') === true;
-    ok('B10 cruzar medianoche DENTRO del mundo: el villano de ayer vuelve sin re-entrar', live, 'sigue "Derrotado hoy": ' + (e.d.querySelector('#wdlg') || {}).textContent);
-    if (!live) { click(e.w, [...e.d.querySelectorAll('#wdlg button')].find((b) => /Cerrar/.test(b.textContent))); click(e.w, L.btn(e.d, 'home'));
-      ok('B10 día siguiente tras re-entrar al mundo: batalla disponible', enterBattle(e.w, e.d, 'cuello') === true); }
-    for (let i = 0; i < 4; i++) { ans(e.w, e.d, true); nextB(e.w, e.d); }
-    ok('B10 vencido con la fecha del nuevo día', st(e.w).city.beaten.cuello === todayW(e.w), st(e.w).city.beaten.cuello + ' vs ' + todayW(e.w));
-    e.w.close(); });
+  counts.adv++;
+  try {
+    const clock = { ms: 0 }, tk = async () => { for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0)); };
+    e = boot(fresh({ city: { beaten: { bit: todayStr() } } }), { clock, cityWorld: true });
+    click(e.w, e.d.querySelector('[data-act="city"]')); await tk();
+    const A = D0.districts.M02.creatures.find((c) => c.id === 'bit').area, tick = () => e.w.__fakeOpts.tick(16);
+    e.w.__CITY_TEST_API__.teleport(A.x, A.z); tick();
+    ok('B10 vencido hoy: la ciudad no ofrece "Enfrentar a Bit Errante"', e.d.querySelector('#city-act').hidden === true);
+    clock.ms = 25 * 3600000; tick();
+    ok('B10 cruzar medianoche DENTRO de la ciudad: la criatura de ayer vuelve sin salir', !e.d.querySelector('#city-act').hidden && /Enfrentar a Bit Errante/.test(e.d.querySelector('#city-act').textContent), e.d.querySelector('#city-act').textContent);
+    ok('B10 sin errores', !e.errors.length, e.errors.join('|'));
+    e.w.close();
+  } catch (x) { ok('B10 (excepción)', false, x.stack.split('\n').slice(0, 2).join(' ')); }
 
   // ATAQUE: batalla iniciada a las 23:59:59 y ganada pasada la medianoche
   T('B11', () => { const clock = { ms: 0 }; const n = new Date(); const t = new Date(n.getFullYear(), n.getMonth(), n.getDate(), 23, 59, 59, 0);
-    clock.ms = t.getTime() - Date.now(); e = boot(fresh(), { clock }); enterBattle(e.w, e.d, 'cuello'); const d0 = todayW(e.w);
+    clock.ms = t.getTime() - Date.now(); e = boot(fresh(), { clock }); enterBattle(e.w, e.d, 'bit'); const d0 = todayW(e.w);
     ans(e.w, e.d, true); nextB(e.w, e.d); clock.ms += 5000;
     for (let i = 0; i < 3; i++) { ans(e.w, e.d, true); nextB(e.w, e.d); }
     s = st(e.w);
-    ok('B11 medianoche: vencido = día nuevo (vuelve "mañana" de verdad)', s.city.beaten.cuello === todayW(e.w) && d0 !== todayW(e.w), d0 + ' -> ' + s.city.beaten.cuello);
+    ok('B11 medianoche: vencido = día nuevo (vuelve "mañana" de verdad)', s.city.beaten.bit === todayW(e.w) && d0 !== todayW(e.w), d0 + ' -> ' + s.city.beaten.bit);
     ok('B11 days.count coherente (no se rompe al cruzar el día)', s.days.count >= 1 && s.days.last === todayW(e.w), JSON.stringify(s.days));
     e.w.close(); });
 
   // ATAQUE: vencido con fecha futura (reloj del sistema retrocedido) y con basura
-  T('B12', () => { e = boot(fresh({ city: { beaten: { cuello: '2099-01-01', lag: 12345, unico: { a: 1 }, cache: ['x'] } } }));
-    ok('B12 vencido futuro/basura: se puede pelear y no rompe', enterBattle(e.w, e.d, 'cuello') === true && !e.errors.length, e.errors.join('|')); e.w.close(); });
+  T('B12', () => { e = boot(fresh({ city: { beaten: { bit: '2099-01-01', silicio: 12345, unico: { a: 1 }, cache: ['x'] } } }));
+    ok('B12 vencido futuro/basura: se puede pelear y no rompe', enterBattle(e.w, e.d, 'bit') === true && !e.errors.length, e.errors.join('|')); e.w.close(); });
 
   // ATAQUE: sesiones caóticas (clics dobles, botones viejos, teclas, poderes, regen) en 4 villanos y 4 niveles
   {

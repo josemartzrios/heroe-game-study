@@ -26,17 +26,13 @@ const forbidden = [/Marvel/i, /DC Comics/i, /LEGO/i, /Spider/i, /Batman/i, /Supe
 for (const re of forbidden) if (re.test(htmlNoV)) bad('Palabra prohibida: ' + re);
 if (MODULES.length !== 10 || MODULES.map((m) => m.id).join() !== 'M01,M02,M03,M04,M05,M06,M07,M08,M09,M10') bad('MODULES debe tener M01..M10 en ese orden');
 if (!html.includes("'estudio_isw_v1'")) bad('Falta la clave localStorage');
-// Etapa W1: modo aventura
-for (const s of ['function vWorld', 'function heroSprite', 'data-act="world"']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
+// Ciudad Núcleo
+for (const s of ['function cityStart', 'data-act="city"', 'CITY_DATA']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
 { const eng = htmlNoV.slice(0, htmlNoV.indexOf('// === MODULE:M01 START ===')) + htmlNoV.slice(htmlNoV.indexOf('// === MODULE:M10 END ==='));
   for (const re of [/<img/i, /fetch\(/, /new Image/]) if (re.test(eng)) bad('El motor usa un recurso no permitido: ' + re); }
 if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.argv[2]).length, grow = Buffer.byteLength(htmlNoV) - oldLen; console.log('Crecimiento respecto a la versión publicada:', grow, 'bytes'); if (grow > 90 * 1024 && /v12/.test(process.argv[2])) bad('El archivo creció más de 90 KB respecto a la versión 12'); }
-// Etapa W2: villanos
-for (const s of ['function villainSprite', 'function vBattleHud', 'var VILLAINS = [']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
-{ const seg = html.slice(html.indexOf('var VILLAINS = ['), html.indexOf('var VSPR'));
-  const vt = [...seg.matchAll(/'(T\d\d)'/g)].map((x) => x[1]), m1 = MODULES[0].topics.map((t) => t.id);
-  if ((seg.match(/id: '/g) || []).length !== 6) bad('Debe haber 6 villanos en M01');
-  if (vt.length !== m1.length || new Set(vt).size !== vt.length || m1.some((t) => !vt.includes(t))) bad('Cada tema de M01 debe aparecer exactamente en un villano'); }
+// Batalla
+for (const s of ['function vBattleHud']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
 for (const id of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10']) for (const s of ['START', 'END']) if (!html.includes(`// === MODULE:${id} ${s} ===`)) bad(`Falta marcador ${id} ${s}`);
 if (/https?:\/\/(?!fonts\.googleapis\.com|ejemplo\.com)/.test(htmlNoV.replace(/<link[^>]*>/g, ''))) bad('Hay URLs externas en el cuerpo');
 

@@ -203,36 +203,8 @@ button.pw:hover:not(:disabled){border-color:var(--accent)}
 .vitem b{font-family:var(--f-display)}
 .vitem .st{font:600 12px var(--f-mono); color:var(--accent)}
 .vitem.off .st{color:var(--ink2)}
-/* Modo aventura */
-.world{display:flex; flex-direction:column; gap:12px}
-.wbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-.wtitle{display:flex; flex-direction:column; flex:1; min-width:0}
-.wtitle strong{font:700 18px var(--f-display)}
-.wstage{border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#1b2433; line-height:0}
-#wcv{display:block; width:100%; height:min(62vh,520px); min-height:260px; image-rendering:pixelated; outline-offset:-3px}
-.wdlg{background:var(--surface); border:2px solid var(--accent); border-radius:12px; padding:14px; display:grid; gap:10px}
-.wdlg[hidden],.wplaces[hidden],.wstage[hidden]{display:none}
-.wdhead{display:flex; gap:12px; align-items:center}
-.wdhead>div{display:flex; flex-direction:column; min-width:0}
-.wdhead strong{font:700 17px var(--f-display)}
-.wface{flex:none; width:52px; height:52px; border-radius:10px; background:var(--surface2); border:1px solid var(--line); overflow:hidden; line-height:0}
-.wdtext{display:grid; gap:6px; max-width:65ch}
-.wdtext p{margin:0}
-.wdbtns{display:flex; gap:8px; flex-wrap:wrap}
-.wplaces{display:grid; gap:10px}
-.wplist{display:grid; gap:8px; grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))}
-.wplace{flex-direction:row; justify-content:space-between; align-items:center; padding:10px 12px; font-size:14px; gap:10px}
-.wplace span:first-child{min-width:0}
-.wctl{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap}
-.wpad{display:grid; grid-template-columns:repeat(3,48px); grid-template-rows:repeat(2,48px); gap:4px; touch-action:none; user-select:none; -webkit-user-select:none}
-.wkey{border:1px solid var(--line); background:var(--surface); border-radius:10px; font-size:16px; min-width:44px; min-height:44px; touch-action:none}
-.wkey:active{background:var(--accent-soft); border-color:var(--accent)}
-.wkey.up{grid-column:2; grid-row:1}.wkey.left{grid-column:1; grid-row:2}.wkey.down{grid-column:2; grid-row:2}.wkey.right{grid-column:3; grid-row:2}
-.wtalk{min-width:120px; min-height:56px}
 .adv{margin-bottom:16px; background:var(--accent-soft); border-color:var(--accent)}
 .adv strong{font:700 20px var(--f-display)}
-@media (pointer:fine){.whelp{display:block}.wpad{grid-template-columns:repeat(3,44px); grid-template-rows:repeat(2,44px)}}
-@media (pointer:coarse){.whelp{display:none}}
 .herolay .avwrap svg{transform-origin:50% 100%; animation:breathe 3s ease-in-out infinite}
 @keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.015)}}
 /* W2: interfaz de juego (rondas y resultados). Estilo nocturno propio, igual en tema claro y oscuro. */
@@ -308,9 +280,8 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 .fighter.vil{flex-direction:row-reverse; text-align:right}
 .fighter>div{display:flex; flex-direction:column; gap:8px; min-width:0}
 .fighter.vil>div{align-items:flex-end}
-.bspr{image-rendering:pixelated; flex:none; display:block}
-.fighter.hero .bspr{width:48px; height:72px}
-.fighter.vil .bspr{width:60px; height:66px; transform:scaleX(-1)}
+.fig{flex:none; display:grid; place-items:center; width:56px; height:72px}
+.vfig{width:60px; height:66px; border-radius:12px; background:#27306a; color:#ffd23f; font:400 22px "Press Start 2P",ui-monospace,monospace}
 .gname{font:400 9px/1.5 "Press Start 2P",ui-monospace,monospace; color:#f2f4ff; overflow-wrap:anywhere}
 .hearts{font-size:22px; line-height:1; letter-spacing:3px; color:#ff5a7a}
 .hearts .off{color:#48528f}
@@ -322,15 +293,9 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 @keyframes rise{0%{opacity:1; transform:translateY(8px)}100%{opacity:0; transform:translateY(-22px)}}
 @keyframes shake{0%,100%{translate:0 0}20%{translate:-5px 0}40%{translate:5px 0}60%{translate:-4px 0}80%{translate:3px 0}}
 @keyframes hitflash{0%,100%{filter:none}30%{filter:brightness(2.4)}}
-.arena.fx-hit .fighter.vil .bspr{animation:shake .4s,hitflash .4s}
-.arena.fx-hurt .fighter.hero .bspr{animation:shake .4s}
+.arena.fx-hit .fighter.vil .fig{animation:shake .4s,hitflash .4s}
+.arena.fx-hurt .fighter.hero .fig{animation:shake .4s}
 .fighter.hero.domed::after{content:""; position:absolute; left:-8px; bottom:-6px; width:64px; height:86px; border-radius:50% 50% 12px 12px; border:2px solid #4fd2ff; background:rgba(79,210,255,.18); box-shadow:0 0 12px rgba(79,210,255,.6); pointer-events:none}
-/* villanos y correr en el mundo */
-.wbtns{display:flex; gap:10px; align-items:center}
-.wrun{min-height:56px}
-.wrun[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent)}
-.vface{display:grid; place-items:center; background:#27306a}
-.vface .bspr{width:40px; height:44px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important} body.game .opt.zap{opacity:.4}}
 /* viaje 3D: capa a pantalla completa fuera de #app */
 #trip-root{position:fixed; inset:0; height:100dvh; z-index:50; background:var(--bg)}
@@ -507,13 +472,13 @@ const MODULES = [
     return {
       v: 1, xp: 0, days: { last: null, count: 0 }, session: 0, lastActive: 0, topics: {}, qs: {}, boss: {},
       hero: { name: 'Héroe', look: { skin: 0, suit: 0, head: 0, eyes: 0, emblem: 0, cape: 0, hand: 0 }, welcomed: false },
-      virtues: {}, world: worldFresh(), city: CityStory.normalizeCity({}, CITY_DATA, false, today()),
+      virtues: {}, city: CityStory.normalizeCity({}, CITY_DATA, false, today()),
       stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: {} }
     };
   }
   function brandNew() { var f = fresh(); f.hero.welcomed = true; return f; }
   function migrate(o) {
-    var f = fresh(), cityRaw = o.city;
+    var f = fresh(), cityRaw = o.city, worldRaw = o.world;
     for (var k in f) if (!(k in o)) o[k] = f[k];
     if (!plainObj(o.hero)) o.hero = f.hero;
     /* hero.look se reconstruye con lista blanca: Object.assign con datos guardados deja que un "__proto__" propio cambie el prototipo */
@@ -532,12 +497,6 @@ const MODULES = [
       learnTopics: Array.isArray(stSrc.learnTopics) ? stSrc.learnTopics.filter(function (x) { return typeof x === 'string'; }) : [],
       cleared: ownp.call(stSrc, 'cleared') ? stSrc.cleared : 0, roundsNoPower: ownp.call(stSrc, 'roundsNoPower') ? stSrc.roundsNoPower : 0, bossFailed: bfNew
     };
-    if (!plainObj(o.world)) o.world = worldFresh();
-    if (!plainObj(o.world.pos)) o.world.pos = {};
-    if (!plainObj(o.world.talked)) o.world.talked = {};
-    if (typeof o.world.at !== 'string') o.world.at = 'hub';
-    if (!plainObj(o.world.beaten)) o.world.beaten = {};
-    o.world.run = !!o.world.run;
     /* normalización de tipos: un estado corrupto nunca debe impedir arrancar ni congelar una respuesta */
     function num(x, d) { return (typeof x === 'number' && isFinite(x) && x >= 0) ? x : d; }
     function plainObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype; }
@@ -568,10 +527,11 @@ const MODULES = [
     o.stats.cleared = Math.floor(num(o.stats.cleared, 0)); o.stats.roundsNoPower = Math.floor(num(o.stats.roundsNoPower, 0));
     /* S.city: lista blanca completa; city.run hereda world.run solo si el guardado no traía city.run propio */
     var bp = !!(o.boss.M02 && o.boss.M02.passed === true);
-    var oldRun = (plainObj(o.world) && typeof o.world.run === 'boolean') ? o.world.run : null;
+    var oldRun = plainObj(worldRaw) ? !!worldRaw.run : null;
     var hadRun = plainObj(cityRaw) && typeof cityRaw.run === 'boolean';
     o.city = CityStory.normalizeCity(cityRaw, CITY_DATA, bp, today());
     if (!hadRun && oldRun !== null) o.city.run = oldRun;
+    delete o.world;
     return o;
   }
   function load() {
@@ -1075,7 +1035,6 @@ const MODULES = [
     h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Estudia jugando</h1>' +
       '<p class="lead">Un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroCard() +
       '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad en 3D: aprende con los mentores, ponte a prueba y enseña.</p><div><button class="btn primary" data-act="city">Entrar a la ciudad</button></div></section>' +
-      '<section class="card adv"><span class="eyebrow">Modo aventura</span><strong>Explora el mundo</strong><p>Explora el mundo y aprende hablando con mentores.</p><div><button class="btn primary" data-act="world">Entrar al mundo</button></div></section>' +
       '<h2 class="h2">Módulos</h2><div class="mods">' + MODULES.map(function (m) {
         var b = S.boss[m.id];
         return '<button class="card" data-act="mod" data-id="' + esc(m.id) + '"><span class="tag">' + esc(m.id) + '</span>' +
@@ -1100,7 +1059,7 @@ const MODULES = [
     var h = header() + '<main><div class="crumb"><button class="btn sm ghost" data-act="home">← Módulos</button></div>' +
       '<div class="head"><span class="tag">' + esc(m.id) + '</span><h1>' + esc(m.title) + '</h1>' +
       '<div class="bar" role="img" aria-label="' + dominio(m) + ' por ciento de dominio"><i style="width:' + dominio(m) + '%"></i></div>' +
-      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (REGIONS[m.id] ? '<div><button class="btn sm" data-act="world" data-id="' + esc(m.id) + '">Explorar esta región</button></div>' : '') + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
+      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
       '<h2 class="h2">Modos del módulo</h2><div class="modes">' +
       modeBtn('tf', 'Relámpago', '10 afirmaciones, 12 s cada una', true) +
       modeBtn('scenario', '¿Qué usarías?', 'Decisiones de diseño en casos reales', true) +
@@ -1250,7 +1209,7 @@ const MODULES = [
       }).join('') + '</div></div>';
     }
     h += '<div class="actions">' + (miss.length ? '<button class="btn primary" data-act="replay">Repasar lo que fallé</button>' : '') +
-      '<button class="btn" data-act="back">' + (R.cfg.back && R.cfg.back.name === 'city' ? 'Volver a la ciudad' : R.cfg.back && R.cfg.back.name === 'world' ? 'Volver al mundo' : (R.cfg.back && R.cfg.back.name !== 'home' ? 'Volver' : 'Ir al inicio')) + '</button></div></main>';
+      '<button class="btn" data-act="back">' + (R.cfg.back && R.cfg.back.name === 'city' ? 'Volver a la ciudad' : (R.cfg.back && R.cfg.back.name !== 'home' ? 'Volver' : 'Ir al inicio')) + '</button></div></main>';
     return h;
   }
 
@@ -1309,7 +1268,6 @@ const MODULES = [
   function render() {
     var h = '';
     var keepCity = V.name === 'city' || ((V.name === 'play' || V.name === 'results') && R && R.cfg && R.cfg.back && R.cfg.back.name === 'city');
-    worldStop();
     tripStop();
     if (!keepCity) cityStop(); else if (V.name !== 'city') citySuspend();
     try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results' || V.name === 'trip' || V.name === 'city'); document.body.classList.toggle('trip-on', V.name === 'trip'); document.body.classList.toggle('city-on', V.name === 'city'); } catch (e) {}
@@ -1320,20 +1278,15 @@ const MODULES = [
     else if (V.name === 'play') h = vPlay();
     else if (V.name === 'results') h = vResults();
     else if (V.name === 'hero') h = vHero();
-    else if (V.name === 'world') h = vWorld();
     app.innerHTML = h;
-    if (V.name === 'world') worldStart();
     if (V.name === 'trip') tripStart();
     if (V.name === 'city') { if (CD && CD.suspended) cityResume(); else cityStart(); }
     if (R) R.fx = null;
-    paintSprites();
     if (V.name === 'results') xpCount();
     var nb = document.getElementById('nextbtn');
     if (nb) { try { nb.focus({ preventScroll: true }); } catch (e) { nb.focus(); } }
   }
 
-  /* ---------- modo aventura: datos ---------- */
-  var TS = 16, WD = null, SPR = {}, MAPS = {};
   /*__TRIP__*/
   /*__CITY_VIEW__*/
   /* ---------- viaje 3D "Viaja como paquete": ciclo de vida (escena, carga diferida, respaldo) ---------- */
@@ -1562,392 +1515,7 @@ const MODULES = [
   window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
   document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); if (CD && CD.world) CD.world.setPaused('hidden', document.hidden); });
 
-  var MNAMES = ['Ana', 'Bruno', 'Carla', 'Diego', 'Elena', 'Fermín', 'Gala', 'Héctor', 'Inés', 'Joaquín', 'Karla', 'Luis', 'Marta', 'Nico', 'Olga', 'Pablo', 'Rosa', 'Sergio', 'Tere', 'Víctor'];
-  var MFEM = { Ana: 1, Carla: 1, Elena: 1, Gala: 1, 'Inés': 1, Karla: 1, Marta: 1, Olga: 1, Rosa: 1, Tere: 1 };
-  var MHAIR = ['#3b2a20', '#1f1a17', '#6b4423', '#8a5a2b', '#b9772f', '#5a5f6b'];
-  var REGIONS = {
-    M01: { name: 'Ciudad de los Sistemas', pal: { g: '#7fb069', g2: '#6fa05b', gd: '#5c8a4b', r: '#d9d4c7', re: '#b9b2a3', wall: '#e8e3d8', wallS: '#cfc8b8', roofA: '#3d6fa8', roofB: '#5b6270', win: '#ffd76a', water: '#4a9fd8', pave: '#d9d4c7', pave2: '#c4bdae' } }
-  };
-  var HUBPAL = { g: '#86b872', g2: '#78aa64', gd: '#5f9150', r: '#d8cfbd', re: '#b7ad98', wall: '#e8e3d8', wallS: '#cfc8b8', roofA: '#3d6fa8', roofB: '#5b6270', win: '#ffd76a', water: '#4a9fd8', pave: '#ddd5c4', pave2: '#c6bca8' };
-  var GUARD = { skin: 2, suit: 2, head: 3, eyes: 3, emblem: 9, cape: 2, hand: 0, capec: '#7a52c4' };
-  var T_G = 0, T_G2 = 1, T_RD = 2, T_WA = 3, T_FE = 4, T_RA = 5, T_RB = 6, T_HW = 7, T_DR = 8, T_DB = 9, T_FL = 10, T_PO = 11, T_SI = 12, T_PV = 13, T_AN = 14, T_LA = 15, T_TR = 16, T_TW = 17, T_TD = 18, T_PL = 19, T_HWW = 20;
-  var SOLID = {}; [T_WA, T_FE, T_RA, T_RB, T_HW, T_DR, T_DB, T_PO, T_SI, T_AN, T_LA, T_TR, T_TW, T_TD, T_PL, T_HWW].forEach(function (t) { SOLID[t] = 1; });
-  var DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-  var OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
-
-  function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  function hashStr(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
-  function worldFresh() { return { at: 'hub', pos: {}, talked: {}, beaten: {}, run: false }; }
-  function mapName(id) { return id === 'hub' ? 'Plaza central' : REGIONS[id].name; }
-
-  /* ---------- mapas ---------- */
-  function newMap(id, w, h, pal, kind) {
-    var m = { id: id, w: w, h: h, pal: pal, kind: kind, t: new Uint8Array(w * h), base: new Uint8Array(w * h), ents: [], labels: [], entAt: {}, layer: null, seed: hashStr(id) };
-    return m;
-  }
-  function setT(m, x, y, t) { if (x >= 0 && y >= 0 && x < m.w && y < m.h) m.t[y * m.w + x] = t; }
-  function putObj(m, x, y, t) { var i = y * m.w + x, c = m.t[i]; m.base[i] = (c === T_PV || c === T_RD) ? c : T_G; m.t[i] = t; }
-  function getT(m, x, y) { return (x < 0 || y < 0 || x >= m.w || y >= m.h) ? T_FE : m.t[y * m.w + x]; }
-  function addEnt(m, e) { m.ents.push(e); m.entAt[e.x + ',' + e.y] = e; return e; }
-  function buildHub() {
-    var m = newMap('hub', 26, 20, HUBPAL, 'hub'), r = rng(m.seed), x, y;
-    for (y = 0; y < m.h; y++) for (x = 0; x < m.w; x++) {
-      var edge = x === 0 || y === 0 || x === m.w - 1 || y === m.h - 1;
-      setT(m, x, y, r() < 0.25 ? T_G2 : T_G);
-      if (edge) putObj(m, x, y, T_DB);
-      else if (x >= 2 && x <= 23 && y >= 2 && y <= 17) setT(m, x, y, T_PV);
-      else if (r() < 0.3) putObj(m, x, y, T_FL);
-    }
-    for (y = 8; y <= 11; y++) for (x = 11; x <= 14; x++) setT(m, x, y, T_WA);
-    [[9, 7], [16, 7], [9, 12], [16, 12]].forEach(function (p) { putObj(m, p[0], p[1], T_LA); });
-    [[4, 6], [19, 6], [4, 12], [19, 12]].forEach(function (p) {
-      for (y = p[1]; y < p[1] + 2; y++) for (x = p[0]; x < p[0] + 3; x++) { setT(m, x, y, T_G); putObj(m, x, y, (x === p[0] + 1 && y === p[1]) ? T_DB : T_FL); }
-    });
-    var xs = [4, 8, 13, 17, 21];
-    MODULES.forEach(function (mo, i) {
-      if (i > 9) return;
-      var top = i < 5, px = xs[i % 5], py = top ? 2 : 17;
-      putObj(m, px, py, T_PO); putObj(m, px + 1, py, T_SI);
-      addEnt(m, { type: 'portal', mod: mo.id, x: px, y: py, fy: top ? 1 : -1 });
-      addEnt(m, { type: 'sign', mod: mo.id, x: px + 1, y: py, fy: top ? 1 : -1 });
-      m.labels.push({ x: px * TS + 8, y: py * TS + (top ? -2 : TS + 7), text: mo.id });
-    });
-    putObj(m, 14, 13, T_SI);
-    addEnt(m, { type: 'sign', title: 'Bienvenida', text: 'Camina con las flechas o WASD. Habla con E, Espacio o Enter. En el teléfono usa los botones.', x: 14, y: 13, fy: 1 });
-    m.entry = { x: 12, y: 13, d: 'down' };
-    return m;
-  }
-  function buildRegion(mo) {
-    var reg = REGIONS[mo.id], n = mo.topics.length, rows = Math.ceil(n / 4), w = 44, h = 13 + rows * 9;
-    var m = newMap(mo.id, w, h, reg.pal, 'region'), r = rng(m.seed), x, y, c, k;
-    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
-      setT(m, x, y, r() < 0.25 ? T_G2 : T_G);
-      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) putObj(m, x, y, T_FE);
-    }
-    for (c = 0; c <= 4; c++) for (y = 7; y <= 8 + rows * 9; y++) { setT(m, 1 + c * 10, y, T_RD); setT(m, 2 + c * 10, y, T_RD); }
-    for (k = 0; k <= rows; k++) for (x = 1; x <= 42; x++) { setT(m, x, 7 + k * 9, T_RD); setT(m, x, 8 + k * 9, T_RD); }
-    // torre del jefe
-    for (y = 1; y <= 4; y++) for (x = 19; x <= 23; x++) putObj(m, x, y, y < 4 ? T_TR : T_TW);
-    putObj(m, 21, 4, T_TD);
-    for (y = 5; y <= 6; y++) { setT(m, 21, y, T_RD); setT(m, 22, y, T_RD); }
-    addEnt(m, { type: 'boss', x: 21, y: 5, fy: 1, look: GUARD });
-    // entrada
-    for (y = h - 4; y <= h - 3; y++) { setT(m, 21, y, T_RD); setT(m, 22, y, T_RD); }
-    setT(m, 21, h - 2, T_RD); setT(m, 22, h - 2, T_RD);
-    putObj(m, 21, h - 2, T_PO); putObj(m, 22, h - 2, T_SI);
-    addEnt(m, { type: 'portal', to: 'hub', x: 21, y: h - 2, fy: -1 });
-    addEnt(m, { type: 'sign', title: 'Portal', text: 'Este portal te lleva de vuelta a la plaza central.', x: 22, y: h - 2, fy: -1 });
-    m.entry = { x: 21, y: h - 3, d: 'up' };
-    // parcelas
-    for (var i = 0; i < rows * 4; i++) {
-      var rr = Math.floor(i / 4), cc = i % 4, px = 3 + cc * 10, py = 9 + (rows - 1 - rr) * 9, t = mo.topics[i];
-      if (!t) {
-        for (y = py + 2; y <= py + 3; y++) for (x = px + 2; x <= px + 5; x++) setT(m, x, y, T_WA);
-        for (y = py; y < py + 7; y++) for (x = px; x < px + 8; x++) if (getT(m, x, y) <= T_G2) { var q = r(); if (q < 0.12) putObj(m, x, y, T_FL); else if (q < 0.16) putObj(m, x, y, T_LA); }
-        continue;
-      }
-      var roof = i % 2 ? T_RB : T_RA;
-      for (x = px + 2; x <= px + 5; x++) { putObj(m, x, py + 1, roof); putObj(m, x, py + 2, roof); putObj(m, x, py + 3, x === px + 3 ? T_DR : (x === px + 2 ? T_HW : T_HWW)); }
-      putObj(m, px + 6, py + 3, T_PL);
-      setT(m, px + 3, py + 4, T_RD); setT(m, px + 3, py + 5, T_RD); setT(m, px + 3, py + 6, T_RD);
-      var nm = MNAMES[i % MNAMES.length], lr = rng(hashStr(mo.id + t.id));
-      addEnt(m, { type: 'mentor', tid: t.id, x: px + 3, y: py + 4, fy: 1, name: nm, fem: !!MFEM[nm],
-        look: { skin: Math.floor(lr() * 6), suit: Math.floor(lr() * 4), head: MFEM[nm] ? 1 : 0, eyes: lr() < 0.3 ? 1 : 0, emblem: lr() < 0.5 ? 1 : 0, cape: 0, hand: 0, hc: MHAIR[Math.floor(lr() * MHAIR.length)] } });
-      m.labels.push({ x: (px + 4) * TS, y: (py + 1) * TS - 2, text: t.id });
-      for (y = py; y < py + 7; y++) for (x = px; x < px + 8; x++) {
-        if (getT(m, x, y) > T_G2) continue;
-        if (x >= px + 2 && x <= px + 4 && y >= py + 4) continue;
-        var d = r();
-        if (d < 0.09) putObj(m, x, y, T_DB); else if (d < 0.12) putObj(m, x, y, T_AN); else if (d < 0.2) putObj(m, x, y, T_FL); else if (d < 0.22) putObj(m, x, y, T_LA);
-      }
-    }
-    m.labels.push({ x: 21 * TS + 8, y: TS - 3, text: 'JEFE' });
-    VILLAINS.forEach(function (v) {
-      if (v.mod !== mo.id) return;
-      var pa = vPath(v);
-      m.ents.push({ type: 'villain', vid: v.id, name: v.name, path: pa, pi: 0, pd: 1, x: pa[0][0], y: pa[0][1], off: true, wait: 0, tp: 1 });
-    });
-    return m;
-  }
-  function getMap(id) {
-    if (MAPS[id]) return MAPS[id];
-    return (MAPS[id] = id === 'hub' ? buildHub() : buildRegion(mod(id)));
-  }
-  function passable(m, x, y) {
-    if (x < 0 || y < 0 || x >= m.w || y >= m.h) return false;
-    if (SOLID[m.t[y * m.w + x]]) return false;
-    return !m.entAt[x + ',' + y];
-  }
-
-  /* ---------- pintura de casillas ---------- */
-  function paintMap(m) {
-    var cv = document.createElement('canvas'); cv.width = m.w * TS; cv.height = m.h * TS;
-    var c = null; try { c = cv.getContext('2d'); } catch (e) {}
-    m.layer = cv;
-    if (!c) return;
-    for (var y = 0; y < m.h; y++) for (var x = 0; x < m.w; x++) drawTile(c, m, x, y);
-  }
-  function drawTile(c, m, x, y) {
-    var t = m.t[y * m.w + x], X = x * TS, Y = y * TS, p = m.pal, r = rng(m.seed ^ (x * 73856093) ^ (y * 19349663));
-    function R(a, b, w, h, col) { c.fillStyle = col; c.fillRect(X + a, Y + b, w, h); }
-    function ground(g) {
-      if (g === T_PV) { R(0, 0, 16, 16, p.pave); R(0, 15, 16, 1, p.pave2); R(15, 0, 1, 16, p.pave2); if (r() < 0.3) R(3 + Math.floor(r() * 8), 4 + Math.floor(r() * 8), 2, 1, p.pave2); }
-      else if (g === T_RD) {
-        R(0, 0, 16, 16, p.r);
-        for (var i = 0; i < 3; i++) R(Math.floor(r() * 15), Math.floor(r() * 15), 1, 1, p.re);
-        if (getT(m, x, y - 1) !== T_RD && !isRoadish(getT(m, x, y - 1))) R(0, 0, 16, 1, p.re);
-        if (!isRoadish(getT(m, x, y + 1))) R(0, 15, 16, 1, p.re);
-        if (!isRoadish(getT(m, x - 1, y))) R(0, 0, 1, 16, p.re);
-        if (!isRoadish(getT(m, x + 1, y))) R(15, 0, 1, 16, p.re);
-      } else {
-        R(0, 0, 16, 16, g === T_G2 ? p.g2 : p.g);
-        for (var j = 0; j < 4; j++) R(Math.floor(r() * 14), Math.floor(r() * 14), 1, 2, j % 2 ? p.gd : p.g2);
-      }
-    }
-    function isRoadish(v) { return v === T_RD || v === T_PO || v === T_SI || v === T_TD || v === T_PV; }
-    if (t === T_G || t === T_G2 || t === T_RD || t === T_PV) { ground(t); return; }
-    if (t === T_WA) {
-      R(0, 0, 16, 16, p.water); R(2 + Math.floor(r() * 8), 3 + Math.floor(r() * 9), 4, 1, '#8fcbf0'); R(6 + Math.floor(r() * 6), 9, 3, 1, '#3a86bd');
-      var rim = '#c9c2b2', rs = '#a39b89';
-      if (getT(m, x, y - 1) !== T_WA) { R(0, 0, 16, 3, rim); R(0, 3, 16, 1, rs); }
-      if (getT(m, x, y + 1) !== T_WA) { R(0, 13, 16, 3, rim); R(0, 12, 16, 1, rs); }
-      if (getT(m, x - 1, y) !== T_WA) { R(0, 0, 3, 16, rim); R(3, 3, 1, 10, rs); }
-      if (getT(m, x + 1, y) !== T_WA) { R(13, 0, 3, 16, rim); R(12, 3, 1, 10, rs); }
-      return;
-    }
-    if (t === T_RA || t === T_RB) {
-      var col = t === T_RA ? p.roofA : p.roofB, up = getT(m, x, y - 1) === t, lf = getT(m, x - 1, y) === t, rt = getT(m, x + 1, y) === t;
-      R(0, 0, 16, 16, col);
-      for (var s = 3; s < 16; s += 4) R(0, s, 16, 1, shade(col, -0.18));
-      for (var s2 = 0; s2 < 16; s2 += 8) { R(s2 + 3, 0, 1, 3, shade(col, -0.18)); R(s2 + 7, 4, 1, 3, shade(col, -0.18)); R(s2 + 3, 8, 1, 3, shade(col, -0.18)); R(s2 + 7, 12, 1, 3, shade(col, -0.18)); }
-      if (!up) { R(0, 0, 16, 2, shade(col, 0.3)); R(0, 0, 16, 1, shade(col, -0.4)); }
-      else R(0, 14, 16, 2, shade(col, -0.3));
-      if (!lf) R(0, 0, 1, 16, shade(col, -0.4));
-      if (!rt) R(15, 0, 1, 16, shade(col, -0.4));
-      return;
-    }
-    if (t === T_HW || t === T_HWW || t === T_DR) {
-      R(0, 0, 16, 16, p.wall); R(0, 0, 16, 2, p.wallS); R(0, 14, 16, 2, p.wallS);
-      if (getT(m, x - 1, y) !== T_HW && getT(m, x - 1, y) !== T_HWW && getT(m, x - 1, y) !== T_DR) R(0, 0, 1, 16, shade(p.wallS, -0.3));
-      if (getT(m, x + 1, y) !== T_HW && getT(m, x + 1, y) !== T_HWW && getT(m, x + 1, y) !== T_DR) R(15, 0, 1, 16, shade(p.wallS, -0.3));
-      if (t === T_HWW) { R(4, 4, 8, 8, '#4a5568'); R(5, 5, 6, 6, p.win); R(8, 5, 1, 6, '#4a5568'); R(5, 8, 6, 1, '#4a5568'); R(5, 5, 2, 1, '#fff3c4'); }
-      if (t === T_DR) { R(3, 2, 10, 14, '#4a3520'); R(4, 3, 8, 13, '#8a5a34'); R(4, 3, 8, 1, '#a9744a'); R(10, 9, 1, 2, '#ffd76a'); }
-      return;
-    }
-    if (t === T_TR) {
-      var tc = '#5b4a8a';
-      R(0, 0, 16, 16, tc);
-      for (var q = 3; q < 16; q += 4) R(0, q, 16, 1, '#463770');
-      if (getT(m, x, y - 1) !== T_TR) { R(0, 0, 16, 2, '#8271b8'); R(0, 0, 16, 1, '#2f2552'); }
-      if (getT(m, x - 1, y) !== T_TR) R(0, 0, 1, 16, '#2f2552');
-      if (getT(m, x + 1, y) !== T_TR) R(15, 0, 1, 16, '#2f2552');
-      return;
-    }
-    if (t === T_TW || t === T_TD) {
-      R(0, 0, 16, 16, '#b9bfca'); R(0, 0, 16, 2, '#8e95a3'); R(0, 7, 16, 1, '#9da4b1'); R(7, 2, 1, 5, '#9da4b1'); R(3, 8, 1, 8, '#9da4b1'); R(11, 8, 1, 8, '#9da4b1');
-      if (t === T_TW) { R(6, 4, 4, 8, '#3a2f4a'); R(7, 5, 2, 6, p.win); }
-      else { R(2, 1, 12, 15, '#2b2140'); R(3, 2, 10, 14, '#4a3a6a'); R(7, 2, 2, 14, '#2b2140'); R(5, 8, 2, 2, '#e0b13a'); R(9, 8, 2, 2, '#e0b13a'); }
-      return;
-    }
-    ground(m.base[y * m.w + x]);
-    if (t === T_DB) {
-      if (m.kind === 'hub') {
-        c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(X + 3, Y + 13, 10, 3);
-        R(7, 10, 2, 5, '#6b4a2b'); R(3, 1, 10, 10, '#2f6f3b'); R(2, 3, 12, 6, '#2f6f3b'); R(3, 1, 10, 8, '#3f8a4b'); R(2, 3, 12, 4, '#3f8a4b'); R(4, 2, 5, 3, '#5fae63'); R(3, 4, 3, 2, '#5fae63');
-      } else {
-        c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(X + 3, Y + 13, 11, 3);
-        R(3, 1, 10, 14, '#1d2430'); R(4, 2, 8, 12, '#2f3947'); R(4, 2, 8, 1, '#465366');
-        for (var l = 0; l < 4; l++) { R(5, 4 + l * 3, 6, 1, '#1d2430'); R(5, 5 + l * 3, 1, 1, r() < 0.8 ? '#3fd16b' : '#ffd76a'); R(7, 5 + l * 3, 1, 1, r() < 0.5 ? '#3fd16b' : '#465366'); }
-      }
-    } else if (t === T_FE) {
-      R(0, 3, 16, 11, '#8e97a3'); R(0, 3, 16, 3, '#c3cad2'); R(0, 13, 16, 1, '#5f6772'); R(4, 6, 1, 7, '#77808c'); R(11, 6, 1, 7, '#77808c'); R(0, 9, 16, 1, '#77808c');
-    } else if (t === T_FL) {
-      var fc = ['#f29bb5', '#ffe07a', '#ffffff', '#c9a3f2'];
-      for (var f = 0; f < 3; f++) { var fx = 2 + Math.floor(r() * 11), fy = 2 + Math.floor(r() * 11); R(fx, fy, 2, 2, fc[Math.floor(r() * 4)]); R(fx, fy + 2, 1, 1, p.gd); }
-    } else if (t === T_AN) {
-      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(X + 5, Y + 14, 7, 2);
-      R(7, 4, 2, 11, '#6b7480'); R(5, 13, 6, 2, '#4a525d'); R(3, 2, 10, 3, '#dfe6ef'); R(4, 5, 8, 1, '#aab4c0'); R(7, 0, 2, 2, '#e5484d');
-    } else if (t === T_LA) {
-      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(X + 5, Y + 14, 6, 2);
-      R(7, 5, 2, 10, '#3a4250'); R(6, 14, 4, 1, '#3a4250'); R(5, 1, 6, 5, '#3a4250'); R(6, 2, 4, 3, '#ffd76a'); R(6, 2, 2, 1, '#fff3c4');
-    } else if (t === T_PL) {
-      R(7, 8, 2, 7, '#6b4a2b'); R(3, 3, 10, 7, '#4a3520'); R(4, 4, 8, 5, '#f1e9d2'); R(5, 5, 6, 1, '#8a7a5c'); R(5, 7, 4, 1, '#8a7a5c');
-    } else if (t === T_SI) {
-      R(7, 9, 2, 6, '#6b4a2b'); R(2, 2, 12, 8, '#4a3520'); R(3, 3, 10, 6, '#c99a5b'); R(4, 4, 8, 1, '#7a5a30'); R(4, 6, 6, 1, '#7a5a30');
-    } else if (t === T_PO) {
-      R(1, 2, 14, 14, '#6f7783'); R(2, 1, 12, 2, '#8d949e'); R(1, 2, 3, 14, '#8d949e'); R(12, 2, 3, 14, '#8d949e'); R(1, 2, 1, 14, '#aab1ba'); R(4, 4, 8, 12, '#2b3140'); R(2, 1, 12, 1, '#aab1ba');
-    }
-  }
-
-  /* ---------- sprites ---------- */
-  function heroSprite(look, dir, frame) {
-    var key = [look.skin, look.suit, look.head, look.eyes, look.emblem, look.cape, look.hand, look.hc || '', look.capec || '', dir, frame].join('|');
-    if (SPR[key]) return SPR[key];
-    var cv = document.createElement('canvas'); cv.width = 16; cv.height = 24;
-    var c = null; try { c = cv.getContext('2d'); } catch (e) {}
-    SPR[key] = cv;
-    if (!c) return cv;
-    var sk = PARTS.skin[look.skin] || PARTS.skin[0], su = PARTS.suit[look.suit] || PARTS.suit[0];
-    var hk = (PARTS.head[look.head] || PARTS.head[0]).k, ek = (PARTS.eyes[look.eyes] || PARTS.eyes[0]).k;
-    var mk = (PARTS.emblem[look.emblem] || PARTS.emblem[0]).k, ck = (PARTS.cape[look.cape] || PARTS.cape[0]).k, ak = (PARTS.hand[look.hand] || PARTS.hand[0]).k;
-    var hair = look.hc || '#3b2a20', hairO = shade(hair, -0.35), skO = shade(sk.s, -0.3), suO = shade(su.s, -0.35), boot = shade(su.s, -0.5);
-    var capeC = look.capec || su.s, capeO = shade(capeC, -0.3), dark = '#1d2230', gold = '#e0b13a';
-    var s = frame === 1 ? 1 : (frame === 3 ? -1 : 0), ch = ck === 'short' ? 7 : 10, hasHair = hk === 'hair_s' || hk === 'hair_l';
-    function R(x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
-    function acc(x, y) {
-      if (ak === 'lens') { R(x, y - 1, 3, 3, '#333b47'); R(x + 1, y, 1, 1, '#bfe8ff'); }
-      else if (ak === 'laptop') { R(x - 1, y - 1, 4, 3, '#cfd6df'); R(x, y, 2, 1, '#2b3547'); }
-      else if (ak === 'hourglass') { R(x, y - 2, 3, 1, '#5a4329'); R(x + 1, y - 1, 1, 2, gold); R(x, y + 1, 3, 1, '#5a4329'); }
-      else if (ak === 'web') { R(x, y, 3, 2, '#5d6b7d'); R(x + 3, y, 1, 1, '#2f3947'); }
-    }
-    function headBase() { R(3, 2, 10, 9, skO); c.clearRect(3, 2, 1, 1); c.clearRect(12, 2, 1, 1); c.clearRect(3, 10, 1, 1); c.clearRect(12, 10, 1, 1); R(4, 3, 8, 7, sk.f); }
-    function helmetTop() {
-      if (hk === 'aviator') { R(3, 1, 10, 4, '#8b6a45'); R(4, 0, 8, 1, '#5a4329'); R(3, 4, 10, 1, '#5a4329'); }
-      else if (hk === 'antenna') { R(3, 1, 10, 4, '#6b7c93'); R(4, 0, 8, 1, '#44526a'); R(3, 4, 10, 1, '#44526a'); R(8, 0, 1, 1, gold); }
-    }
-    function bubble() { if (hk === 'crystal') { R(2, 1, 12, 10, 'rgba(191,232,255,.38)'); R(3, 0, 10, 1, '#7ab8d8'); R(2, 1, 1, 10, '#7ab8d8'); R(13, 1, 1, 10, '#7ab8d8'); R(4, 2, 2, 1, 'rgba(255,255,255,.85)'); R(4, 3, 1, 1, 'rgba(255,255,255,.85)'); } }
-    function legs() {
-      var ll = s === 1 ? 3 : 4, rl = s === -1 ? 3 : 4;
-      R(5, 17, 3, ll, su.s); R(8, 17, 3, rl, shade(su.s, -0.12));
-      R(4, 17 + ll, 4, 2, boot); R(8, 17 + rl, 4, 2, boot);
-    }
-    if (dir === 'down') {
-      if (ck !== 'none') { R(2, 11, 12, ch, capeO); R(3, 11, 10, ch - 1, capeC); if (ck === 'trim') R(2, 10 + ch, 12, 1, gold); }
-      legs();
-      R(4, 10, 8, 7, suO); R(5, 10, 6, 6, su.f); R(10, 10, 1, 6, su.s); R(5, 15, 6, 1, suO); R(7, 15, 2, 1, gold); R(7, 10, 2, 1, sk.s);
-      if (mk !== 'none') { R(6, 11, 4, 3, '#f5f5f5'); R(7, 12, 2, 1, mk === 'circle' ? '#f5f5f5' : dark); }
-      R(2, 10 + s, 2, 5, su.f); R(2, 10 + s, 1, 5, su.s); R(2, 15 + s, 2, 1, sk.f);
-      R(12, 10 - s, 2, 5, su.f); R(13, 10 - s, 1, 5, su.s); R(12, 15 - s, 2, 1, sk.f);
-      if (ak === 'band') R(2, 12 + s, 2, 1, gold);
-      if (ak === 'shield') { R(0, 11 + s, 4, 6, '#3a4658'); R(1, 12 + s, 2, 4, '#9fb0c4'); }
-      acc(12, 15 - s);
-      headBase();
-      R(6, 6, 1, 2, dark); R(9, 6, 1, 2, dark); R(7, 9, 2, 1, sk.s); R(5, 8, 1, 1, shade(sk.f, -0.1)); R(10, 8, 1, 1, shade(sk.f, -0.1));
-      if (hasHair) { R(4, 1, 8, 1, hairO); R(3, 2, 10, 2, hair); R(4, 4, 3, 1, hair); R(10, 4, 2, 1, hair); R(5, 2, 3, 1, shade(hair, 0.25)); }
-      if (hk === 'hair_l') { R(3, 3, 1, 9, hair); R(12, 3, 1, 9, hair); R(2, 5, 1, 6, hairO); R(13, 5, 1, 6, hairO); }
-      helmetTop();
-      if (hk === 'aviator') { R(5, 2, 2, 2, '#bfe8ff'); R(9, 2, 2, 2, '#bfe8ff'); R(3, 5, 1, 4, '#8b6a45'); R(12, 5, 1, 4, '#8b6a45'); }
-      if (ek === 'round') { R(5, 6, 1, 2, '#cfe8ff'); R(10, 6, 1, 2, '#cfe8ff'); R(7, 6, 2, 1, dark); R(5, 5, 2, 1, dark); R(9, 5, 2, 1, dark); }
-      else if (ek === 'laser') { R(5, 6, 6, 2, '#19b5c9'); R(5, 6, 6, 1, '#7fe3ef'); }
-      else if (ek === 'gold') { R(5, 6, 6, 2, gold); R(5, 6, 6, 1, '#fff3c4'); }
-      else if (ek === 'mask') { R(4, 6, 8, 2, '#2b2f3a'); R(6, 6, 1, 1, '#fff'); R(9, 6, 1, 1, '#fff'); }
-      else if (ek === 'lab') { R(5, 5, 6, 3, 'rgba(200,240,255,.75)'); R(6, 6, 1, 2, dark); R(9, 6, 1, 2, dark); R(4, 6, 1, 1, dark); R(11, 6, 1, 1, dark); }
-      bubble();
-    } else if (dir === 'up') {
-      legs();
-      R(4, 10, 8, 7, suO); R(5, 10, 6, 6, su.f); R(5, 10, 1, 6, su.s); R(5, 15, 6, 1, suO);
-      R(2, 10 - s, 2, 5, su.f); R(2, 10 - s, 1, 5, su.s); R(2, 15 - s, 2, 1, sk.f);
-      R(12, 10 + s, 2, 5, su.f); R(13, 10 + s, 1, 5, su.s); R(12, 15 + s, 2, 1, sk.f);
-      if (ak === 'band') R(12, 12 + s, 2, 1, gold);
-      if (ak === 'shield') { R(12, 11 + s, 4, 6, '#3a4658'); }
-      if (ck !== 'none') { R(3, 10, 10, ch + 1, capeO); R(4, 10, 8, ch, capeC); R(6, 11, 1, ch - 2, capeO); R(9, 11, 1, ch - 2, capeO); if (ck === 'trim') { R(3 + s, 10 + ch, 10, 1, gold); } else if (s) R(3 + s, 10 + ch, 10, 1, capeO); }
-      headBase();
-      if (hasHair) { R(4, 1, 8, 1, hairO); R(3, 2, 10, 6, hair); R(4, 8, 8, 1, hairO); R(5, 3, 2, 1, shade(hair, 0.25)); }
-      if (hk === 'hair_l') { R(3, 2, 10, 10, hair); R(3, 12, 10, 1, hairO); R(6, 4, 1, 7, hairO); R(9, 4, 1, 7, hairO); }
-      if (hk === 'aviator') { R(3, 1, 10, 7, '#8b6a45'); R(4, 0, 8, 1, '#5a4329'); R(3, 8, 10, 1, '#5a4329'); }
-      else if (hk === 'antenna') { R(3, 1, 10, 6, '#6b7c93'); R(4, 0, 8, 1, '#44526a'); R(3, 7, 10, 1, '#44526a'); R(8, 0, 1, 1, gold); }
-      bubble();
-    } else {
-      if (dir === 'left') { c.translate(16, 0); c.scale(-1, 1); }
-      if (ck !== 'none') { R(2, 10, 4, ch, capeO); R(3, 10, 3, ch - 1, capeC); if (s) R(1, 8 + ch - 2, 2, 3, capeC); if (ck === 'trim') R(2 - (s ? 1 : 0), 9 + ch, 4, 1, gold); }
-      if (s === 0) { R(6, 17, 4, 4, su.s); R(6, 21, 5, 2, boot); }
-      else if (s === 1) { R(5, 17, 2, 3, shade(su.s, -0.15)); R(4, 20, 3, 2, boot); R(8, 17, 3, 4, su.s); R(8, 21, 4, 2, boot); }
-      else { R(9, 17, 2, 3, shade(su.s, -0.15)); R(9, 20, 3, 2, boot); R(6, 17, 3, 4, su.s); R(6, 21, 4, 2, boot); }
-      R(4, 10, 8, 7, suO); R(5, 10, 6, 6, su.f); R(5, 10, 1, 6, su.s); R(5, 15, 6, 1, suO);
-      R(7 + s, 10, 2, 5, shade(su.f, -0.12)); R(7 + s, 15, 2, 1, sk.f);
-      if (ak === 'band') R(7 + s, 12, 2, 1, gold);
-      if (ak === 'shield') { R(6 + s, 11, 4, 6, '#3a4658'); R(7 + s, 12, 2, 4, '#9fb0c4'); }
-      acc(8 + s, 15);
-      headBase();
-      R(10, 6, 1, 2, dark); R(10, 9, 2, 1, sk.s);
-      if (hasHair) { R(4, 1, 8, 1, hairO); R(3, 2, 10, 2, hair); R(3, 4, 5, 3, hair); R(4, 7, 3, 1, hair); R(5, 2, 3, 1, shade(hair, 0.25)); }
-      if (hk === 'hair_l') { R(2, 3, 4, 9, hair); R(2, 12, 4, 1, hairO); }
-      helmetTop();
-      if (hk === 'aviator') { R(9, 2, 3, 2, '#bfe8ff'); R(4, 5, 3, 4, '#8b6a45'); }
-      if (ek === 'round') { R(10, 5, 2, 1, dark); R(11, 6, 1, 2, '#cfe8ff'); R(7, 6, 3, 1, dark); }
-      else if (ek === 'laser') { R(8, 6, 4, 2, '#19b5c9'); R(8, 6, 4, 1, '#7fe3ef'); }
-      else if (ek === 'gold') { R(8, 6, 4, 2, gold); R(8, 6, 4, 1, '#fff3c4'); }
-      else if (ek === 'mask') { R(6, 6, 6, 2, '#2b2f3a'); R(10, 6, 1, 1, '#fff'); }
-      else if (ek === 'lab') { R(8, 5, 4, 3, 'rgba(200,240,255,.75)'); R(10, 6, 1, 2, dark); R(6, 6, 2, 1, dark); }
-      bubble();
-    }
-    return cv;
-  }
-
-  /* ---------- villanos (W2): VILLAINS, villainSprite, vBattleHud ---------- */
-  var VILLAINS = [
-    { id: 'lag', mod: 'M01', name: 'Lagartijo Lento', topics: ['T01', 'T02', 'T03', 'T04'], line: 'Todo lo que pidas llegará… tarde. Muy tarde.', path: ['h', 5, 10, 53] },
-    { id: 'cuello', mod: 'M01', name: 'Cuello de Botella', topics: ['T06', 'T09', 'T17'], line: 'Por aquí solo pasa una petición a la vez.', path: ['h', 27, 32, 44] },
-    { id: 'unico', mod: 'M01', name: 'Gólem del Punto Único', topics: ['T07', 'T08', 'T12'], line: 'Si yo caigo, cae todo. Y no pienso caer.', path: ['v', 46, 51, 2] },
-    { id: 'cache', mod: 'M01', name: 'Fantasma Obsoleto', topics: ['T10', 'T13', 'T14'], line: 'Lo que sabes ya caducó. Yo me encargué.', path: ['h', 33, 38, 26] },
-    { id: 'monolito', mod: 'M01', name: 'Monolito Gruñón', topics: ['T15', 'T16', 'T18'], line: 'Todo junto, todo pegado, nada se despliega solo.', path: ['h', 13, 18, 17] },
-    { id: 'clon', mod: 'M01', name: 'Duplicador', topics: ['T05', 'T11', 'T19'], line: '¿Pagaste una vez? Yo hago que pagues dos.', path: ['v', 37, 41, 32] }
-  ];
-  var VSPR = {};
-  function villain(id) { return VILLAINS.filter(function (v) { return v.id === id; })[0]; }
-  function villainSprite(id, frame) {
-    var key = id + '|' + frame;
-    if (VSPR[key]) return VSPR[key];
-    var cv = document.createElement('canvas'); cv.width = 20; cv.height = 22;
-    var c = null; try { c = cv.getContext('2d'); } catch (e) {}
-    VSPR[key] = cv;
-    if (!c) return cv;
-    var f = frame ? 1 : 0, parts = [];
-    function P(x, y, w, h, col) { parts.push([x, y, w, h, col]); }
-    function R(x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
-    function flush(out) { parts.forEach(function (p) { R(p[0] - 1, p[1] - 1, p[2] + 2, p[3] + 2, out); }); parts.forEach(function (p) { R(p[0], p[1], p[2], p[3], p[4]); }); parts = []; }
-    if (id === 'lag') {
-      var pu = '#7a52c4';
-      P(1, 14 - f, 3, 2, pu); P(3, 11, 11, 6, pu); P(12, 6, 6, 7, pu); P(5, 17, 2, 3 - f, pu); P(11, 17, 2, 2 + f, pu); flush('#3f2a78');
-      R(5, 14, 8, 2, '#b79cf0'); R(15, 8, 2, 2, '#ffffff'); R(16, 9, 1, 1, '#1d2230'); R(17, 12, 2, 1, '#ff7ab6'); R(13, 7, 3, 1, '#9a78dc');
-      R(5, 4, 6, 1, '#5a4329'); R(6, 5, 4, 2, '#ffe07a'); R(7, 7, 2, 1, '#ffe07a'); R(6, 8, 4, 2, '#fff7d6'); R(5, 10, 6, 1, '#5a4329');
-    } else if (id === 'cuello') {
-      var gr = '#3fae5a';
-      P(8, 2, 4, 6, gr); P(5, 8, 10, 12, gr); P(2, 12 - f, 2, 4, gr); P(16, 12 + f, 2, 4, gr); P(7, 0, 6, 2, '#c9a24a'); flush('#1f6a35');
-      R(6, 9, 2, 9, '#8fe0a3'); R(8, 3, 1, 2, '#ffffff'); R(11, 3, 1, 2, '#ffffff'); R(8, 4, 1, 1, '#1d2230'); R(11, 4, 1, 1, '#1d2230'); R(8, 2, 2, 1, '#1f6a35'); R(10, 2, 2, 1, '#1f6a35'); R(9, 6, 2, 1, '#1f6a35');
-      R(8, 12, 5, 5, '#f1e9d2'); R(9, 13, 3, 1, '#b3261e'); R(9, 15, 3, 1, '#8a7a5c'); R(5, 19, 10, 1, '#2a7a3d');
-    } else if (id === 'unico') {
-      var st = '#8e95a3';
-      P(5, 2, 10, 5, st); P(3, 7, 14, 12, st); P(1, 8 + f, 2, 8, st); P(17, 8 + f, 2, 8, st); P(5, 19, 4, 2, st); P(11, 19, 4, 2, st); flush('#4a505c');
-      R(5, 2, 10, 1, '#b4bac6'); R(3, 7, 2, 10, '#a9afbc'); R(7, 3, 6, 4, '#2b2f3a'); R(8, 4, 4, 2, '#ff5a5f'); R(9, 4, 2, 1, '#ffd0d0'); R(10, 10, 1, 3, '#3a3f4a'); R(9, 12, 1, 3, '#3a3f4a'); R(11, 14, 1, 2, '#3a3f4a'); R(14, 9, 2, 8, '#767d8b');
-    } else if (id === 'cache') {
-      var gh = 'rgba(205,232,255,.9)', go = '#6f9fca';
-      R(5, 1, 10, 1, go); R(3, 2, 14, 16, go); R(3, 18, 4, 2 + f, go); R(8, 18, 4, 3 - f, go); R(13, 18, 4, 2 + f, go);
-      c.clearRect(4, 2, 12, 16); c.clearRect(4, 18, 2, 1 + f); c.clearRect(9, 18, 2, 2 - f); c.clearRect(14, 18, 2, 1 + f);
-      R(4, 2, 12, 16, gh); R(4, 18, 2, 1 + f, gh); R(9, 18, 2, 2 - f, gh); R(14, 18, 2, 1 + f, gh); R(5, 3, 3, 5, 'rgba(255,255,255,.7)');
-      R(7, 6, 2, 3, '#22304a'); R(11, 6, 2, 3, '#22304a'); R(9, 11, 2, 2, '#22304a'); R(15, 10, 1, 3, '#8a7a5c'); R(13, 13, 6, 5, '#8a7a5c'); R(14, 14, 4, 3, '#f1e9d2'); R(15, 15, 2, 1, '#b3261e');
-    } else if (id === 'monolito') {
-      var br = '#6b4a2e';
-      P(4, 2, 12, 17, br); P(1, 8, 3, 4, '#9aa3ad'); P(16, 8, 3, 4, '#9aa3ad'); P(5, 19, 4, 2, br); P(11, 19, 4, 2, br); flush('#2f1f10');
-      R(4, 2, 12, 2, '#8a6442'); R(14, 4, 2, 15, '#553820'); R(2, 9 + f, 1, 1, '#2f1f10'); R(17, 10 - f, 1, 1, '#2f1f10');
-      R(6, 7, 3, 2, '#ffffff'); R(11, 7, 3, 2, '#ffffff'); R(7, 8, 1, 1, '#1d2230'); R(12, 8, 1, 1, '#1d2230'); R(6, 5, 2, 1, '#2f1f10'); R(7, 6, 2, 1, '#2f1f10'); R(12, 5, 2, 1, '#2f1f10'); R(11, 6, 2, 1, '#2f1f10');
-      R(7, 13, 6, 1, '#2f1f10'); R(6, 14, 1, 1, '#2f1f10'); R(13, 14, 1, 1, '#2f1f10');
-    } else {
-      var og = '#f08a2e';
-      P(2, 3 + f, 7, 7, og); P(11, 3 - f + 1, 7, 7, og); P(4, 10, 12, 8, og); P(5, 18, 3, 3 - f, og); P(12, 18, 3, 2 + f, og); flush('#9a4d0c');
-      R(2, 3 + f, 7, 1, '#ffb066'); R(11, 4 - f, 7, 1, '#ffb066'); R(6, 12, 8, 4, '#ffd0a0');
-      R(4, 6 + f, 2, 2, '#ffffff'); R(5, 7 + f, 1, 1, '#1d2230'); R(13, 7 - f, 2, 2, '#ffffff'); R(14, 8 - f, 1, 1, '#1d2230'); R(4, 9 + f, 3, 1, '#9a4d0c'); R(13, 10 - f, 3, 1, '#9a4d0c');
-      R(5, 0 + f, 1, 2, '#9a4d0c'); R(14, 1 - f, 1, 2, '#9a4d0c');
-    }
-    return cv;
-  }
-  function paintSprites() {
-    var list = document.querySelectorAll('canvas[data-spr]');
-    for (var i = 0; i < list.length; i++) {
-      var cv = list[i], c = null; try { c = cv.getContext('2d'); } catch (e) {}
-      if (!c) continue;
-      c.clearRect(0, 0, cv.width, cv.height);
-      c.drawImage(cv.dataset.spr === 'hero' ? heroSprite(S.hero.look, 'right', 0) : villainSprite(cv.dataset.spr, 0), 0, 0);
-    }
-  }
   function beatenToday(id) { return S.city.beaten[id] === today(); }
-  function beatenCount(mid) { return VILLAINS.filter(function (v) { return v.mod === mid && beatenToday(v.id); }).length; }
-  function villainCount(mid) { return VILLAINS.filter(function (v) { return v.mod === mid; }).length; }
-  function vPath(v) {
-    var p = v.path, out = [], i;
-    for (i = p[1]; i <= p[2]; i++) out.push(p[0] === 'h' ? [i, p[3]] : [p[3], i]);
-    return out;
-  }
   /* Pool barajado de preguntas mcq+tf de los temas, sin repetir: las primeras n son la ronda y arr.pool guarda el resto */
   function battleItems(v) {
     var m = mod(v.mod), pool = [];
@@ -1968,466 +1536,14 @@ const MODULES = [
     for (i = 0; i < 3; i++) hearts += '<span class="' + (i < B.en ? 'on' : 'off') + '">♥</span>';
     for (i = 0; i < 4; i++) hp += '<i class="' + (i < B.hp ? 'on' : '') + '"></i>';
     var dome = (R.st.shield && !R.answered) || fx === 'shield';
-    return '<div class="arena' + (fx ? ' fx-' + fx : '') + '"><div class="fighter hero' + (dome ? ' domed' : '') + '"><canvas class="bspr" data-spr="hero" width="16" height="24" aria-hidden="true"></canvas>' +
+    return '<div class="arena' + (fx ? ' fx-' + fx : '') + '"><div class="fighter hero' + (dome ? ' domed' : '') + '"><span class="fig" aria-hidden="true">' + avatarSvg(S.hero.look, 56, null, null) + '</span>' +
       '<div><span class="gname">' + esc(heroName()) + '</span><span class="hearts" role="img" aria-label="Energía ' + B.en + ' de 3">' + hearts + '</span></div></div>' +
       '<span class="vs" aria-hidden="true">VS</span>' +
-      '<div class="fighter vil"><canvas class="bspr" data-spr="' + esc(v.id) + '" width="20" height="22" aria-hidden="true"></canvas>' +
+      '<div class="fighter vil"><span class="fig vfig" aria-hidden="true">' + esc(String(v.name).charAt(0)) + '</span>' +
       '<div><span class="gname">' + esc(v.name) + '</span><span class="hpbar" role="img" aria-label="Vida del villano ' + B.hp + ' de 4">' + hp + '</span></div>' +
       (fx === 'hit' ? '<span class="dmg" aria-hidden="true">-1</span>' : '') + '</div>' +
       '<p class="sronly" aria-live="polite">' + esc(R.answered ? B.msg : '') + '</p></div>';
   }
-
-  /* ---------- modo aventura: ejecución ---------- */
-  function vWorld() {
-    function pad(d, lbl, ch) { return '<button class="wkey ' + d + '" data-dir="' + d + '" aria-label="Mover ' + lbl + '">' + ch + '</button>'; }
-    return header() + '<main class="world"><div class="wbar"><button class="btn sm ghost" data-act="home">← Salir al inicio</button>' +
-      '<div class="wtitle"><strong id="wname"></strong><span class="meta" id="wdom"></span></div>' +
-      '<button class="btn sm" data-act="w" data-w="places" id="wplbtn" aria-expanded="false">Lugares</button></div>' +
-      '<p class="banner up" id="wnote" hidden>Tu navegador no puede dibujar el mapa; usa la lista de lugares.</p>' +
-      '<div class="wstage"><canvas id="wcv" tabindex="0" role="img" aria-label="Mapa del mundo"></canvas></div>' +
-      '<div class="wdlg" id="wdlg" role="dialog" aria-live="polite" aria-label="Diálogo" hidden></div>' +
-      '<div class="wplaces" id="wplaces" hidden></div>' +
-      '<div class="wctl" id="wctl"><div class="wpad">' + pad('up', 'arriba', '▲') + pad('left', 'a la izquierda', '◀') + pad('down', 'abajo', '▼') + pad('right', 'a la derecha', '▶') + '</div>' +
-      '<div class="wbtns">' + (levelOf(S.xp) >= 5 ? '<button class="btn wrun" data-act="w" data-w="run" id="wrun" aria-pressed="' + (S.world.run ? 'true' : 'false') + '" title="Supervelocidad: también con la tecla Shift">Correr</button>' : '') +
-      '<button class="btn primary wtalk" data-act="w" data-w="talk">Hablar</button></div></div>' +
-      '<p class="meta whelp">Flechas o WASD para caminar · E, Espacio o Enter para hablar · Esc para cerrar</p></main>';
-  }
-  function wEl(id) { return document.getElementById(id); }
-  function worldSave() {
-    if (!WD) return;
-    S.world.at = WD.map.id; S.world.pos[WD.map.id] = { x: WD.x, y: WD.y, d: WD.dir };
-    save();
-  }
-  function worldStop() {
-    if (!WD) return;
-    if (WD.raf) { try { cancelAnimationFrame(WD.raf); } catch (e) {} }
-    WD.active = false;
-    worldSave();
-    WD = null;
-  }
-  function worldEnter(id, from) {
-    var m = getMap(id), p = S.world.pos[id], e = m.entry;
-    if (from) {
-      var po = m.ents.filter(function (n) { return n.type === 'portal' && n.mod === from; })[0];
-      p = po ? { x: po.x, y: po.y + po.fy, d: po.fy > 0 ? 'down' : 'up' } : null;
-    }
-    if (!p || !passable(m, p.x, p.y) || !DIRS[p.d]) p = { x: e.x, y: e.y, d: e.d };
-    WD.map = m; WD.x = p.x; WD.y = p.y; WD.dir = p.d; WD.moving = false; WD.prog = 0; WD.held = [];
-    if (WD.ctx && !m.layer) paintMap(m);
-    m.ents.forEach(function (v) {
-      if (v.type !== 'villain') return;
-      if (m.entAt[v.x + ',' + v.y] === v) delete m.entAt[v.x + ',' + v.y];
-      v.off = beatenToday(v.vid); v.pi = 0; v.pd = 1; v.wait = 0; v.tp = 1;
-      if (v.path[0][0] === p.x && v.path[0][1] === p.y) v.pi = 2;
-      v.x = v.path[v.pi][0]; v.y = v.path[v.pi][1];
-      if (!v.off) m.entAt[v.x + ',' + v.y] = v;
-    });
-    S.world.at = id;
-    var nm = wEl('wname'), dm = wEl('wdom');
-    if (nm) nm.textContent = mapName(id);
-    if (dm) dm.textContent = id === 'hub' ? MODULES.length + ' regiones' : dominio(mod(id)) + ' % de dominio' + (villainCount(id) ? ' · Villanos: ' + beatenCount(id) + ' de ' + villainCount(id) + ' derrotados hoy' : '');
-    placesFill(); worldAria();
-  }
-  function worldStart() {
-    var cv = wEl('wcv'), ctx = null;
-    try { ctx = cv.getContext('2d'); } catch (e) { ctx = null; }
-    var rm = false; try { rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-    WD = { active: true, cv: cv, ctx: ctx, rm: rm, held: [], dlg: null, time: 0, last: 0, raf: 0, ptr: 0 };
-    var to = V.to, ret = (R && R.cfg && R.cfg.wret && !R.cfg.wret.used) ? R.cfg.wret : null;
-    if (to && !(to === 'hub' || (REGIONS[to] && mod(to)))) to = null;
-    var at = to || S.world.at;
-    if (!(at === 'hub' || (REGIONS[at] && mod(at)))) at = 'hub';
-    worldEnter(at, null);
-    if (to && to !== 'hub' && !ret) { var e0 = WD.map.entry; WD.x = e0.x; WD.y = e0.y; WD.dir = e0.d; }
-    V.to = null;
-    if (!ctx) { wEl('wnote').hidden = false; cv.parentNode.hidden = true; placesToggle(true); }
-    else { worldSize(); WD.raf = requestAnimationFrame(worldFrame); }
-    var padEl = wEl('wctl');
-    padEl.addEventListener('pointerdown', function (ev) { var b = ev.target.closest('[data-dir]'); if (!b || !WD) return; WD.ptr = Date.now(); holdDir(b.dataset.dir, true); });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { padEl.addEventListener(n, function () { if (WD) WD.held = []; }); });
-    padEl.addEventListener('click', function (ev) { var b = ev.target.closest('[data-dir]'); if (!b || !WD || Date.now() - WD.ptr < 500) return; stepOnce(b.dataset.dir); });
-    if (ret && ret.vid) { ret.used = true; if (R.done && R.won) WD.spark = { x: ret.x, y: ret.y, t: 0 }; ret = null; }
-    if (ret) {
-      ret.used = true;
-      var en = WD.map.ents.filter(function (n) { return ret.boss ? n.type === 'boss' : (n.type === 'mentor' && n.tid === ret.tid); })[0];
-      if (en) { faceEnt(en); if (ret.boss) dlgBoss(en, R.done ? R : null); else dlgMentorMenu(en, R.done ? R : null); }
-    }
-  }
-  function worldSize() {
-    if (!WD || !WD.ctx) return;
-    var cv = WD.cv, w = cv.clientWidth || 320, h = cv.clientHeight || 260, dpr = Math.min(2, window.devicePixelRatio || 1);
-    WD.scale = w >= 700 ? 3 : 2; WD.dpr = dpr; WD.cw = w; WD.chh = h;
-    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  }
-  function holdDir(d, on) {
-    if (!WD) return;
-    var i = WD.held.indexOf(d);
-    if (i >= 0) WD.held.splice(i, 1);
-    if (on) WD.held.push(d);
-  }
-  function tryStep(d) {
-    var v = DIRS[d]; WD.dir = d;
-    var nx = WD.x + v[0], ny = WD.y + v[1];
-    if (!passable(WD.map, nx, ny)) return false;
-    if (WD.rm || !WD.ctx) { WD.x = nx; WD.y = ny; return true; }
-    WD.fx = WD.x; WD.fy = WD.y; WD.x = nx; WD.y = ny; WD.moving = true; WD.prog = 0;
-    return true;
-  }
-  function running() { return !!WD && levelOf(S.xp) >= 5 && (WD.shift || S.world.run); }
-  function villainsUpdate(dt) {
-    var m = WD.map, list = m.ents;
-    for (var i = 0; i < list.length; i++) {
-      var v = list[i];
-      if (v.type !== 'villain' || v.off) continue;
-      if (v.tp < 1) v.tp = Math.min(1, v.tp + dt / 300);
-      if (WD.dlg) continue;
-      v.wait += dt;
-      if (v.wait < 600) continue;
-      v.wait = 0;
-      if (Math.abs(v.x - WD.x) + Math.abs(v.y - WD.y) <= 1) continue;
-      var ni = v.pi + v.pd;
-      if (ni < 0 || ni >= v.path.length) { v.pd = -v.pd; ni = v.pi + v.pd; }
-      var nx = v.path[ni][0], ny = v.path[ni][1];
-      if ((nx === WD.x && ny === WD.y) || !passable(m, nx, ny)) continue;
-      delete m.entAt[v.x + ',' + v.y];
-      v.fx = v.x; v.fy = v.y; v.x = nx; v.y = ny; v.pi = ni; v.tp = WD.rm ? 1 : 0;
-      m.entAt[nx + ',' + ny] = v;
-    }
-  }
-  function stepOnce(d) { if (!WD || WD.dlg || WD.moving) return; tryStep(d); worldAria(); }
-  function worldUpdate(dt) {
-    WD.time += dt;
-    villainsUpdate(dt);
-    if (WD.dlg) return;
-    if (WD.moving) {
-      WD.prog += dt / (running() ? 70 : 140);
-      if (WD.prog >= 1) { WD.moving = false; WD.prog = 0; if (!WD.held.length) worldAria(); }
-      else return;
-    }
-    if (WD.held.length) {
-      if (WD.rm) { WD.rmT = (WD.rmT || 0) + dt; if (WD.rmT < 150) return; WD.rmT = 0; }
-      if (!tryStep(WD.held[WD.held.length - 1])) worldAria();
-    }
-  }
-  function worldFrame(ts) {
-    if (!WD || !WD.active) return;
-    var dt = WD.last ? Math.min(50, ts - WD.last) : 16; WD.last = ts;
-    if (!document.hidden) { worldUpdate(dt); if (WD) worldDraw(); }
-    if (WD && WD.active) WD.raf = requestAnimationFrame(worldFrame);
-  }
-  function facing() {
-    var v = DIRS[WD.dir];
-    return WD.map.entAt[(WD.x + v[0]) + ',' + (WD.y + v[1])] || null;
-  }
-  function entMark(e) {
-    if (e.type !== 'mentor') return null;
-    var m = mod(WD.map.id), s = starsOf(m, e.tid);
-    if (!S.world.talked[m.id + ':' + e.tid] && !s) return '!';
-    return starStr(s);
-  }
-  function worldDraw() {
-    var c = WD.ctx, m = WD.map, sc = WD.scale * WD.dpr, vw = WD.cw / WD.scale, vh = WD.chh / WD.scale;
-    var px = WD.x * TS, py = WD.y * TS;
-    if (WD.moving) { px = (WD.fx + (WD.x - WD.fx) * WD.prog) * TS; py = (WD.fy + (WD.y - WD.fy) * WD.prog) * TS; }
-    var mw = m.w * TS, mh = m.h * TS;
-    var cx = mw <= vw ? (mw - vw) / 2 : Math.max(0, Math.min(mw - vw, px + 8 - vw / 2));
-    var cy = mh <= vh ? (mh - vh) / 2 : Math.max(0, Math.min(mh - vh, py + 4 - vh / 2));
-    cx = Math.round(cx * sc) / sc; cy = Math.round(cy * sc) / sc;
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.fillStyle = '#1b2433'; c.fillRect(0, 0, WD.cv.width, WD.cv.height);
-    c.imageSmoothingEnabled = false;
-    c.setTransform(sc, 0, 0, sc, -cx * sc, -cy * sc);
-    var sx = Math.max(0, Math.floor(cx)), sy = Math.max(0, Math.floor(cy)), sw = Math.min(mw - sx, Math.ceil(vw) + 2), sh = Math.min(mh - sy, Math.ceil(vh) + 2);
-    if (m.layer && sw > 0 && sh > 0) c.drawImage(m.layer, sx, sy, sw, sh, sx, sy, sw, sh);
-    var t = WD.time, anim = !WD.rm, i, e;
-    // agua de la fuente
-    if (anim && m.kind === 'hub') {
-      c.fillStyle = 'rgba(255,255,255,.75)';
-      for (i = 0; i < 5; i++) { var ph = Math.floor(t / 400 + i * 1.7) % 6; c.fillRect(11 * TS + 8 + ((i * 23 + ph * 9) % 44), 8 * TS + 8 + ((i * 17 + ph * 13) % 44), 2, 1); }
-    }
-    // portales
-    for (i = 0; i < m.ents.length; i++) {
-      e = m.ents[i]; if (e.type !== 'portal') continue;
-      var open = !!e.to || (REGIONS[e.mod] && mod(e.mod));
-      if (open) {
-        var a = anim ? 0.55 + 0.35 * Math.sin(t / 300) : 0.8;
-        c.fillStyle = 'rgba(125,162,255,' + a.toFixed(2) + ')'; c.fillRect(e.x * TS + 4, e.y * TS + 4, 8, 12);
-        c.fillStyle = 'rgba(255,255,255,' + (a * 0.8).toFixed(2) + ')'; c.fillRect(e.x * TS + 6, e.y * TS + 6 + (anim ? Math.floor(t / 150) % 6 : 2), 4, 2);
-      } else { c.fillStyle = '#59606b'; c.fillRect(e.x * TS + 4, e.y * TS + 4, 8, 12); c.fillStyle = '#6f7783'; c.fillRect(e.x * TS + 4, e.y * TS + 8, 8, 1); c.fillRect(e.x * TS + 4, e.y * TS + 12, 8, 1); }
-    }
-    // estandarte del jefe
-    if (m.kind === 'region' && S.boss[m.id] && S.boss[m.id].passed) { c.fillStyle = '#a97f1c'; c.fillRect(20 * TS + 2, 2 * TS, 12, 18); c.fillStyle = '#e0b13a'; c.fillRect(20 * TS + 3, 2 * TS + 1, 10, 14); c.fillStyle = '#fff3c4'; c.fillRect(20 * TS + 6, 2 * TS + 5, 4, 4); }
-    // personajes
-    var list = [];
-    for (i = 0; i < m.ents.length; i++) {
-      e = m.ents[i];
-      if (e.look) list.push({ y: e.y * TS, x: e.x * TS, sp: heroSprite(e.look, e.face || 'down', 0) });
-      else if (e.type === 'villain' && !e.off) {
-        var vx = e.x, vy = e.y; if (e.tp < 1) { vx = e.fx + (e.x - e.fx) * e.tp; vy = e.fy + (e.y - e.fy) * e.tp; }
-        list.push({ y: vy * TS, x: vx * TS, sp: villainSprite(e.vid, anim ? Math.floor(t / 400) % 2 : 0), vil: true });
-      }
-    }
-    var fr = WD.moving ? (Math.floor(t / 110) % 4) : 0, bob = (!WD.moving && anim && Math.floor(t / 600) % 2) ? 1 : 0;
-    list.push({ y: py, x: px, sp: heroSprite(S.hero.look, WD.dir, fr), bob: bob, hero: true });
-    list.sort(function (p, q) { return p.y - q.y; });
-    for (i = 0; i < list.length; i++) {
-      var o = list[i];
-      if (o.x < cx - 20 || o.x > cx + vw + 4 || o.y < cy - 28 || o.y > cy + vh + 12) continue;
-      c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(o.x + 3, o.y + 13, 10, 3); c.fillRect(o.x + 4, o.y + 12, 8, 5);
-      if (o.vil) {
-        c.drawImage(o.sp, o.x - 2, o.y - 7);
-        var bx = o.x + 4, by = o.y - 17 + (anim && Math.floor(t / 350) % 2 ? 1 : 0);
-        c.fillStyle = '#7a1620'; c.fillRect(bx - 1, by - 1, 10, 9); c.fillStyle = '#e5484d'; c.fillRect(bx, by, 8, 7);
-        c.fillStyle = '#ffffff'; c.fillRect(bx + 1, by + 1, 6, 3); c.fillRect(bx + 2, by + 4, 4, 2);
-        c.fillStyle = '#7a1620'; c.fillRect(bx + 2, by + 2, 1, 1); c.fillRect(bx + 5, by + 2, 1, 1); c.fillRect(bx + 3, by + 5, 1, 1); c.fillRect(bx + 5, by + 5, 1, 1);
-        continue;
-      }
-      if (o.hero && WD.moving && anim && running()) { var dv = DIRS[WD.dir]; c.fillStyle = 'rgba(255,255,255,.7)'; for (var sl = 0; sl < 3; sl++) c.fillRect(o.x + 7 - dv[0] * (12 + sl * 3) + (dv[0] ? 0 : (sl - 1) * 4), o.y + 4 - dv[1] * (12 + sl * 3) + (dv[1] ? 0 : (sl - 1) * 4), dv[0] ? 5 : 1, dv[1] ? 5 : 1); }
-      c.drawImage(o.sp, o.x, o.y - 9 + (o.bob || 0));
-      if (o.hero && anim && (PARTS.head[S.hero.look.head] || {}).k === 'antenna' && Math.floor(t / 500) % 2) { c.fillStyle = '#fff3c4'; c.fillRect(o.x + (WD.dir === 'left' ? 7 : 8), o.y - 9 + (o.bob || 0), 1, 1); }
-    }
-    if (WD.spark && anim) {
-      var sa = (t - WD.spark.t) / 900;
-      if (sa >= 1) WD.spark = null;
-      else { c.fillStyle = 'rgba(255,210,63,' + (1 - sa).toFixed(2) + ')'; for (var sp = 0; sp < 8; sp++) { var ang = sp * Math.PI / 4, rad = 4 + sa * 14; c.fillRect(Math.round(WD.spark.x * TS + 7 + Math.cos(ang) * rad), Math.round(WD.spark.y * TS + 4 + Math.sin(ang) * rad), 2, 2); } }
-    }
-    // textos en espacio de pantalla
-    c.setTransform(WD.dpr, 0, 0, WD.dpr, 0, 0);
-    var k = WD.scale;
-    function tag(text, wx, wy, bg, fg, size) {
-      var X = (wx - cx) * k, Y = (wy - cy) * k;
-      if (X < -30 || X > WD.cw + 30 || Y < -10 || Y > WD.chh + 20) return;
-      c.font = '700 ' + size + 'px ui-monospace,Menlo,Consolas,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      var tw = (c.measureText(text).width || text.length * size * 0.6) + 8;
-      if (bg) { c.fillStyle = bg; c.fillRect(Math.round(X - tw / 2), Math.round(Y - size / 2 - 3), Math.round(tw), size + 6); }
-      c.fillStyle = fg; c.fillText(text, Math.round(X), Math.round(Y) + 1);
-    }
-    for (i = 0; i < m.labels.length; i++) tag(m.labels[i].text, m.labels[i].x, m.labels[i].y, 'rgba(15,27,45,.82)', '#ffffff', 4 * k);
-    for (i = 0; i < m.ents.length; i++) {
-      e = m.ents[i]; var mk = entMark(e);
-      if (mk === '!') tag('!', e.x * TS + 8, e.y * TS - 17 + (anim && Math.floor(t / 350) % 2 ? 1 : 0), '#ffd23f', '#3a2a00', 5 * k);
-      else if (mk) tag(mk, e.x * TS + 8, e.y * TS - 16, 'rgba(15,27,45,.82)', '#ffd23f', 4 * k);
-    }
-    var f = WD.dlg ? null : facing();
-    if (f && !WD.moving) tag('E', f.x * TS + 8, f.y * TS + (f.look ? -21 : (f.type === 'villain' ? -24 : -6)), '#2457e6', '#ffffff', 5 * k);
-  }
-  function entTitle(e) {
-    if (e.type === 'mentor') { var t = mod(WD.map.id).tById[e.tid]; return (e.fem ? 'Mentora' : 'Mentor') + ' de ' + t.title; }
-    if (e.type === 'boss') return 'Guardián de la torre del jefe';
-    if (e.type === 'villain') return 'Villano ' + e.name;
-    if (e.type === 'portal') return e.to ? 'Portal a la plaza central' : 'Portal de ' + mod(e.mod).title;
-    return e.mod ? 'Letrero de ' + mod(e.mod).title : 'Letrero';
-  }
-  function worldAria() {
-    if (!WD || !WD.cv) return;
-    var f = facing();
-    WD.cv.setAttribute('aria-label', mapName(WD.map.id) + '. ' + (f ? 'Frente a ti: ' + entTitle(f) + '.' : 'No hay nada frente a ti.'));
-  }
-  function faceEnt(e) {
-    var m = WD.map, opts = [[0, e.fy || 1], [0, -(e.fy || 1)], [-1, 0], [1, 0]];
-    for (var i = 0; i < opts.length; i++) {
-      var x = e.x + opts[i][0], y = e.y + opts[i][1];
-      if (passable(m, x, y) || (x === WD.x && y === WD.y)) {
-        WD.x = x; WD.y = y; WD.moving = false; WD.held = [];
-        WD.dir = opts[i][0] ? (opts[i][0] < 0 ? 'right' : 'left') : (opts[i][1] > 0 ? 'up' : 'down');
-        if (e.look) e.face = OPP[WD.dir];
-        worldAria(); return;
-      }
-    }
-  }
-
-  /* ---------- diálogos ---------- */
-  function dlgShow(o) {
-    var el = wEl('wdlg'); if (!el) return;
-    WD.dlg = o; WD.held = [];
-    var h = '<div class="wdhead">' + (o.look ? '<span class="wface">' + avatarSvg(o.look, 52, '24 6 72 72', null) + '</span>' : (o.vid ? '<span class="wface vface"><canvas class="bspr" data-spr="' + esc(o.vid) + '" width="20" height="22" aria-hidden="true"></canvas></span>' : '')) +
-      '<div><strong>' + esc(o.who || '') + '</strong>' + (o.sub ? '<span class="meta">' + esc(o.sub) + '</span>' : '') + '</div></div>' +
-      '<div class="wdtext">' + o.html + '</div><div class="wdbtns">' + o.btns.map(function (b, i) {
-        return '<button class="btn sm' + (i === 0 ? ' primary' : '') + '" data-act="w" data-w="' + b[1] + '"' + (b[2] !== undefined ? ' data-v="' + esc(String(b[2])) + '"' : '') + '>' + esc(b[0]) + '</button>';
-      }).join('') + '</div>';
-    el.innerHTML = h; el.hidden = false;
-    paintSprites();
-    var fb = el.querySelector('button');
-    if (fb) { try { fb.focus({ preventScroll: true }); } catch (e) { fb.focus(); } }
-  }
-  function dlgClose() {
-    var el = wEl('wdlg'); if (el) { el.hidden = true; el.innerHTML = ''; }
-    if (WD) { WD.dlg = null; worldSave(); if (WD.cv && WD.ctx) { try { WD.cv.focus({ preventScroll: true }); } catch (e) {} } }
-  }
-  function mentorWho(e) { return { who: e.name, sub: entTitle(e), look: e.look }; }
-  function dlgMentor(e) {
-    var m = mod(WD.map.id), key = m.id + ':' + e.tid;
-    worldSave();
-    if (S.world.talked[key]) { dlgMentorMenu(e, null, '¡Volviste, ' + esc(heroName()) + '! ¿Repasamos o te pongo a prueba?'); return; }
-    dlgMentorStep(e, 0);
-  }
-  function dlgMentorStep(e, step) {
-    var m = mod(WD.map.id), t = m.tById[e.tid], n = t.keyPoints.length, o = mentorWho(e), html;
-    if (step === 0) html = '<p>Hola, ' + esc(heroName()) + '. Soy ' + esc(e.name) + '. Te voy a contar sobre <b>' + esc(t.title) + '</b>.</p>';
-    else if (step === 1) html = '<p>' + fmt(t.summary) + '</p>';
-    else html = '<p class="meta">Punto ' + (step - 1) + ' de ' + n + '</p><p>' + fmt(t.keyPoints[step - 2]) + '</p>';
-    o.html = html; o.kind = 'mentor'; o.ent = e; o.step = step; o.last = step === n + 1;
-    o.btns = [['Siguiente', 'next'], ['Saltar', 'skip']];
-    dlgShow(o);
-  }
-  function dlgMentorMenu(e, res, line) {
-    var m = mod(WD.map.id), o = mentorWho(e), html = line ? '<p>' + line + '</p>' : '<p>¿Qué quieres hacer?</p>';
-    if (res) {
-      var pct = res.ok / res.items.length;
-      html = '<p>' + (pct >= 0.8 ? '¡Excelente! Dominas este tema.' : pct >= 0.5 ? 'Vas bien. Repasa los puntos clave y vuelve a intentarlo.' : 'Escucha otra vez la explicación y lo intentamos de nuevo.') + '</p>';
-    }
-    var hn = hist(m, e.tid).length;
-    o.html = html + '<p class="meta">' + esc(e.tid) + ' · ' + starStr(starsOf(m, e.tid)) + (hn < 6 ? ' · Las estrellas aparecen con 6 respuestas en este tema (llevas ' + hn + ').' : '') + '</p>'; o.kind = 'menu'; o.ent = e;
-    o.btns = [['Ponme a prueba', 'round', 'quiz']];
-    if (ofType(m, 'scenario', e.tid).length) o.btns.push(['¿Qué usarías?', 'round', 'scenario']);
-    if (ofType(m, 'error', e.tid).length) o.btns.push(['Caza el error', 'round', 'error']);
-    o.btns.push(['Explícame otra vez', 'again'], ['Hasta luego', 'close']);
-    dlgShow(o);
-  }
-  function dlgBoss(e, res) {
-    var m = mod(WD.map.id), b = S.boss[m.id], o = { who: 'Guardián', sub: 'Torre del jefe', look: e.look, kind: 'boss', ent: e };
-    var missing = m.topics.filter(function (t) { return starsOf(m, t.id) < 1; });
-    var clean = villainCount(m.id) && beatenCount(m.id) === villainCount(m.id) ? '<p>Limpiaste la ciudad de villanos. ¡Así se hace!</p>' : '';
-    if (res) {
-      o.html = '<p>' + (res.passed ? '¡Me superaste! Dominas esta región.' : 'Todavía no. Necesitas 16 de 20: repasa con los mentores y vuelve.') + '</p>';
-      o.btns = [['Cerrar', 'close']];
-    } else if (missing.length) {
-      o.html = '<p>La torre se abre cuando tengas al menos una estrella en todos los temas. Te faltan ' + missing.length + '.</p>';
-      o.btns = [['Cerrar', 'close']].concat(missing.map(function (t) { return [t.id + ' · ' + t.title, 'gotid', t.id]; }));
-    } else if (b && b.passed) {
-      o.html = '<p>¡Felicidades, ' + esc(heroName()) + '! Ya superaste la torre. Puedes volver a intentarlo cuando quieras.</p>';
-      o.btns = [['Enfrentar al jefe', 'boss'], ['Cerrar', 'close']];
-    } else {
-      o.html = '<p>Veinte preguntas de toda la ciudad. Necesitas 80 % para superarme.</p>';
-      o.btns = [['Enfrentar al jefe', 'boss'], ['Todavía no', 'close']];
-    }
-    if (clean && !res) o.html = clean + o.html;
-    dlgShow(o);
-  }
-  function dlgVillain(e, analyzed) {
-    var v = villain(e.vid), m = mod(v.mod), b = S.city.beaten[v.id];
-    var html = '<p>' + (b && b !== today() ? '¡Volví! ¿Todavía te acuerdas de mí? ' : '') + esc(v.line) + '</p>' +
-      '<p class="meta">Domina: ' + v.topics.map(function (t) { return esc(t + ' ' + m.tById[t].title); }).join(', ') + '.</p>';
-    if (analyzed) {
-      var low = v.topics.slice().sort(function (a, c) { return starsOf(m, a) - starsOf(m, c) || hist(m, a).length - hist(m, c).length; })[0], ns = starsOf(m, low);
-      html += '<p><b>Mente detective.</b> Su punto débil para ti: ' + esc(low + ' ' + m.tById[low].title) + ', ' + ns + (ns === 1 ? ' estrella' : ' estrellas') + '. Si quieres, habla primero con ese mentor.</p>';
-    }
-    var o = { kind: 'villain', ent: e, who: v.name, sub: 'Villano', vid: v.id, html: html, btns: [['¡A la batalla!', 'battle']] };
-    if (levelOf(S.xp) >= 4 && !analyzed) o.btns.push(['Analizar', 'analyze']);
-    if (analyzed) o.btns.push(['Ir con ese mentor', 'gotid', low]);
-    o.btns.push(['Mejor después', 'close']);
-    dlgShow(o);
-  }
-  function dlgSign(e) {
-    var o = { kind: 'sign', ent: e, btns: [['Cerrar', 'close']] };
-    if (e.mod) {
-      var m = mod(e.mod), b = S.boss[m.id];
-      o.who = m.id + ' · ' + m.title;
-      o.html = '<p>' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas.</p><p>' + (b && b.passed ? 'Jefe superado.' : (b ? 'Mejor intento contra el jefe: ' + b.best + ' de 20.' : 'Jefe sin intentar.')) + '</p>';
-    } else { o.who = e.title || 'Letrero'; o.html = '<p>' + esc(e.text) + '</p>'; }
-    dlgShow(o);
-  }
-  function dlgPortal(e) {
-    if (e.to) { worldSave(); worldEnter('hub', WD.map.id); worldSave(); return; }
-    if (REGIONS[e.mod] && mod(e.mod)) { worldSave(); worldEnter(e.mod, null); var en = WD.map.entry; WD.x = en.x; WD.y = en.y; WD.dir = en.d; worldSave(); worldAria(); return; }
-    var m = mod(e.mod);
-    dlgShow({ kind: 'closed', ent: e, who: m.id + ' · ' + m.title, html: '<p>Esta región abrirá pronto. Mientras, puedes practicar el módulo en el modo rápido.</p>', btns: [['Ir al modo rápido', 'quick', m.id], ['Cerrar', 'close']] });
-  }
-  function interactEnt(e) {
-    if (!e) return;
-    if (e.type === 'mentor') { e.face = OPP[WD.dir]; dlgMentor(e); }
-    else if (e.type === 'boss') dlgBoss(e, null);
-    else if (e.type === 'villain') dlgVillain(e, false);
-    else if (e.type === 'sign') dlgSign(e);
-    else if (e.type === 'portal') dlgPortal(e);
-  }
-  function placesFill() {
-    var el = wEl('wplaces'); if (!el || !WD) return;
-    var m = WD.map, mo = m.kind === 'region' ? mod(m.id) : null;
-    var places = '', vils = '';
-    m.ents.forEach(function (e, i) {
-      var lbl = entTitle(e), extra = '';
-      if (e.type === 'villain') { vils += '<button class="card wplace wvil" data-act="w" data-w="goto" data-v="' + i + '"><span>' + esc(e.name) + '</span><span class="meta">' + (e.off ? 'Derrotado hoy' : 'En las calles') + '</span></button>'; return; }
-      if (e.type === 'mentor') { lbl = e.tid + ' · ' + mo.tById[e.tid].title; extra = starsHtml(starsOf(mo, e.tid)); }
-      else if (e.type === 'portal' && e.mod) { lbl = 'Portal ' + e.mod + ' · ' + mod(e.mod).title; extra = '<span class="meta">' + ((REGIONS[e.mod]) ? 'Abierto' : 'Cerrado') + '</span>'; }
-      places += '<button class="card wplace" data-act="w" data-w="goto" data-v="' + i + '"><span>' + esc(lbl) + '</span>' + extra + '</button>';
-    });
-    el.innerHTML = '<h2 class="h2">Lugares de ' + esc(mapName(m.id)) + '</h2><div class="wplist">' + places + '</div>' +
-      (vils ? '<h2 class="h2">Villanos</h2><div class="wplist" id="wvils">' + vils + '</div>' : '');
-  }
-  function placesToggle(on) {
-    var el = wEl('wplaces'), b = wEl('wplbtn'); if (!el) return;
-    if (on === undefined) on = el.hidden;
-    if (on) placesFill();
-    el.hidden = !on; if (b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
-  }
-  function startWorldRound(kind, e) {
-    var m = mod(WD.map.id), titles = { quiz: 'Quiz', scenario: '¿Qué usarías?', error: 'Caza el error', boss: 'Jefe final' };
-    var items = itemsFor(kind, m, kind === 'boss' ? null : e.tid);
-    if (!items.length) return;
-    worldSave();
-    startRound({ kind: kind, title: titles[kind], mid: m.id, back: { name: 'world' }, wret: { tid: e.tid, boss: kind === 'boss' } }, items);
-  }
-  function worldAct(a, d) {
-    if (!WD) return;
-    var o = WD.dlg, e = o && o.ent;
-    if (a === 'places') placesToggle();
-    else if (a === 'talk') { if (!WD.dlg && !WD.moving) interactEnt(facing()); }
-    else if (a === 'goto' || a === 'gotid') {
-      var en = a === 'goto' ? WD.map.ents[parseInt(d.v, 10)] : WD.map.ents.filter(function (n) { return n.tid === d.v; })[0];
-      if (!en) return;
-      dlgClose(); placesToggle(false);
-      if (en.type === 'villain' && en.off) { dlgShow({ kind: 'info', who: en.name, sub: 'Villano', vid: en.vid, html: '<p>Ya lo derrotaste hoy. Volverá mañana para que repases.</p>', btns: [['Cerrar', 'close']] }); return; }
-      faceEnt(en); interactEnt(en);
-    }
-    else if (a === 'close') dlgClose();
-    else if (a === 'next' && o && o.kind === 'mentor') {
-      if (o.last) {
-        var key = WD.map.id + ':' + e.tid;
-        S.world.talked[key] = true;
-        if (S.stats.learnTopics.indexOf(key) < 0) { S.stats.learnTopics.push(key); checkVirtues(); }
-        save();
-        dlgMentorMenu(e, null, 'Eso es todo sobre este tema. ¿Listo para practicar?');
-      } else dlgMentorStep(e, o.step + 1);
-    }
-    else if (a === 'skip' && o && o.kind === 'mentor') dlgMentorMenu(e, null);
-    else if (a === 'again' && e) dlgMentorStep(e, 1);
-    else if (a === 'round' && e) startWorldRound(d.v, e);
-    else if (a === 'boss' && e) startWorldRound('boss', e);
-    else if (a === 'quick') go('module', { mod: d.v });
-    else if (a === 'analyze' && e && e.type === 'villain') dlgVillain(e, true);
-    else if (a === 'battle' && e && e.type === 'villain') {
-      var vv = villain(e.vid), its = battleItems({ mod: vv.mod, topics: vv.topics, n: 8 });
-      if (!its.length) return;
-      worldSave();
-      startRound({ kind: 'battle', title: 'Batalla', mid: vv.mod, back: { name: 'world' }, villain: { id: vv.id, name: vv.name }, city: { kind: 'battle', id: vv.id }, wret: { vid: vv.id, x: e.x, y: e.y } }, its);
-    }
-    else if (a === 'run') { S.world.run = !S.world.run; save(); var rb = wEl('wrun'); if (rb) rb.setAttribute('aria-pressed', S.world.run ? 'true' : 'false'); }
-  }
-  var WKEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
-  document.addEventListener('keydown', function (ev) {
-    if (V.name !== 'world' || !WD || ev.ctrlKey || ev.metaKey || ev.altKey) return;
-    var ae = document.activeElement, tag = ae && ae.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    var k = ev.key, dir = WKEYS[k];
-    if (k === 'Shift') { WD.shift = true; return; }
-    if (k === 'Escape') { var pl = wEl('wplaces'); if (WD.dlg) { ev.preventDefault(); dlgClose(); } else if (pl && !pl.hidden) { ev.preventDefault(); placesToggle(false); } return; }
-    if (dir) {
-      if (WD.dlg) return;
-      ev.preventDefault();
-      if (!ev.repeat) { holdDir(dir, true); if (!WD.ctx || WD.rm) { tryStep(dir); worldAria(); } }
-      return;
-    }
-    if (k === 'e' || k === 'E' || k === ' ' || k === 'Enter') {
-      if ((k === ' ' || k === 'Enter') && tag === 'BUTTON') return;
-      ev.preventDefault();
-      if (WD.dlg) { var b = wEl('wdlg').querySelector('button'); if (b) b.click(); }
-      else if (!WD.moving) interactEnt(facing());
-    }
-  });
-  document.addEventListener('keyup', function (ev) { if (WD && ev.key === 'Shift') WD.shift = false; if (WD && WKEYS[ev.key]) holdDir(WKEYS[ev.key], false); });
-  window.addEventListener('resize', function () { if (WD) worldSize(); });
-  window.addEventListener('blur', function () { if (WD) WD.held = []; });
 
   /* ---------- eventos ---------- */
   app.addEventListener('click', function (e) {
@@ -2435,8 +1551,6 @@ const MODULES = [
     if (!b || b.disabled) return;
     var d = b.dataset, a = d.act;
     if (a === 'home') go('home');
-    else if (a === 'world') go('world', { to: d.id || null });
-    else if (a === 'w') worldAct(d.w, d);
     else if (a === 'trip') go('trip');
     else if (a === 'city') go('city');
     else if (a === 'hero') go('hero');

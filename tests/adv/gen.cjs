@@ -40,7 +40,7 @@ function hostileState(r, ids) {
     else if (kind === 8) { s.session = val; paths.push('session'); }
     else if (kind === 9) { s.virtues = val; paths.push('virtues'); }
     else if (kind === 10) { s.stats = r.bool() ? val : { learnTopics: r.pick(H), cleared: r.pick(H), roundsNoPower: r.pick(H), bossFailed: r.pick(H) }; paths.push('stats'); }
-    else if (kind === 11) { s.world = r.bool() ? val : { at: r.pick(H), pos: r.pick(H), talked: r.pick(H), beaten: r.pick(H), run: r.pick(H) }; paths.push('world'); }
+    else if (kind === 11) { s.city = r.bool() ? val : { prologue: r.pick(H), at: r.pick(H), run: r.pick(H), beaten: r.pick(H), repairs: r.pick(H), taught: r.pick(H), restored: r.pick(H), powers: r.pick(H) }; paths.push('city'); }
     else if (kind === 12) { s.boss = r.bool() ? val : { M08: r.pick(H) }; paths.push('boss'); }
     else { s.lastActive = r.pick([val, Date.now() + 1e12, -1e15]); paths.push('lastActive'); }
   }

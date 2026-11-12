@@ -311,6 +311,10 @@ function cityOpen(o) {
     cityOpenSheet(citySheetHtml('Directora', o.name, '<p>' + fmt('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>'), '[data-c="sheetclose"]', o.id);
   } else if (o.kind === 'mirror') {
     cityOpenSheet(citySheetHtml('Espejo', 'Tu héroe', '<p>' + fmt('Mira cómo vas: rango ' + CityStory.rankOf(S.city, CITY_DATA) + '.') + '</p>'), '[data-c="sheetclose"]', o.id);
+  } else if (o.kind === 'creature') {
+    startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: o.id, name: o.name, mod: 'M02', topics: o.topics }, city: { kind: 'battle', id: o.id } }, battleItems({ mod: 'M02', topics: o.topics, n: 8 }));
+  } else if (o.kind === 'repair') {
+    startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: o.id } }, repairItems('M02', o.topic));
   } else {
     cityOpenSheet(citySheetHtml('Lugar', o.name, '<p>' + esc(o.label) + '</p>'), '[data-c="sheetclose"]', o.id);
   }

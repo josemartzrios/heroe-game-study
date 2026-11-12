@@ -251,6 +251,13 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     ok('(l) state(): cam y flags con la forma del contrato', typeof st.cam.yaw === 'number' && typeof st.cam.pitch === 'number' && st.cam.arm > 0 && !!st.flags && typeof st.flags.restored === 'boolean' && typeof st.flags.lit === 'number' && !!st.flags.beatenToday && !!st.flags.repairs && !!st.flags.apprenticesVisible && !!st.flags.stars);
     e.w.close();
 
+    // (n) el mundo 2D ya no existe
+    { const e2 = boot({ seed: base() });
+      ok('(n) Inicio sin "Explora el mundo" y con una sola tarjeta de aventura', !/Explora el mundo/.test(e2.d.body.textContent) && e2.d.querySelectorAll('.card.adv').length === 1 && !e2.d.querySelector('[data-act="world"]'));
+      click(e2.w, [...e2.d.querySelectorAll('[data-act="mod"]')].find((b) => b.dataset.id === 'M01'));
+      ok('(n) pantalla de M01 sin botón de mundo y sin errores', !e2.d.querySelector('[data-act="world"]') && !/Explorar esta región/.test(e2.d.body.textContent) && e2.errors.length === 0, e2.errors.join('|'));
+      e2.w.close(); }
+
     // (m) ganchos de prueba solo con __CITY_TEST__
     { const e2 = boot({ seed: base() });
       ok('(m) ganchos de prueba presentes con __CITY_TEST__', !!e2.w.__CITY_TEST_API__ && typeof e2.w.__CITY_TEST_API__.teleport === 'function');
