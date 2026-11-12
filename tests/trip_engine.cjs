@@ -332,6 +332,11 @@ const key = (e, k) => e.d.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 
   e.w.close();
 
 
+  // (z) escena real sin WebGL: si create falla, el motor muestra el respaldo sin errores
+  e = boot({ imp: 'ok', scene: false }); enter(e); await tick();
+  ok('z escena real con un THREE falso: aparece el respaldo y no hay errores', !!root(e).querySelector('[role="alert"]') && !e.errors.length, e.errors.join(' | '));
+  e.w.close();
+
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
   console.log(fails ? `\n${fails} FALLOS` : '\nTRIP_ENGINE OK (' + results.length + ' comprobaciones)');
