@@ -293,7 +293,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
   ok('I7 derrota tras 3 fallos', n7 === 3 && /Derrota/.test(d.querySelector('.gtitle').textContent), 'n=' + n7);
   ok('I7 derrota: 3 ceros en historial y 3 en cola', histLen(s, VT) === 3 && VT.every((k) => (s.topics[k] || []).every((x) => x === 0)) && Object.values(s.qs).filter((r) => r.q).length === 3, JSON.stringify(s.topics));
   ok('I7 derrota: XP sin cambio y mostrado +0', s.xp === 50 && shownXp(d) === 0, 'xp=' + s.xp + ' mostrado=' + shownXp(d));
-  ok('I7 derrota: villano no marcado como vencido', !s.world.beaten.cuello, JSON.stringify(s.world.beaten));
+  ok('I7 derrota: villano no marcado como vencido', !s.city.beaten.cuello, JSON.stringify(s.city.beaten));
   ok('I7 sin errores de consola', errors.length === 0, errors.join(' | '));
   w.close();
 

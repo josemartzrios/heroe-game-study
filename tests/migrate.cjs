@@ -43,7 +43,8 @@ function diff(a, b, p = '') {
     hero: { name: 'Zoë Ñandú 🚀', look: { skin: 1, suit: 2, head: 0, eyes: 1, emblem: 0, cape: 0, hand: 0, hc: '#AABBCC', capec: '#7a52c4' }, welcomed: true },
     virtues: { constancia: 1700000000000, valentia: 1700000001000 },
     world: { at: 'M01', pos: { hub: { x: 5, y: 6, d: 'down' }, M01: { x: 1, y: 2, d: 'up' } }, talked: { 'M01:T01': true }, beaten: { v1: yest }, run: true },
-    stats: { learnTopics: ['M01:T01', 'M01:T02'], cleared: 3, roundsNoPower: 2, bossFailed: { M08: true } }
+    stats: { learnTopics: ['M01:T01', 'M01:T02'], cleared: 3, roundsNoPower: 2, bossFailed: { M08: true } },
+    city: { prologue: true, run: true, bridgeSeen: false, beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true }, restored: {}, powers: {}, at: { x: 3, z: 5, yaw: 1 } }
   };
   e = L.boot(JSON.stringify(full)); s = resave(e);
   ok('M1 estado completo y válido: tras guardar no cambia nada', same(s, full), diff(full, s).join(' | '));

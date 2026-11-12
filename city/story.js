@@ -35,7 +35,7 @@ var CityStory = (function () {
     var src = plainObj(raw) ? raw : {}, M = D.districts.M02, B = D.bounds, r = D.radius || 0.4, sp = D.spawn;
     var C = {
       prologue: src.prologue === true, run: src.run === true, bridgeSeen: src.bridgeSeen === true,
-      beaten: pick(src.beaten, ids(M.creatures), function (v) { return validDate(v, todayStr); }),
+      beaten: pick(src.beaten, ids(M.creatures).concat(ids(D.villainsM01 || [])), function (v) { return validDate(v, todayStr); }),
       repairs: pick(src.repairs, ids(M.repairs), function (v) { return v === true; }),
       taught: pick(src.taught, ids(M.apprentices), function (v) { return v === true; }),
       restored: {}, powers: {}, at: { x: sp.x, z: sp.z, yaw: sp.yaw }
