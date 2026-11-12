@@ -14,7 +14,7 @@ var CityHero = (function () {
     var group = new THREE.Group(), geos = [], mats = [];
     function lam(color) { var m = new THREE.MeshLambertMaterial({ color: color }); mats.push(m); return m; }
     function box(parent, name, w, h, d, x, y, z, color) {
-      var g = new THREE.BoxGeometry(w, h, d); geos.push(g);
+      var g = new THREE.BoxGeometry(w, h, d); g.clearGroups(); geos.push(g);
       var m = new THREE.Mesh(g, lam(color)); m.name = name || ''; m.position.set(x, y, z); parent.add(m); return m;
     }
     function pivot(name, x, y, z) { var g = new THREE.Group(); g.name = name; g.position.set(x, y, z); group.add(g); return g; }

@@ -326,7 +326,7 @@ body.city-on{overflow:hidden}
 #city-ui-main > *, #city-ui-main .city-hud > *{pointer-events:auto}
 .city-hud{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); pointer-events:none}
 #city-pause,#city-run,#city-act{min-height:44px; min-width:44px}
-.city-objrow{position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 52px); left:max(16px, env(safe-area-inset-left)); margin:0; display:flex; align-items:center; gap:8px; font-weight:600; background:var(--surface); border-radius:10px; padding:4px 10px; pointer-events:none}
+.city-objrow{flex:1 1 100%; margin:0; display:flex; align-items:center; gap:8px; font-weight:600; background:var(--surface); border-radius:10px; padding:4px 10px; pointer-events:none; width:fit-content; max-width:100%; flex-basis:auto}
 #city-arrow{display:inline-block; transition:transform .1s}
 #city-act{position:absolute; right:max(16px, env(safe-area-inset-right)); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 64px)}
 #city-act[hidden]{display:none}

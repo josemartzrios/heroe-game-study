@@ -88,17 +88,28 @@ function citySafe() {
   return { left: l, bottom: b };
 }
 function cityMakeInput() {
-  return CityInput.create(cityRootEl(), {
+  var inp = CityInput.create(cityRootEl(), {
     safe: citySafe,
     isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate')); }
   });
+  /* con la hoja o la pausa abiertas el mundo no agenda cuadros (no hay tick): Esc se atiende aquí, después del listener del input */
+  var fn = function () { if (CD && CD.input === inp && !CD.suspended && (CD.sheet || CD.paused) && inp.consumePause()) cityPauseKey(); };
+  window.addEventListener('keydown', fn);
+  inp.offKeys = function () { window.removeEventListener('keydown', fn); };
+  return inp;
 }
+function cityDropInput(c) { if (c && c.input) { try { if (c.input.offKeys) c.input.offKeys(); c.input.dispose(); } catch (e) {} c.input = null; } }
+function cityPauseKey() {
+  if (!CD) return;
+  if (CD.sheet) cityCloseSheet(); else if (CD.paused) cityClosePause(); else if (!CD.rotate) cityOpenPause();
+}
+function cityFlush() { if (CD && CD.input) { CD.input.consumeAction(); CD.input.consumeCamera(); } }
 function cityHtml() {
   var run = levelOf(S.xp) >= 5 ? '<button class="btn sm" id="city-run" data-act="cx" data-c="run" aria-pressed="' + (S.city.run ? 'true' : 'false') + '">Correr</button>' : '';
   return '<canvas id="city-cv" aria-hidden="true"></canvas>' +
     '<div id="city-ui-main"><div class="city-hud"><button class="btn sm" id="city-pause" data-act="cx" data-c="pause">Pausa</button>' +
-    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run + '</div>' +
-    '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p>' +
+    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run +
+    '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden></button>' + CITY_QUIT_HTML + '</div>' +
     '<div id="city-sheet" hidden></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
@@ -110,7 +121,7 @@ function cityTeardown() {
   var c = CD; CD = null;
   if (!c) return;
   if (c.canvas && c.onLost) c.canvas.removeEventListener('webglcontextlost', c.onLost);
-  if (c.input) { try { c.input.dispose(); } catch (e) {} }
+  cityDropInput(c);
   if (c.world) { try { c.world.dispose(); } catch (e2) {} }
 }
 function cityStop() {
@@ -172,7 +183,7 @@ function citySuspend() {
   if (!CD || CD.suspended) return;
   CD.suspended = true;
   citySave();
-  if (CD.input) { try { CD.input.dispose(); } catch (e) {} CD.input = null; }
+  cityDropInput(CD);
   var r = cityRootEl(); if (r) r.hidden = true;
   if (CD.world) CD.world.setPaused('suspended', true);
 }
@@ -254,9 +265,7 @@ function cityTick(dt) {
   if (!c || !c.input || c.suspended) return;
   if (typeof dt !== 'number' || !(dt >= 0)) dt = 0;
   var sec = Math.min(dt, 100) / 1000;
-  if (c.input.consumePause()) {
-    if (c.sheet) cityCloseSheet(); else if (c.paused) cityClosePause(); else if (!c.rotate) cityOpenPause();
-  }
+  if (c.input.consumePause()) cityPauseKey();
   var act = c.input.consumeAction();
   if (cityBlocked()) { c.input.consumeCamera(); return; }
   var it = c.input.intent(), cm = c.input.consumeCamera();
@@ -298,6 +307,7 @@ function cityCloseSheet(quiet) {
   if (CD.world && !quiet) CD.world.setPaused('sheet', false);
   if (quiet) return;
   CD.flags = cityFlags(); cityHud(true); cityUpdateNear(true); cityAnnounce();
+  cityFlush();
   var a = cId('city-act'); cFocus(a && !a.hidden ? a : cId('city-pause'));
 }
 function citySheetHtml(sub, title, body, actions) {
@@ -343,7 +353,7 @@ function cityClosePause(quiet) {
   var was = CD.paused; CD.paused = false;
   cityInert();
   if (CD.world && was && !quiet) CD.world.setPaused('pause', false);
-  if (!quiet) cFocus(cId('city-pause'));
+  if (!quiet) { cityFlush(); cFocus(cId('city-pause')); }
 }
 function cityPauseList(title, rows, empty) {
   var pb = cId('city-pausebox'); if (!pb) return;
