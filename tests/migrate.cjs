@@ -89,6 +89,17 @@ function diff(a, b, p = '') {
   { const { out } = norm1({ boss: { M01: { best: '<img src=x onerror=alert(1)>', passed: 'yes' }, M02: [], M03: { best: 99, passed: true }, M04: { best: 7.9, passed: false } } });
     ok('N15 boss: best no numérico → 0 y passed no booleano → false', out.boss.M01 && out.boss.M01.best === 0 && out.boss.M01.passed === false, JSON.stringify(out.boss.M01));
     ok('N15 boss: arreglo descartado; best acotado a 0..20 y entero', out.boss.M02 === undefined && out.boss.M03.best === 20 && out.boss.M03.passed === true && out.boss.M04.best === 7, JSON.stringify(out.boss)); }
+  { const evil = JSON.parse('{"skin":1,"cape":1,"__proto__":{"hc":"\\"/><img id=pwn src=x>","capec":"\\"/><img id=pwn2 src=x>"}}');
+    const env = L.boot(JSON.stringify(base({ hero: { name: 'Zed', welcomed: true, look: evil } })));
+    const out = resave(env);
+    ok('N16 hero.look con __proto__: el guardado no trae capec y el prototipo queda intacto', out.hero.look.capec === undefined && out.hero.look.hc === undefined && Object.getPrototypeOf(out.hero.look) === Object.prototype, JSON.stringify(out.hero.look));
+    ok('N16 al abrir "Tu héroe" no aparece #pwn ni #pwn2', !env.d.getElementById('pwn') && !env.d.getElementById('pwn2'));
+    env.w.close(); }
+  { const { out } = norm1({ hero: { name: 'Zed', welcomed: true, look: { skin: 2, constructor: { x: 1 }, extra: 'z' } } });
+    ok('N17 hero.look: solo claves de slot y skin conservado', out.hero.look.skin === 2 && out.hero.look.extra === undefined && Object.keys(out.hero.look).every((k) => ['skin','suit','head','eyes','emblem','cape','hand','hc','capec'].includes(k)), JSON.stringify(out.hero.look)); }
+  { const st = JSON.parse('{"__proto__":{"cleared":99},"cleared":3}');
+    const { out } = norm1({ stats: st });
+    ok('N18 stats con __proto__: cleared 3, prototipo intacto y solo claves conocidas', out.stats.cleared === 3 && Object.getPrototypeOf(out.stats) === Object.prototype && Object.keys(out.stats).every((k) => ['learnTopics','cleared','roundsNoPower','bossFailed'].includes(k)), JSON.stringify(out.stats)); }
   // Arreglos en lugar de objetos (como R10-R12 de attacks.cjs): las claves con nombre se pierden en JSON.stringify
   { const env = L.boot(JSON.stringify(base({ virtues: [], days: { last: yest, count: 2 } }))); L.openQuiz(env.w, env.d); L.answerOne(env.w, env.d, 'right');
     const out = load(env.w);

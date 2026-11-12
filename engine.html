@@ -490,13 +490,22 @@ const MODULES = [
     var f = fresh();
     for (var k in f) if (!(k in o)) o[k] = f[k];
     if (!plainObj(o.hero)) o.hero = f.hero;
-    o.hero.look = Object.assign({}, f.hero.look, plainObj(o.hero.look) ? o.hero.look : {});
+    /* hero.look se reconstruye con lista blanca: Object.assign con datos guardados deja que un "__proto__" propio cambie el prototipo */
+    var lookSrc = plainObj(o.hero.look) ? o.hero.look : {}, lookNew = {}, ownp = Object.prototype.hasOwnProperty;
+    ['skin', 'suit', 'head', 'eyes', 'emblem', 'cape', 'hand'].forEach(function (k) {
+      lookNew[k] = ownp.call(lookSrc, k) ? Math.floor(num(lookSrc[k], f.hero.look[k])) : f.hero.look[k];
+    });
+    ['hc', 'capec'].forEach(function (k) { if (ownp.call(lookSrc, k) && hex(lookSrc[k])) lookNew[k] = lookSrc[k]; });
+    o.hero.look = lookNew;
     if (typeof o.hero.name !== 'string') o.hero.name = 'Héroe';
     if (typeof o.hero.welcomed !== 'boolean') o.hero.welcomed = false;
     if (!plainObj(o.virtues)) o.virtues = {};
-    o.stats = Object.assign({}, f.stats, plainObj(o.stats) ? o.stats : {});
-    if (!Array.isArray(o.stats.learnTopics)) o.stats.learnTopics = [];
-    if (!plainObj(o.stats.bossFailed)) o.stats.bossFailed = {};
+    var stSrc = plainObj(o.stats) ? o.stats : {}, bfNew = {};
+    if (plainObj(stSrc.bossFailed)) Object.keys(stSrc.bossFailed).forEach(function (k) { if (/^M\d{2}$/.test(k) && stSrc.bossFailed[k] === true) bfNew[k] = true; });
+    o.stats = {
+      learnTopics: Array.isArray(stSrc.learnTopics) ? stSrc.learnTopics.filter(function (x) { return typeof x === 'string'; }) : [],
+      cleared: ownp.call(stSrc, 'cleared') ? stSrc.cleared : 0, roundsNoPower: ownp.call(stSrc, 'roundsNoPower') ? stSrc.roundsNoPower : 0, bossFailed: bfNew
+    };
     if (!plainObj(o.world)) o.world = worldFresh();
     if (!plainObj(o.world.pos)) o.world.pos = {};
     if (!plainObj(o.world.talked)) o.world.talked = {};
@@ -505,7 +514,7 @@ const MODULES = [
     o.world.run = !!o.world.run;
     /* normalización de tipos: un estado corrupto nunca debe impedir arrancar ni congelar una respuesta */
     function num(x, d) { return (typeof x === 'number' && isFinite(x) && x >= 0) ? x : d; }
-    function plainObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+    function plainObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype; }
     function hex(x) { return typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x); }
     o.xp = num(o.xp, 0); o.session = Math.floor(num(o.session, 0)); o.lastActive = num(o.lastActive, 0);
     if (!plainObj(o.days)) o.days = { last: null, count: 0 };
@@ -531,10 +540,6 @@ const MODULES = [
       o.boss[k] = { best: Math.min(20, Math.floor(num(b.best, 0))), passed: b.passed === true };   // best llega a innerHTML: siempre un entero
     });
     o.stats.cleared = Math.floor(num(o.stats.cleared, 0)); o.stats.roundsNoPower = Math.floor(num(o.stats.roundsNoPower, 0));
-    Object.keys(o.hero.look).forEach(function (k) {
-      if (k === 'hc' || k === 'capec') { if (!hex(o.hero.look[k])) delete o.hero.look[k]; }
-      else o.hero.look[k] = Math.floor(num(o.hero.look[k], 0));
-    });
     return o;
   }
   function load() {
