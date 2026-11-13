@@ -320,7 +320,7 @@ console.log('Por tema M02:', JSON.stringify(r2.perTopic));
   }
 }
 // ---------- Ciudad Núcleo: el código de la vista no nombra distritos (todo sale de CITY_DATA y de la escena activa; spec §4.6) ----------
-for (const f of ['view', 'world2d', 'sprites2d', 'input']) {
+for (const f of ['view', 'world2d', 'sprites2d', 'input', 'intro']) {
   const src = fs.readFileSync(new URL('./city/' + f + '.js', import.meta.url), 'utf8');
   if (/['"]M\d{2}['"]/.test(src)) bad(`city/${f}.js nombra un distrito concreto ('M02', 'M08'…): debe leer CITY_DATA y la escena activa`);
 }

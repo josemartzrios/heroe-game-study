@@ -317,6 +317,13 @@ body.city-on{overflow:hidden}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
 #city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
+#city-tip{position:absolute; left:50%; transform:translateX(-50%); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 124px); z-index:2; max-width:min(92vw, 480px); background:var(--surface); color:var(--ink); border:2px solid var(--cyan); border-radius:10px; padding:8px 12px; font-weight:600; cursor:pointer; box-shadow:0 0 12px rgba(92,225,255,.35)}
+#city-tip:empty{display:none}
+.trio{display:flex; gap:16px; list-style:none; margin:12px 0; padding:0; flex-wrap:wrap}
+.trio li{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:84px; font-weight:600}
+.trio canvas{width:56px; height:56px}
+#city-sheet .how{list-style:none; padding:0}
+#city-sheet .how li{margin:6px 0}
 #city-err{position:absolute; left:0; right:0; top:0; z-index:3; display:flex; justify-content:center; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left))}
 #city-err[hidden]{display:none}
 #city-err .banner{width:100%; max-width:560px; background:var(--surface)}
@@ -872,7 +879,8 @@ const MODULES = [
     var q = queue();
     var h = header() + '<main>' + bannersVirtues(takePend());
     h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Ciudad Núcleo</h1>' +
-      '<p class="lead">Estudia jugando: un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroSummary() +
+      '<p class="lead">Estudia Ingeniería de Software recorriendo una ciudad: cada distrito es un módulo y cada vecino te enseña un tema.</p></section>' +
+      '<ul class="trio"><li><canvas class="heroic" data-spr="mentor" width="56" height="56" aria-hidden="true"></canvas><span>Aprende</span></li><li><canvas class="heroic" data-spr="creature" width="56" height="56" aria-hidden="true"></canvas><span>Ponte a prueba</span></li><li><canvas class="heroic" data-spr="apprentice" width="56" height="56" aria-hidden="true"></canvas><span>Enseña</span></li></ul>' + heroSummary() +
       '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad: aprende con los mentores, ponte a prueba y enseña a tus vecinos.</p><div><button class="btn primary" data-act="city">▶ Entrar a la ciudad</button></div></section>' +
       '<h2 class="h2">Módulos</h2><div class="mods">' + MODULES.map(function (m) {
         var b = S.boss[m.id];

@@ -87,6 +87,7 @@ function cityRefresh() {
   if (!CD) return;
   CD.flags = cityFlags(); CD.items = cityBuildItems(); CD.day = today(); CD.dayT = Date.now();
   cityHud(true); cityUpdateNear(true);
+  cityTipsCheck('tower'); cityTipsCheck('plaza');
 }
 function cityItem(id) {
   if (!CD) return null;
@@ -139,7 +140,7 @@ function cityMakeInput() {
   var inp = CityInput.create(cityRootEl(), {
     safe: citySafe,
     isActive: function () { return !cityBlocked(); },
-    isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate, #city-err, #city-veil')); }
+    isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate, #city-err, #city-veil, #city-tip')); }
   });
   /* con la hoja o la pausa abiertas el mundo no agenda cuadros (no hay tick): Esc se atiende aquí, después del listener del input */
   var fn = function () { if (CD && CD.input === inp && !CD.suspended && (CD.sheet || CD.paused) && inp.consumePause()) cityPauseKey(); };
@@ -162,7 +163,7 @@ function cityHtml() {
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden><span class="act-main"></span><span class="act-sub" hidden></span></button></div>' +
     '<div id="city-sheet" hidden role="dialog" aria-modal="true"></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
-    '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div><div id="city-err" hidden></div><div id="city-veil" aria-hidden="true"></div>' +
+    '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div><div id="city-err" hidden></div><div id="city-veil" aria-hidden="true"></div><div id="city-tip" role="status" data-act="cx" data-c="tip-close"></div>' +
     '<div id="city-safe" style="position:fixed;left:0;bottom:0;padding-left:env(safe-area-inset-left);padding-bottom:env(safe-area-inset-bottom);visibility:hidden"></div>';
 }
 function cityTeardown() {
@@ -236,10 +237,13 @@ function cityStart() {
     gen: gen, canvas: cv, world: null, input: null, loadTimer: null, fadeT: null, fading: false, entered: false,
     scene: 'plaza', sc: null, base: null, flags: null, items: null, hero: null, safe: null, savedAt: null, face: 'up', boxes: [],
     zoom: CITY_ZMIN, st: { hero: { x: at.x, z: at.z, face: 'up', speed: 0 }, zoom: CITY_ZMIN, flags: null },
+    tips: { q: [], cur: null, left: CITY_TIP_MS, hover: false }, starBase: {},
     paused: false, sheet: false, rotate: false, suspended: false, lost: false, lastObjId: null, lastZone: null, nearId: null,
     saveT: 0, objT: 0, obj: null, objTarget: null, sheetFor: null, day: '', dayT: 0, lastAng: -1
   };
   citySetScene(c, sceneId, at);
+  var tipEl = cId('city-tip');   // el contador de la pista se detiene mientras el puntero está encima
+  if (tipEl) { tipEl.addEventListener('mouseenter', function () { if (CD === c) c.tips.hover = true; }); tipEl.addEventListener('mouseleave', function () { if (CD === c) c.tips.hover = false; }); }
   c.loadTimer = setTimeout(function () {   // el aviso solo se muestra si el mundo tarda más de 250 ms
     c.loadTimer = null;
     if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', CITY_LOAD_HTML); }
@@ -250,7 +254,9 @@ function cityStart() {
     CD.world = world;
     CD.input = cityMakeInput();
     var lb = cId('city-loadbox'); if (lb) lb.remove();
+    c.starBase = cityStarSnapshot();
     cityRefresh(); cityRotateCheck(); cityAnnounce();
+    if (!S.city.prologue) cityIntroOpen(0);   // quien entra por primera vez ve el prólogo de Iris sin tener que buscarla
   };
   cityCreateWorld(c, sceneId).then(ready, function () { cityFailScene(c, gen, sceneId, ready); });
 }
@@ -315,7 +321,7 @@ function cityResume() {
   CD.boxes = CityMove.boxesFor(CITY_DATA, CD.scene);
   if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (beatenToday(CD.scene, pb) && CD.world) CD.world.dissolve(pb); }
   if (CD.world) { CD.world.setPaused('suspended', false); CD.world.resize(); }   // primero se quita la pausa: con 'suspended' activo resize no hace nada
-  cityRefresh(); cityRotateCheck(); cityAnnounce();
+  cityRefresh(); cityTipsCheck('resume'); cityRotateCheck(); cityAnnounce();
   if (cityRestorePending.length) { var rp = cityRestorePending; cityRestorePending = []; cityCelebrate(rp, ''); }
 }
 function cityRotateCheck() {
@@ -385,6 +391,7 @@ function cityUpdateNear(force) {
   if (!b || (!force && id === CD.nearId)) return;
   CD.nearId = id;
   if (best) { citySetAct(b, best.label, best.sub); b.hidden = false; } else { citySetAct(b, '', ''); b.hidden = true; }
+  cityTipsCheck('near');
 }
 /* ---------- contrato con el mundo ---------- */
 function cityState() {
@@ -428,6 +435,7 @@ function cityTick(dt) {
   if (nh.speed > 0.1) c.face = CityMove.faceOf(nh.yaw);
   var hit = CityMove.portalAt(CITY_DATA, c.scene, nh.x, nh.z);   // pisar la boca de un portal o la salida cambia de escena
   if (hit !== null) { cityStepOn(hit); return; }
+  cityTipTick(dt);
   c.saveT += sec; c.objT += sec;
   if (c.saveT >= 5) {   // guardado periódico solo si el héroe se movió más de 1 m (al pausar, suspender o salir siempre se guarda)
     c.saveT = 0;
@@ -512,22 +520,6 @@ function cityPractice(id) {
   cityReleaseUi();
   startRound({ kind: 'quiz', title: 'Quiz', mid: CD.scene, back: { name: 'city' }, city: { kind: 'practice', id: id, mid: CD.scene } }, itemsFor('quiz', mod(CD.scene), o.topic));
 }
-/* Prólogo: tres paneles; terminar o saltar lo marca como visto */
-var CITY_PROLOGUE = [
-  ['Ciudad Núcleo', 'Ciudad Núcleo funciona gracias a su software: semáforos, puertas, grúas y buzones. Todo depende del conocimiento de quienes lo cuidan.'],
-  ['La Maraña', 'La Maraña nace del código que nadie entiende y del conocimiento guardado por unos pocos. Apaga la ciudad distrito tras distrito.'],
-  ['Llegas al Taller', 'Llegas como Becario al Taller Comunal, el colectivo de ingenieros de la ciudad. Aprende, ponte a prueba y enseña a tus vecinos: así vuelve la luz.']
-];
-function cityPrologue(i) {
-  var p = CITY_PROLOGUE[i], last = i === CITY_PROLOGUE.length - 1;
-  var act = last ? '' : '<button class="btn primary" data-act="cx" data-c="pro-next" data-i="' + (i + 1) + '">Siguiente</button><button class="btn" data-act="cx" data-c="pro-skip">Saltar</button>';
-  var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Prólogo ' + (i + 1) + ' de 3') + '</span></div><h2 class="prompt">' + esc(p[0]) + '</h2><p>' + esc(p[1]) + '</p>' +
-    '<div class="actions">' + act + (last ? '<button class="btn primary" data-act="cx" data-c="pro-end">Cerrar</button>' : '') + '</div></article>';
-  var sh = cId('city-sheet');
-  if (CD && CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', 'iris');
-}
-function cityPrologueDone() { if (!S.city.prologue) { S.city.prologue = true; save(); } cityCloseSheet(); }
-
 /* Enseñar (explicar): el aprendiz pide explicación; hay que elegir los 3 puntos clave del tema entre 6 */
 function cityKpPool(o) {
   var m = mod(CD.scene), own = shuffle(m.tById[o.topic].keyPoints).slice(0, 3).map(function (t) { return { t: t, own: true }; });
@@ -621,11 +613,8 @@ function cityEncounter(o) {
 /* Abre el lugar según su tipo (todos los tipos de cityBase tienen su rama) */
 function cityOpen(o) {
   if (!CD || !o || CD.fading) return;
-  if (o.kind === 'director' && !S.city.prologue) {
-    cityPrologue(0);
-  } else if (o.kind === 'director') {
-    var ob = cityObjective();
-    cityOpenSheet(citySheetHtml('Directora', o.name, '<p>' + esc('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>' + (ob && ob.label ? '<p><b>' + esc(ob.label) + '</b></p>' : '')), '[data-c="sheetclose"]', o.id);
+  if (o.kind === 'director') {
+    if (!S.city.prologue) cityIntroOpen(0); else cityIrisSheet(o);
   } else if (o.kind === 'mirror') {
     citySave(); go('hero');
   } else if (o.kind === 'mentor') {
@@ -646,7 +635,7 @@ function cityOpen(o) {
 }
 
 /* ---------- pausa ---------- */
-var CITY_PAUSE_OPTS = [['goal', 'Ir al objetivo'], ['near', 'Lugares cercanos'], ['learned', 'Lecciones vistas'], ['review', 'Repaso'], ['hero', 'Tu héroe'], ['home', 'Salir al inicio']];
+var CITY_PAUSE_OPTS = [['goal', 'Ir al objetivo'], ['near', 'Lugares cercanos'], ['learned', 'Lecciones vistas'], ['review', 'Repaso'], ['hero', 'Tu héroe'], ['how', '¿Cómo se juega?'], ['home', 'Salir al inicio']];
 function cityPauseMain() {
   var pb = cId('city-pausebox'); if (!pb) return;
   pb.innerHTML = '<div class="banner"><h2 class="h2">Pausa</h2><div class="actions col">' +
@@ -700,7 +689,8 @@ function cityPauseAct(a) {
     if (!q.length) { cityPauseList('Repaso', [], 'No tienes preguntas pendientes de repaso.'); return; }
     cityReleaseUi();
     startRound({ kind: 'review', title: 'Repaso', back: { name: 'city' } }, sample(q, 10));
-  } else if (a === 'hero') { citySave(); go('hero'); }
+  } else if (a === 'how') { cityClosePause(); cityHowTo(); }
+  else if (a === 'hero') { citySave(); go('hero'); }
   else if (a === 'home') { citySave(); go('home'); }
 }
 
@@ -727,8 +717,9 @@ function cityAct(c, b) {
   else if (c === 'go') { var o = cityItem(b.dataset.id); if (CD && o) { cityClosePause(); cityOpen(o); } }
   else if (c === 'act') { if (CD && CD.world && !CD.sheet && !CD.paused && CD.nearId) { var n = cityItem(CD.nearId); if (n) cityOpen(n); } }
   else if (c === 'sheetclose') cityCloseSheet();
-  else if (c === 'pro-next') cityPrologue(parseInt(b.dataset.i, 10));
-  else if (c === 'pro-skip' || c === 'pro-end') cityPrologueDone();
+  else if (c === 'pro-next') cityIntroOpen(parseInt(b.dataset.i, 10));
+  else if (c === 'pro-skip' || c === 'pro-end') cityIntroDone();
+  else if (c === 'tip-close') cityTipClose();
   else if (c === 'kp') cityTeachPick(parseInt(b.dataset.i, 10));
   else if (c === 'teach-go') cityTeachGo();
   else if (c === 'retry-teach') { if (CD && CD.teach) cityTeachExplain(CD.teach.o, true); }
