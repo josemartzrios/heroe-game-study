@@ -127,11 +127,11 @@ const TIP = { talk: 'Toca «Hablar con…» o pulsa E para aprender su tema.', c
     e.w.close();
 
     // ---- star: al volver de una ronda que dio la primera estrella ----
-    e = boot({ seed: base({ city: m2city() }) }); await enterCity(e);
+    e = boot({ seed: base({ topics: { 'M02:T01': [1, 1, 1, 1] }, city: m2city() }) }); await enterCity(e);   // 4 aciertos de historial + los 4 de la ronda = 8 (>= 6) con precisión 1: primera estrella
     const qs = e.w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((q) => q.topic === 'T01' && q.type === 'mcq').slice(0, 6);
     const L = require('./adv/lib.cjs');
     e.w.__CITY_ROUND__.startRound({ kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'city' }, city: { kind: 'practice', id: 'm01', mid: 'M02' } }, qs);
-    for (let i = 0; i < 6; i++) { const q = L.findQ(e.w, e.d), b = L.optBtn(e.d, L.correctText(q)); click(e.w, b); const n = $(e, '#nextbtn'); if (n) click(e.w, n); }
+    for (let i = 0; i < 12 && $(e, '.prompt'); i++) { const q = L.findQ(e.w, e.d), b = L.optBtn(e.d, L.correctText(q)); click(e.w, b); const n = $(e, '#nextbtn'); if (n) click(e.w, n); }
     click(e.w, $(e, '[data-act="back"]')); await tick();
     ok('(f) al volver de una ronda con la primera estrella sale "star"', tip(e) === TIP.star, tip(e));
     e.w.close();

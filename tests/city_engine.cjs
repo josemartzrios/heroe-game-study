@@ -66,7 +66,7 @@ const correctText = (q) => (q.type === 'tf' ? (q.answer ? 'Verdadero' : 'Falso')
 function answerRight(w, d) { const q = findQ(w, d); const b = [...d.querySelectorAll('.opt')].find((x) => norm(x.querySelector('span:last-child').textContent) === norm(correctText(q))); click(w, b); const n = d.querySelector('#nextbtn'); if (n) click(w, n); }
 
 const M2AT = { x: 0, z: -52, yaw: Math.PI };   // entrada de M02: las pruebas de lugares del Taller arrancan ahí; las de la plaza piden scene 'plaza'
-const withScene = (s) => { const c = Object.assign({}, s.city || {}); if (!('scene' in c) && !('at' in c)) { c.scene = 'M02'; c.at = Object.assign({}, M2AT); } s.city = c; return s; };
+const withScene = (s) => { const c = Object.assign({}, s.city || {}); if (!('scene' in c) && !('at' in c)) { c.scene = 'M02'; c.at = Object.assign({}, M2AT); } if (!('prologue' in c)) c.prologue = true; s.city = c; return s; };   // el prólogo se abre solo al entrar: las pruebas que no lo prueban lo dan por visto
 const base = (o = {}) => withScene(Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o));
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const $ = (e, s) => e.d.querySelector(s);
@@ -221,12 +221,13 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (k) objetivo y anuncios
-    e = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e);
+    e = boot({ seed: base({ city: { scene: 'plaza', prologue: false } }) }); await enter(e);
     const o0 = $(e, '#city-obj').textContent;
     ok('(k) #city-obj: "Habla con Iris · N m" con entero', /^Habla con Iris · \d+ m$/.test(o0), o0);
+    click(e.w, btnText(e, /^Saltar$/, '#city-sheet'));   // el prólogo se abre solo y bloquea el movimiento
     const l0 = live(e);
     api(e).teleport(0, 7); tickW(e, 300);
-    ok('(k) moverse 1 m no cambia #city-live', live(e) === l0 && /^Plaza\./.test(l0), l0 + ' → ' + live(e));
+    ok('(k) moverse 1 m no cambia #city-live', live(e) === l0 && /Plaza|Objetivo/.test(l0), l0 + ' → ' + live(e));
     const pm = (await import('../city/districts.mjs')).city.plaza.portals.find((p) => p.dist === 'M02');
     api(e).teleport(pm.x, pm.z); tickW(e, 16); await sleep(700);
     ok('(k) entrar al Taller Comunal se anuncia', /^Entraste a Taller Comunal\./.test(live(e)), live(e));
@@ -426,17 +427,19 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         click(e4.w, $(e4, '[data-act="back"]')); await tick();
         ok('(q) aprobar el jefe y volver muestra la celebración', /Planos/.test($(e4, '#city-sheet').textContent) && saved(e4.w).city.restored.M02 === true);
         e4.w.close(); }
-      // prólogo
-      { const e4 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e4);
-        near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
-        ok('(q) prólogo: panel 1 con "Siguiente" y "Saltar"', /Ciudad Núcleo/.test($(e4, '#city-sheet').textContent) && !!btnText(e4, /^Siguiente$/, '#city-sheet') && !!btnText(e4, /^Saltar$/, '#city-sheet'));
+      // prólogo: se abre solo al entrar (4 paneles); después, Iris ya no lo repite
+      { const e4 = boot({ seed: base({ city: { scene: 'plaza', prologue: false } }) }); await enter(e4);
+        ok('(q) prólogo: se abre solo con el panel 1, "Siguiente" y "Saltar"', !$(e4, '#city-sheet').hidden && /Ciudad Núcleo/.test($(e4, '#city-sheet').textContent) && !!btnText(e4, /^Siguiente$/, '#city-sheet') && !!btnText(e4, /^Saltar$/, '#city-sheet'));
+        const p1 = $(e4, '#city-sheet').textContent;
         click(e4.w, btnText(e4, /^Siguiente$/, '#city-sheet')); const p2 = $(e4, '#city-sheet').textContent;
         click(e4.w, btnText(e4, /^Siguiente$/, '#city-sheet')); const p3 = $(e4, '#city-sheet').textContent;
-        ok('(q) tres paneles distintos y el último se cierra', /Maraña/.test(p2) && /Taller/.test(p3) && p2 !== p3 && !!btnText(e4, /^Cerrar$/, '#city-sheet'));
+        click(e4.w, btnText(e4, /^Siguiente$/, '#city-sheet')); const p4 = $(e4, '#city-sheet').textContent;
+        ok('(q) cuatro paneles distintos y el último se cierra', /Maraña/.test(p2) && /Becario/.test(p3) && /Cómo se juega/.test(p4) && new Set([p1, p2, p3, p4]).size === 4 && !!btnText(e4, /^Cerrar$/, '#city-sheet') && !btnText(e4, /^Saltar$/, '#city-sheet'));
         click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet'));
-        ok('(q) al terminar S.city.prologue = true y una sola vez', saved(e4.w).city.prologue === true && (click(e4.w, $(e4, '#city-act')), !/Siguiente/.test($(e4, '#city-sheet').textContent)));
+        near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
+        ok('(q) al terminar S.city.prologue = true y una sola vez (Iris ya no lo repite)', saved(e4.w).city.prologue === true && !/Siguiente/.test($(e4, '#city-sheet').textContent));
         e4.w.close();
-        const e5 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e5); near(e5, { x: -6, z: -4 }); click(e5.w, $(e5, '#city-act')); click(e5.w, btnText(e5, /^Saltar$/, '#city-sheet'));
+        const e5 = boot({ seed: base({ city: { scene: 'plaza', prologue: false } }) }); await enter(e5); click(e5.w, btnText(e5, /^Saltar$/, '#city-sheet'));
         ok('(q) "Saltar" lo marca como visto', saved(e5.w).city.prologue === true && $(e5, '#city-sheet').hidden);
         e5.w.close(); }
       // guardado manipulado (foco de revisión 2)
@@ -487,7 +490,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       const e6 = boot({ seed: base({ city: { prologue: true, at: { x: 0, z: 8, yaw: Math.PI } } }) }); await enter(e6);
       ok('(u) al entrar con at.yaw = π la dirección es "down"', e6.st.lastOpts.state().hero.face === 'down');
       e6.w.close(); }
-    { const e5 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e5);   // objetivo: Iris en (-6, -4)
+    { const e5 = boot({ seed: base({ city: { scene: 'plaza', prologue: false } }) }); await enter(e5);   // objetivo: Iris en (-6, -4) (el prólogo abierto no cambia el objetivo)
       const arrow = () => $(e5, '#city-arrow');
       api(e5).teleport(-6, 6); ok('(u) flecha: objetivo arriba → 0°', arrow().style.transform === 'rotate(0deg)' && !arrow().hidden, arrow().style.transform);
       api(e5).teleport(-16, -4); ok('(u) objetivo a la derecha → 90°', arrow().style.transform === 'rotate(90deg)', arrow().style.transform);

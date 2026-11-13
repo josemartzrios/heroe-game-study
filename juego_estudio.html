@@ -317,6 +317,13 @@ body.city-on{overflow:hidden}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
 #city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
+#city-tip{position:absolute; left:50%; transform:translateX(-50%); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 124px); z-index:2; max-width:min(92vw, 480px); background:var(--surface); color:var(--ink); border:2px solid var(--cyan); border-radius:10px; padding:8px 12px; font-weight:600; cursor:pointer; box-shadow:0 0 12px rgba(92,225,255,.35)}
+#city-tip:empty{display:none}
+.trio{display:flex; gap:16px; list-style:none; margin:12px 0; padding:0; flex-wrap:wrap}
+.trio li{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:84px; font-weight:600}
+.trio canvas{width:56px; height:56px}
+#city-sheet .how{list-style:none; padding:0}
+#city-sheet .how li{margin:6px 0}
 #city-err{position:absolute; left:0; right:0; top:0; z-index:3; display:flex; justify-content:center; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left))}
 #city-err[hidden]{display:none}
 #city-err .banner{width:100%; max-width:560px; background:var(--surface)}
@@ -3285,7 +3292,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     var q = queue();
     var h = header() + '<main>' + bannersVirtues(takePend());
     h += '<section class="intro"><p class="eyebrow">Ingeniería de software</p><h1>Ciudad Núcleo</h1>' +
-      '<p class="lead">Estudia jugando: un módulo por guía. Aprende cada tema, practica con rondas cortas y repasa lo que fallas.</p></section>' + heroSummary() +
+      '<p class="lead">Estudia Ingeniería de Software recorriendo una ciudad: cada distrito es un módulo y cada vecino te enseña un tema.</p></section>' +
+      '<ul class="trio"><li><canvas class="heroic" data-spr="mentor" width="56" height="56" aria-hidden="true"></canvas><span>Aprende</span></li><li><canvas class="heroic" data-spr="creature" width="56" height="56" aria-hidden="true"></canvas><span>Ponte a prueba</span></li><li><canvas class="heroic" data-spr="apprentice" width="56" height="56" aria-hidden="true"></canvas><span>Enseña</span></li></ul>' + heroSummary() +
       '<section class="card adv"><span class="eyebrow">Ciudad Núcleo</span><strong>Entrar a la ciudad</strong><p>Recorre la ciudad: aprende con los mentores, ponte a prueba y enseña a tus vecinos.</p><div><button class="btn primary" data-act="city">▶ Entrar a la ciudad</button></div></section>' +
       '<h2 class="h2">Módulos</h2><div class="mods">' + MODULES.map(function (m) {
         var b = S.boss[m.id];
@@ -4486,6 +4494,7 @@ function cityRefresh() {
   if (!CD) return;
   CD.flags = cityFlags(); CD.items = cityBuildItems(); CD.day = today(); CD.dayT = Date.now();
   cityHud(true); cityUpdateNear(true);
+  cityTipsCheck('tower'); cityTipsCheck('plaza');
 }
 function cityItem(id) {
   if (!CD) return null;
@@ -4538,7 +4547,7 @@ function cityMakeInput() {
   var inp = CityInput.create(cityRootEl(), {
     safe: citySafe,
     isActive: function () { return !cityBlocked(); },
-    isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate, #city-err, #city-veil')); }
+    isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate, #city-err, #city-veil, #city-tip')); }
   });
   /* con la hoja o la pausa abiertas el mundo no agenda cuadros (no hay tick): Esc se atiende aquí, después del listener del input */
   var fn = function () { if (CD && CD.input === inp && !CD.suspended && (CD.sheet || CD.paused) && inp.consumePause()) cityPauseKey(); };
@@ -4561,7 +4570,7 @@ function cityHtml() {
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden><span class="act-main"></span><span class="act-sub" hidden></span></button></div>' +
     '<div id="city-sheet" hidden role="dialog" aria-modal="true"></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
-    '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div><div id="city-err" hidden></div><div id="city-veil" aria-hidden="true"></div>' +
+    '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div><div id="city-err" hidden></div><div id="city-veil" aria-hidden="true"></div><div id="city-tip" role="status" data-act="cx" data-c="tip-close"></div>' +
     '<div id="city-safe" style="position:fixed;left:0;bottom:0;padding-left:env(safe-area-inset-left);padding-bottom:env(safe-area-inset-bottom);visibility:hidden"></div>';
 }
 function cityTeardown() {
@@ -4635,10 +4644,13 @@ function cityStart() {
     gen: gen, canvas: cv, world: null, input: null, loadTimer: null, fadeT: null, fading: false, entered: false,
     scene: 'plaza', sc: null, base: null, flags: null, items: null, hero: null, safe: null, savedAt: null, face: 'up', boxes: [],
     zoom: CITY_ZMIN, st: { hero: { x: at.x, z: at.z, face: 'up', speed: 0 }, zoom: CITY_ZMIN, flags: null },
+    tips: { q: [], cur: null, left: CITY_TIP_MS, hover: false }, starBase: {},
     paused: false, sheet: false, rotate: false, suspended: false, lost: false, lastObjId: null, lastZone: null, nearId: null,
     saveT: 0, objT: 0, obj: null, objTarget: null, sheetFor: null, day: '', dayT: 0, lastAng: -1
   };
   citySetScene(c, sceneId, at);
+  var tipEl = cId('city-tip');   // el contador de la pista se detiene mientras el puntero está encima
+  if (tipEl) { tipEl.addEventListener('mouseenter', function () { if (CD === c) c.tips.hover = true; }); tipEl.addEventListener('mouseleave', function () { if (CD === c) c.tips.hover = false; }); }
   c.loadTimer = setTimeout(function () {   // el aviso solo se muestra si el mundo tarda más de 250 ms
     c.loadTimer = null;
     if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', CITY_LOAD_HTML); }
@@ -4649,7 +4661,9 @@ function cityStart() {
     CD.world = world;
     CD.input = cityMakeInput();
     var lb = cId('city-loadbox'); if (lb) lb.remove();
+    c.starBase = cityStarSnapshot();
     cityRefresh(); cityRotateCheck(); cityAnnounce();
+    if (!S.city.prologue) cityIntroOpen(0);   // quien entra por primera vez ve el prólogo de Iris sin tener que buscarla
   };
   cityCreateWorld(c, sceneId).then(ready, function () { cityFailScene(c, gen, sceneId, ready); });
 }
@@ -4714,7 +4728,7 @@ function cityResume() {
   CD.boxes = CityMove.boxesFor(CITY_DATA, CD.scene);
   if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (beatenToday(CD.scene, pb) && CD.world) CD.world.dissolve(pb); }
   if (CD.world) { CD.world.setPaused('suspended', false); CD.world.resize(); }   // primero se quita la pausa: con 'suspended' activo resize no hace nada
-  cityRefresh(); cityRotateCheck(); cityAnnounce();
+  cityRefresh(); cityTipsCheck('resume'); cityRotateCheck(); cityAnnounce();
   if (cityRestorePending.length) { var rp = cityRestorePending; cityRestorePending = []; cityCelebrate(rp, ''); }
 }
 function cityRotateCheck() {
@@ -4784,6 +4798,7 @@ function cityUpdateNear(force) {
   if (!b || (!force && id === CD.nearId)) return;
   CD.nearId = id;
   if (best) { citySetAct(b, best.label, best.sub); b.hidden = false; } else { citySetAct(b, '', ''); b.hidden = true; }
+  cityTipsCheck('near');
 }
 /* ---------- contrato con el mundo ---------- */
 function cityState() {
@@ -4827,6 +4842,7 @@ function cityTick(dt) {
   if (nh.speed > 0.1) c.face = CityMove.faceOf(nh.yaw);
   var hit = CityMove.portalAt(CITY_DATA, c.scene, nh.x, nh.z);   // pisar la boca de un portal o la salida cambia de escena
   if (hit !== null) { cityStepOn(hit); return; }
+  cityTipTick(dt);
   c.saveT += sec; c.objT += sec;
   if (c.saveT >= 5) {   // guardado periódico solo si el héroe se movió más de 1 m (al pausar, suspender o salir siempre se guarda)
     c.saveT = 0;
@@ -4911,22 +4927,6 @@ function cityPractice(id) {
   cityReleaseUi();
   startRound({ kind: 'quiz', title: 'Quiz', mid: CD.scene, back: { name: 'city' }, city: { kind: 'practice', id: id, mid: CD.scene } }, itemsFor('quiz', mod(CD.scene), o.topic));
 }
-/* Prólogo: tres paneles; terminar o saltar lo marca como visto */
-var CITY_PROLOGUE = [
-  ['Ciudad Núcleo', 'Ciudad Núcleo funciona gracias a su software: semáforos, puertas, grúas y buzones. Todo depende del conocimiento de quienes lo cuidan.'],
-  ['La Maraña', 'La Maraña nace del código que nadie entiende y del conocimiento guardado por unos pocos. Apaga la ciudad distrito tras distrito.'],
-  ['Llegas al Taller', 'Llegas como Becario al Taller Comunal, el colectivo de ingenieros de la ciudad. Aprende, ponte a prueba y enseña a tus vecinos: así vuelve la luz.']
-];
-function cityPrologue(i) {
-  var p = CITY_PROLOGUE[i], last = i === CITY_PROLOGUE.length - 1;
-  var act = last ? '' : '<button class="btn primary" data-act="cx" data-c="pro-next" data-i="' + (i + 1) + '">Siguiente</button><button class="btn" data-act="cx" data-c="pro-skip">Saltar</button>';
-  var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Prólogo ' + (i + 1) + ' de 3') + '</span></div><h2 class="prompt">' + esc(p[0]) + '</h2><p>' + esc(p[1]) + '</p>' +
-    '<div class="actions">' + act + (last ? '<button class="btn primary" data-act="cx" data-c="pro-end">Cerrar</button>' : '') + '</div></article>';
-  var sh = cId('city-sheet');
-  if (CD && CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', 'iris');
-}
-function cityPrologueDone() { if (!S.city.prologue) { S.city.prologue = true; save(); } cityCloseSheet(); }
-
 /* Enseñar (explicar): el aprendiz pide explicación; hay que elegir los 3 puntos clave del tema entre 6 */
 function cityKpPool(o) {
   var m = mod(CD.scene), own = shuffle(m.tById[o.topic].keyPoints).slice(0, 3).map(function (t) { return { t: t, own: true }; });
@@ -5020,11 +5020,8 @@ function cityEncounter(o) {
 /* Abre el lugar según su tipo (todos los tipos de cityBase tienen su rama) */
 function cityOpen(o) {
   if (!CD || !o || CD.fading) return;
-  if (o.kind === 'director' && !S.city.prologue) {
-    cityPrologue(0);
-  } else if (o.kind === 'director') {
-    var ob = cityObjective();
-    cityOpenSheet(citySheetHtml('Directora', o.name, '<p>' + esc('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>' + (ob && ob.label ? '<p><b>' + esc(ob.label) + '</b></p>' : '')), '[data-c="sheetclose"]', o.id);
+  if (o.kind === 'director') {
+    if (!S.city.prologue) cityIntroOpen(0); else cityIrisSheet(o);
   } else if (o.kind === 'mirror') {
     citySave(); go('hero');
   } else if (o.kind === 'mentor') {
@@ -5045,7 +5042,7 @@ function cityOpen(o) {
 }
 
 /* ---------- pausa ---------- */
-var CITY_PAUSE_OPTS = [['goal', 'Ir al objetivo'], ['near', 'Lugares cercanos'], ['learned', 'Lecciones vistas'], ['review', 'Repaso'], ['hero', 'Tu héroe'], ['home', 'Salir al inicio']];
+var CITY_PAUSE_OPTS = [['goal', 'Ir al objetivo'], ['near', 'Lugares cercanos'], ['learned', 'Lecciones vistas'], ['review', 'Repaso'], ['hero', 'Tu héroe'], ['how', '¿Cómo se juega?'], ['home', 'Salir al inicio']];
 function cityPauseMain() {
   var pb = cId('city-pausebox'); if (!pb) return;
   pb.innerHTML = '<div class="banner"><h2 class="h2">Pausa</h2><div class="actions col">' +
@@ -5099,7 +5096,8 @@ function cityPauseAct(a) {
     if (!q.length) { cityPauseList('Repaso', [], 'No tienes preguntas pendientes de repaso.'); return; }
     cityReleaseUi();
     startRound({ kind: 'review', title: 'Repaso', back: { name: 'city' } }, sample(q, 10));
-  } else if (a === 'hero') { citySave(); go('hero'); }
+  } else if (a === 'how') { cityClosePause(); cityHowTo(); }
+  else if (a === 'hero') { citySave(); go('hero'); }
   else if (a === 'home') { citySave(); go('home'); }
 }
 
@@ -5126,8 +5124,9 @@ function cityAct(c, b) {
   else if (c === 'go') { var o = cityItem(b.dataset.id); if (CD && o) { cityClosePause(); cityOpen(o); } }
   else if (c === 'act') { if (CD && CD.world && !CD.sheet && !CD.paused && CD.nearId) { var n = cityItem(CD.nearId); if (n) cityOpen(n); } }
   else if (c === 'sheetclose') cityCloseSheet();
-  else if (c === 'pro-next') cityPrologue(parseInt(b.dataset.i, 10));
-  else if (c === 'pro-skip' || c === 'pro-end') cityPrologueDone();
+  else if (c === 'pro-next') cityIntroOpen(parseInt(b.dataset.i, 10));
+  else if (c === 'pro-skip' || c === 'pro-end') cityIntroDone();
+  else if (c === 'tip-close') cityTipClose();
   else if (c === 'kp') cityTeachPick(parseInt(b.dataset.i, 10));
   else if (c === 'teach-go') cityTeachGo();
   else if (c === 'retry-teach') { if (CD && CD.teach) cityTeachExplain(CD.teach.o, true); }
@@ -5150,6 +5149,123 @@ if (window.__CITY_TEST__ === true) {
     },
     objective: function () { return cityObjective(); }
   };
+}
+
+/* Introducción de Ciudad Núcleo para quien juega por primera vez (se inserta DENTRO de la IIFE del motor, después de view.js):
+   prólogo de Iris en 4 paneles, pistas en el momento (una a la vez, 6 s de visibilidad real, una sola vez cada una), "¿Cómo se juega?"
+   y los textos de controles según el tipo de puntero. Usa S, CD, cId, cFocus, cityOpenSheet, citySheetHtml, cityCloseSheet, cityItem, esc, fmt,
+   starsOf, mod, bossUnlocked y CityStory. ES5. Los textos van a innerHTML solo con esc(); la pista se escribe con textContent. */
+var CITY_TIP_MS = 6000;
+var CITY_INTRO = [
+  ['Ciudad Núcleo', 'Ciudad Núcleo funciona gracias a su software: semáforos, puertas, grúas y buzones. Todo depende del conocimiento de quienes lo cuidan.'],
+  ['La Maraña', 'La Maraña nace del código que nadie entiende y del conocimiento guardado por unos pocos. Apaga la ciudad distrito tras distrito.'],
+  ['Tu papel', 'Llegas como Becario. Cada distrito es un módulo del temario: restáuralo y subirás de rango hasta Tech Lead. Cada portal abierto de la plaza lleva a un distrito; los demás llegarán pronto.']
+];
+var CITY_HOWTO_TITLE = 'Cómo se juega';
+var CITY_HOWTO = [
+  ['🧑‍🏫', 'Mentor', 'Habla con él y lee la lección de su tema.'],
+  ['⭐', 'Practicar', 'Responde preguntas y gana estrellas.'],
+  ['👾', 'Criatura', 'Mezcla varios temas: véncela para probar lo que sabes.'],
+  ['🔧', 'Reparar y enseñar', 'Arregla la ciudad y explica temas a los aprendices.'],
+  ['🗼', 'Torre', 'El examen final del módulo restaura el distrito.']
+];
+var CITY_TIPS = {
+  talk: 'Toca «Hablar con…» o pulsa E para aprender su tema.',
+  star: 'Con 1 estrella ya puedes enseñar ese tema a un aprendiz.',
+  creature: 'Las criaturas mezclan varios temas: aprende antes de enfrentarlas.',
+  repair: 'Repara la ciudad respondiendo sin ayudas.',
+  tower: 'La torre está abierta: es el examen final del distrito.',
+  portals: 'Hay más distritos detrás de los portales.'
+};
+
+function cityMedia(q) { try { return !!(window.matchMedia && window.matchMedia(q).matches); } catch (e) { return false; } }
+/* Controles según el puntero: líneas táctiles si hay puntero grueso, de teclado si hay puntero fino (o ninguno detectado); en híbridos, ambas */
+function cityControlsHtml() {
+  var coarse = cityMedia('(any-pointer: coarse)'), fine = cityMedia('(any-pointer: fine)'), out = '';
+  if (coarse) out += '<li class="ctl-touch">' + esc('Arrastra en la parte izquierda de la pantalla para caminar. Pellizca para acercar o alejar.') + '</li>';
+  if (fine || !coarse) out += '<li class="ctl-kb">' + esc('WASD o flechas para caminar. E o Enter para hablar. Rueda o +/− para el zoom. Esc para pausa.') + '</li>';
+  out += '<li class="ctl-run">' + esc('Desde el nivel 5 puedes correr (botón Correr o Shift).') + '</li>';
+  return out;
+}
+/* Cuerpo del panel "Cómo se juega": el ciclo del distrito con un ícono por paso y los controles */
+function cityHowToBody() {
+  return '<ul class="vlist how">' + CITY_HOWTO.map(function (h) { return '<li><span aria-hidden="true">' + h[0] + '</span> <b>' + esc(h[1]) + ':</b> ' + esc(h[2]) + '</li>'; }).join('') + cityControlsHtml() + '</ul>';
+}
+function cityIntroTotal() { return CITY_INTRO.length + 1; }
+/* Prólogo: paneles 1..3 de texto y el 4.º "Cómo se juega"; cerrar o saltar lo marca como visto */
+function cityIntroOpen(i) {
+  if (!CD) return;
+  var last = i >= CITY_INTRO.length, tot = cityIntroTotal(), title = last ? CITY_HOWTO_TITLE : CITY_INTRO[i][0];
+  var body = last ? cityHowToBody() : '<p>' + esc(CITY_INTRO[i][1]) + '</p>';
+  var act = last ? '<button class="btn primary" data-act="cx" data-c="pro-end">Cerrar</button>' : '<button class="btn primary" data-act="cx" data-c="pro-next" data-i="' + (i + 1) + '">Siguiente</button><button class="btn" data-act="cx" data-c="pro-skip">Saltar</button>';
+  var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Prólogo ' + (i + 1) + ' de ' + tot) + '</span></div><h2 class="prompt">' + esc(title) + '</h2>' + body + '<div class="actions">' + act + '</div></article>';
+  var sh = cId('city-sheet');
+  if (CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); sh.scrollTop = 0; cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', 'iris');
+}
+function cityIntroDone() { if (!S.city.prologue) { S.city.prologue = true; save(); } cityCloseSheet(); }
+/* Iris después del prólogo: el panel "Cómo se juega" y, en negrita, el objetivo actual */
+function cityIrisSheet(o) {
+  var ob = cityObjective();
+  cityOpenSheet(citySheetHtml('Ciudad Núcleo', o.name, '<p>' + esc('Bienvenido a Ciudad Núcleo, ' + heroName() + '.') + '</p>' + (ob && ob.label ? '<p><b>' + esc(ob.label) + '</b></p>' : '') + '<h3 class="h2">' + esc(CITY_HOWTO_TITLE) + '</h3>' + cityHowToBody()), '[data-c="sheetclose"]', o.id);
+}
+/* "¿Cómo se juega?" de la pausa: el panel 4 y la lista de pistas ya vistas */
+function cityHowTo() {
+  var seen = Object.keys(CITY_TIPS).filter(function (id) { return S.city.tips[id] === true; });
+  var tips = seen.length ? '<h3 class="h2">Pistas vistas</h3><ul class="kp">' + seen.map(function (id) { return '<li>' + esc(CITY_TIPS[id]) + '</li>'; }).join('') + '</ul>' : '';
+  cityOpenSheet(citySheetHtml('Ciudad Núcleo', '¿Cómo se juega?', cityHowToBody() + tips), '[data-c="sheetclose"]', 'howto');
+}
+
+/* ---------- pistas ---------- */
+function cityTipEl() { return cId('city-tip'); }
+function cityTipShowNext() {
+  var T = CD && CD.tips, el = cityTipEl();
+  if (!T || !el || T.cur || !T.q.length) return;
+  var id = T.q.shift();
+  T.cur = id; T.left = CITY_TIP_MS;
+  S.city.tips[id] = true; save();   // se marca al mostrarse: no se repite aunque se cierre al instante
+  el.textContent = CITY_TIPS[id];
+}
+function cityTipClose() {
+  var T = CD && CD.tips, el = cityTipEl();
+  if (!T || !T.cur) return;
+  T.cur = null; T.hover = false;
+  if (el) el.textContent = '';
+  cityTipShowNext();
+}
+/* Pone la pista en cola si es conocida, no se vio nunca y no está ya en cola o en pantalla */
+function cityTip(id) {
+  var T = CD && CD.tips;
+  if (!T || !Object.prototype.hasOwnProperty.call(CITY_TIPS, id) || S.city.tips[id] === true || T.cur === id || T.q.indexOf(id) >= 0) return;
+  T.q.push(id); cityTipShowNext();
+}
+/* La cuenta de 6 s solo avanza con la vista libre: no corre con hoja, pausa o fundido (el tick no llega) ni con el puntero o el foco sobre la pista */
+function cityTipTick(dt) {
+  var T = CD && CD.tips; if (!T || !T.cur) return;
+  var el = cityTipEl(), ae = document.activeElement;
+  if (T.hover || (el && ae && el.contains(ae))) return;
+  T.left -= dt;
+  if (T.left <= 0) cityTipClose();
+}
+function cityStarSnapshot() {
+  var o = {};
+  Object.keys(CITY_DATA.districts).forEach(function (mid) { var m = mod(mid); if (m) m.topics.forEach(function (t) { if (starsOf(m, t.id) >= 1) o[mid + ':' + t.id] = 1; }); });
+  return o;
+}
+/* reason: near (cambió el lugar más cercano), resume (se vuelve de una ronda), tower y plaza (al recalcular la escena) */
+function cityTipsCheck(reason) {
+  if (!CD || !CD.tips) return;
+  if (reason === 'near') {
+    var it = CD.nearId ? cityItem(CD.nearId) : null;
+    if (it) { if (it.kind === 'mentor') cityTip('talk'); else if (it.kind === 'creature') cityTip('creature'); else if (it.kind === 'repair') cityTip('repair'); }
+  } else if (reason === 'resume') {
+    var now = cityStarSnapshot(), fresh = Object.keys(now).some(function (k) { return !CD.starBase[k]; });
+    CD.starBase = now;
+    if (fresh) cityTip('star');
+  } else if (reason === 'tower') {
+    if (CD.scene !== 'plaza' && bossUnlocked(mod(CD.scene))) cityTip('tower');
+  } else if (reason === 'plaza') {
+    if (CD.scene === 'plaza' && cityRestoredN().done > 0) cityTip('portals');
+  }
 }
 
   

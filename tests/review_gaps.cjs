@@ -58,7 +58,7 @@ const correctText = (q) => (q.type === 'tf' ? (q.answer ? 'Verdadero' : 'Falso')
 function answerRight(w, d) { const q = findQ(w, d); click(w, [...d.querySelectorAll('.opt')].find((x) => norm(x.querySelector('span:last-child').textContent) === norm(correctText(q)))); const n = d.querySelector('#nextbtn'); if (n) click(w, n); }
 
 const M2AT = { x: 0, z: -52, yaw: Math.PI };   // entrada de M02: las pruebas de lugares del Taller arrancan ahí; las de la plaza piden scene 'plaza'
-const withScene = (s) => { const c = Object.assign({}, s.city || {}); if (!('scene' in c) && !('at' in c)) { c.scene = 'M02'; c.at = Object.assign({}, M2AT); } s.city = c; return s; };
+const withScene = (s) => { const c = Object.assign({}, s.city || {}); if (!('scene' in c) && !('at' in c)) { c.scene = 'M02'; c.at = Object.assign({}, M2AT); } if (!('prologue' in c)) c.prologue = true; s.city = c; return s; };   // el prólogo se abre solo al entrar: las pruebas que no lo prueban lo dan por visto
 const base = (o = {}) => withScene(Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' }, city: { prologue: true } }, o));
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const $ = (e, s) => e.d.querySelector(s);

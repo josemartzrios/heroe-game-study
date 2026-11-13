@@ -254,7 +254,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
 
   // I6. Batalla (R.battle) ganada: R F R R R => villano a 0 tras 4 aciertos, termina antes de 6
   const VT = ['M02:T01', 'M02:T02', 'M02:T03'];
-  const M2START = { scene: 'M02', at: { x: 0, z: -52, yaw: Math.PI } };   // las batallas de M02 empiezan dentro del distrito
+  const M2START = { prologue: true, scene: 'M02', at: { x: 0, z: -52, yaw: Math.PI } };   // las batallas de M02 empiezan dentro del distrito
   const BIT = { x: 0, z: 0 };
   { const M = (await import('../city/districts.mjs')).city.districts.M02.creatures.find((c) => c.id === 'bit').area; BIT.x = M.x; BIT.z = M.z; }
   const enterBattle = async (w, d) => {
