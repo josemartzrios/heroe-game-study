@@ -2507,6 +2507,12 @@ var CityStory = (function () {
     if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) return false;
     return !todayStr || s <= todayStr;
   }
+  /* [0, 2π) idempotente: un ángulo ya normalizado no cambia (sumar 2π y volver a tomar el módulo movía un ulp) y sin -0 */
+  function normYaw(v) {
+    var y = v % TAU;
+    if (y < 0) y += TAU;
+    return (y > 0 && y < TAU) ? y : 0;
+  }
   function ids(list) { return list.map(function (x) { return x.id; }); }
   function pick(obj, idList, okv) {
     var o = {};
@@ -2541,7 +2547,7 @@ var CityStory = (function () {
     if (a && CM.isNum(a.x) && CM.isNum(a.z)) {
       var x = CM.coord(a.x, B.minX + r, B.maxX - r, sp.x), z = CM.coord(a.z, B.minZ + r, B.maxZ - r, sp.z);
       if (!insideBox(x, z, r, CM.boxesFor(D, ok))) {
-        C.at = { x: x, z: z, yaw: CM.isNum(a.yaw) ? ((a.yaw % TAU) + TAU) % TAU : sp.yaw };
+        C.at = { x: x, z: z, yaw: CM.isNum(a.yaw) ? normYaw(a.yaw) : sp.yaw };
       }
     }
     return C;
