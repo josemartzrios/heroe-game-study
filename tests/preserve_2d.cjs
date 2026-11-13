@@ -13,7 +13,7 @@ const results = [];
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
 const tick = async (n = 6) => { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); };
 
-// Mundo falso compatible con el contrato 3D (create(THREE, canvas, D, opts)) y el 2D (create(canvas, D, opts)).
+// Mundo falso del contrato 2D (create(canvas, D, sceneId, opts)).
 function boot(seed) {
   const errors = [];
   const vc = new VirtualConsole();
@@ -26,11 +26,9 @@ function boot(seed) {
       w.scrollTo = () => {};
       w.Element.prototype.scrollIntoView = function () {};
       w.__CITY_TEST__ = true;
-      w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       w.requestAnimationFrame = () => 1; w.cancelAnimationFrame = () => {};
-      w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
       w.__CITY_WORLD__ = { create() { return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, setLook() {}, encounter: () => Promise.resolve(), dispose() {} }); } };
     },
   });

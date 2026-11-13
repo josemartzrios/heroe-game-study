@@ -36,8 +36,6 @@ function boot(raw, opts = {}) {
       w.scrollTo = () => {}; w.Element.prototype.scrollIntoView = function () {};
       w.confirm = () => false; w.alert = () => {};
       w.__CITY_TEST__ = true;
-      w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
-      w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
       w.__CITY_WORLD__ = { create(canvas, D, sceneId, o) { w.__fakeOpts = o; w.__fakeScene = sceneId; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
@@ -68,7 +66,7 @@ function forceSave(w, d) {
       const files = ['engine.html', 'city/view.js', 'city/world2d.js', 'city/sprites2d.js'];
       const hits = [];
       files.forEach((f) => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').forEach((ln, i) => {
-        if (/hero\.look|\.welcomed|S\.hero\.look|opts\.look|\blook\b\s*[,)]/.test(ln) && !/lookAt|TRIP_LOOK|scene\.look/.test(ln)) hits.push(f + ':' + (i + 1));
+        if (/hero\.look|\.welcomed|S\.hero\.look|opts\.look|\blook\b\s*[,)]/.test(ln) && !/lookAt/.test(ln)) hits.push(f + ':' + (i + 1));
       }));
       console.log('INVENTARIO lectores de look/welcomed (' + hits.length + '): ' + hits.join(' '));
       const eng = fs.readFileSync(path.join(ROOT, 'engine.html'), 'utf8');

@@ -3,9 +3,6 @@ import vm from 'node:vm';
 import { checkDistrict, checkPlaza, FORBIDDEN } from './city/check_district.mjs';
 
 const html = fs.readFileSync(new URL('./juego_estudio.html', import.meta.url), 'utf8');
-// Three.js incrustado como texto inerte: se valida aparte y se excluye de las reglas del motor
-const vend = html.match(/<!-- VENDOR:THREE START -->[\s\S]*?<!-- VENDOR:THREE END -->/);
-const htmlNoV = vend ? html.replace(vend[0], '') : html;
 const backupPath = process.argv[2];
 const m = html.match(/const MODULES = (\[[\s\S]*?\n\]);/);
 if (!m) throw new Error('No se encontró MODULES');
@@ -24,32 +21,35 @@ if (backupPath) {
 }
 // Palabras prohibidas (IP ajena) en todo el archivo
 const forbidden = FORBIDDEN;
-for (const re of forbidden) if (re.test(htmlNoV)) bad('Palabra prohibida: ' + re);
+for (const re of forbidden) if (re.test(html)) bad('Palabra prohibida: ' + re);
 if (MODULES.length !== 10 || MODULES.map((m) => m.id).join() !== 'M01,M02,M03,M04,M05,M06,M07,M08,M09,M10') bad('MODULES debe tener M01..M10 en ese orden');
 if (!html.includes("'estudio_isw_v1'")) bad('Falta la clave localStorage');
 // Ciudad Núcleo
 for (const s of ['function cityStart', 'data-act="city"', 'CITY_DATA']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
-{ const eng = htmlNoV.slice(0, htmlNoV.indexOf('// === MODULE:M01 START ===')) + htmlNoV.slice(htmlNoV.indexOf('// === MODULE:M10 END ==='));
+{ const eng = html.slice(0, html.indexOf('// === MODULE:M01 START ===')) + html.slice(html.indexOf('// === MODULE:M10 END ==='));
   for (const re of [/<img/i, /fetch\(/, /new Image/]) if (re.test(eng)) bad('El motor usa un recurso no permitido: ' + re); }
-if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.argv[2]).length, grow = Buffer.byteLength(htmlNoV) - oldLen; console.log('Crecimiento respecto a la versión publicada:', grow, 'bytes'); if (grow > 90 * 1024 && /v12/.test(process.argv[2])) bad('El archivo creció más de 90 KB respecto a la versión 12'); }
-// Limpieza y seguridad: identificadores retirados y ganchos de prueba protegidos (solo el motor, sin el contenido de los módulos)
-{ const eng = htmlNoV.slice(0, htmlNoV.indexOf('// === MODULE:M01 START ===')) + htmlNoV.slice(htmlNoV.indexOf('// === MODULE:M10 END ==='));
+if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.argv[2]).length, grow = Buffer.byteLength(html) - oldLen; console.log('Crecimiento respecto a la versión publicada:', grow, 'bytes'); if (grow > 90 * 1024 && /v12/.test(process.argv[2])) bad('El archivo creció más de 90 KB respecto a la versión 12'); }
+// Limpieza y seguridad: identificadores retirados y ganchos de prueba protegidos. Se mira el motor SIN el contenido de los módulos y SIN el
+// literal de CITY_DATA (un texto del temario puede mencionar cualquier palabra); los literales se buscan con includes, no con regex.
+{ const cs = html.indexOf('var CITY_DATA = '), ce = cs < 0 ? -1 : html.indexOf(';\n', cs);
+  const noData = cs < 0 || ce < 0 ? html : html.slice(0, cs) + html.slice(ce + 2);
+  const eng = noData.slice(0, noData.indexOf('// === MODULE:M01 START ===')) + noData.slice(noData.indexOf('// === MODULE:M10 END ==='));
   for (const id of ['avatarSvg', 'PARTS', 'fixLook', 'setLook', 'mergeBoxes', 'cameraArm', 'consumeCamera', 'CityHero', 'welcomed', 'villainsM01']) if (new RegExp('\\b' + id + '\\b').test(eng)) bad('Identificador retirado en el motor: ' + id);
+  for (const id of ['Three3D', 'TripScene', 'TripFlow', 'TRIP_STATIONS', 'trip-root', 'tripStop', 'loadThree', 'three-src', 'three.module', '__TRIP_IMPORT__', '__TRIP_SCENE__', 'dynImport', 'createObjectURL', 'bridgeSeen', 'cityZone']) if (eng.includes(id)) bad('Identificador retirado en el motor: ' + id);
+  if (/\bimport\s*\(/.test(eng)) bad('El motor no puede usar import( dinámico');
   for (const g of ['__CITY_TEST_API__', '__CITY_ROUND__', '__CITY_WORLD__']) {
     const re = new RegExp('window\\.' + g + '\\s*=(?!=)', 'g'); let m;
     while ((m = re.exec(eng))) if (!/__CITY_TEST__ === true/.test(eng.slice(Math.max(0, m.index - 300), m.index))) bad('Gancho de prueba sin proteger (' + g + '): debe asignarse solo con window.__CITY_TEST__ === true');
   }
-  for (const g of ['__TRIP_IMPORT__', '__TRIP_SCENE__']) {   // los ganchos del viaje solo se leen junto a la comprobación __CITY_TEST__ === true
-    const re = new RegExp('window\\.' + g, 'g'); let m;
-    while ((m = re.exec(eng))) if (!/__CITY_TEST__ === true/.test(eng.slice(m.index, m.index + 200))) bad('Gancho del viaje sin proteger (' + g + '): debe leerse solo con window.__CITY_TEST__ === true');
-  }
-  const ci = eng.indexOf('function cityStart('), cj = eng.indexOf('function citySuspend(');
-  if (ci >= 0 && cj > ci && /loadThree/.test(eng.slice(ci, cj))) bad('La ciudad no debe llamar a loadThree');
 }
+// La CSP no permite blob: (ya no se crean URLs de objeto)
+{ const hp = new URL('./_headers', import.meta.url);
+  if (!fs.existsSync(hp)) bad('Falta _headers');
+  else if (fs.readFileSync(hp, 'utf8').includes('blob:')) bad('_headers: la CSP no debe permitir blob:'); }
 // Batalla
 for (const s of ['function vBattleHud']) if (!html.includes(s)) bad('Falta en el motor: ' + s);
 for (const id of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10']) for (const s of ['START', 'END']) if (!html.includes(`// === MODULE:${id} ${s} ===`)) bad(`Falta marcador ${id} ${s}`);
-if (/https?:\/\/(?!fonts\.googleapis\.com|ejemplo\.com)/.test(htmlNoV.replace(/<link[^>]*>/g, ''))) bad('Hay URLs externas en el cuerpo');
+if (/https?:\/\/(?!fonts\.googleapis\.com|ejemplo\.com)/.test(html.replace(/<link[^>]*>/g, ''))) bad('Hay URLs externas en el cuerpo');
 
 // ---------- Validación genérica por módulo ----------
 function checkModule(mod, prefix, min, nTopics) {
@@ -301,32 +301,39 @@ console.log('Por tema M10:', JSON.stringify(r10.perTopic));
 
 console.log('Por tema M02:', JSON.stringify(r2.perTopic));
 
-// ---------- Viaje 3D: vendor Three.js ----------
-{
-  const THREE_SHA384 = '7827608db326fa37a423c7f269e099e0f9f2839938267e39c36aacde57e701de444b920ee2128e5cd8ac5414f25330ce';
-  if (!vend) bad('Falta el bloque VENDOR:THREE');
-  else {
-    const open = '<script type="text/plain" id="three-src" data-version="0.169.0">', close = '</script><!-- VENDOR:THREE END -->';
-    const a = vend[0].indexOf(open), z = vend[0].lastIndexOf(close);
-    if (a < 0) bad('vendor: falta data-version="0.169.0"');
-    else if (z < 0) bad('vendor: falta el cierre del bloque');
-    else {
-      const body = vend[0].slice(a + open.length, z);
-      if (/<\/script/i.test(body)) bad('vendor: contiene </script interno');
-      if (/<!--/.test(body)) bad('vendor: contiene <!-- interno');
-      if (/from\s*["']\.\//.test(body)) bad('vendor: import relativo');
-      if ((await import('node:crypto')).createHash('sha384').update(body).digest('hex') !== THREE_SHA384) bad('vendor: hash distinto');
-    }
-  }
-}
 // ---------- Ciudad Núcleo: el código de la vista no nombra distritos (todo sale de CITY_DATA y de la escena activa; spec §4.6) ----------
 for (const f of ['view', 'world2d', 'sprites2d', 'input', 'intro', 'route', 'route_view']) {
   const src = fs.readFileSync(new URL('./city/' + f + '.js', import.meta.url), 'utf8');
   if (/['"]M\d{2}['"]/.test(src)) bad(`city/${f}.js nombra un distrito concreto ('M02', 'M08'…): debe leer CITY_DATA y la escena activa`);
 }
+// ---------- Ciudad Núcleo: un texto de los datos (nombre, etiqueta, texto) llega a innerHTML solo dentro de esc() o fmt() ----------
+// Quita de la línea cada llamada esc(...)/fmt(...) completa (paréntesis anidados y comillas incluidos) y mira lo que sobra.
+const stripEscaped = (line) => {
+  let out = '', i = 0, m;
+  const re = /\b(?:esc|fmt)\(/g;
+  while ((m = re.exec(line))) {
+    if (m.index < i) continue;
+    out += line.slice(i, m.index);
+    let j = m.index + m[0].length, depth = 1, q = null;
+    for (; j < line.length && depth > 0; j++) {
+      const c = line[j];
+      if (q) { if (c === '\\') j++; else if (c === q) q = null; }
+      else if (c === "'" || c === '"') q = c;
+      else if (c === '(') depth++;
+      else if (c === ')') depth--;
+    }
+    i = j; re.lastIndex = j;
+  }
+  return out + line.slice(i);
+};
+for (const f of ['view', 'world2d', 'sprites2d', 'input', 'intro', 'route', 'route_view']) {
+  fs.readFileSync(new URL('./city/' + f + '.js', import.meta.url), 'utf8').split('\n').forEach((line, i) => {
+    if (/innerHTML\s*=(?!=)/.test(line) && /\.(?:name|label|text)\b/.test(stripEscaped(line))) bad(`city/${f}.js:${i + 1}: un nombre o etiqueta de los datos va a innerHTML sin esc()/fmt()`);
+  });
+}
 // ---------- Ciudad Núcleo: distritos y plaza (los datos que de verdad van en el HTML) ----------
 {
-  const mt = htmlNoV.match(/var CITY_DATA = (\{[\s\S]*?\n?\});\n/);
+  const mt = html.match(/var CITY_DATA = (\{[\s\S]*?\n?\});\n/);
   if (!mt) bad('Falta CITY_DATA');
   else {
     const D = vm.runInNewContext('(' + mt[1] + ')');

@@ -1,4 +1,4 @@
-// Pruebas unitarias de city/route.js (CityRoute: máquina de estados de la ruta del paquete, sin DOM), copia de las de TripFlow más deps.from.
+// Pruebas unitarias de city/route.js (CityRoute: máquina de estados de la ruta del paquete, sin DOM), copia de las pruebas del viaje 3D anterior (ya retirado) más deps.from.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');

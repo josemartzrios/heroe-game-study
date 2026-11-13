@@ -274,28 +274,8 @@ body.game .weak li,body.game .miss .card{background:var(--surface); border:2px s
 .arena.fx-hurt .fighter.hero .fig{animation:shake .4s}
 .fighter.hero.domed::after{content:""; position:absolute; left:-8px; bottom:-6px; width:64px; height:86px; border-radius:50% 50% 12px 12px; border:2px solid #4fd2ff; background:rgba(79,210,255,.18); box-shadow:0 0 12px rgba(79,210,255,.6); pointer-events:none}
 @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important} body.game .opt.zap{opacity:.4}}
-/* viaje 3D: capa a pantalla completa fuera de #app */
-#trip-root{position:fixed; inset:0; height:100dvh; z-index:50; background:var(--bg)}
-#trip-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}
-#trip-ui{position:absolute; inset:0; pointer-events:none}
-#trip-ui > *{pointer-events:auto}
-.trip-quit{min-height:44px; min-width:44px; background:var(--surface)}
 #savewarn{position:fixed; top:0; left:0; right:0; z-index:60}
-#trip-root .banner{background:var(--surface)}
-body.trip-on{overflow:hidden}
-.trip-hud{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left))}
-.trip-hud .bar{flex:1 1 100%}
-.trip-hud .chips{margin-left:auto}
-#trip-load{position:absolute; top:50%; left:0; right:0; text-align:center; font-weight:600}
-#trip-sheet,#trip-confirm{position:absolute; left:0; right:0; bottom:0; overflow:auto; padding:12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
-#trip-sheet{max-height:50dvh; background:var(--surface); border-top:2px solid var(--line)}
-#trip-sheet .qcard{margin-top:0}
-#trip-sheet ul{margin:0; padding-left:18px}
-#trip-confirm{z-index:2; inset:0; top:0; max-height:none; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
-#trip-confirm .banner{width:100%}
-#trip-confirm[hidden]{display:none}   /* display:flex anula [hidden]: sin esto una capa invisible tapa la pantalla */
-@media (orientation:landscape){#trip-sheet{max-height:85dvh}}
-/* ciudad 3D: capa a pantalla completa fuera de #app */
+/* ciudad 2D: capa a pantalla completa fuera de #app */
 #city-root{position:fixed; inset:0; height:100dvh; z-index:50; background:var(--bg); touch-action:none; overscroll-behavior:none}
 #city-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}
 body.city-on{overflow:hidden}
@@ -339,9 +319,7 @@ body.city-on{overflow:hidden}
 #city-root .banner{background:var(--surface)}
 </style>
 <div class="shell" id="app"></div>
-<div id="trip-root" hidden></div>
 <div id="city-root" hidden></div>
-<!--__THREE__-->
 <script>
 const MODULES = [
   // === MODULE:M01 START ===
@@ -906,7 +884,7 @@ const MODULES = [
     var h = header() + '<main><div class="crumb"><button class="btn sm ghost" data-act="home">← Módulos</button></div>' +
       '<div class="head"><span class="tag">' + esc(m.id) + '</span><h1>' + esc(m.title) + '</h1>' +
       '<div class="bar" role="img" aria-label="' + dominio(m) + ' por ciento de dominio"><i style="width:' + dominio(m) + '%"></i></div>' +
-      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (Object.prototype.hasOwnProperty.call(CITY_DATA.districts, m.id) ? '<div><button class="btn sm primary" data-act="district" data-id="' + esc(m.id) + '"><span aria-hidden="true">▶</span> Ir al distrito</button></div>' : '') + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
+      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (Object.prototype.hasOwnProperty.call(CITY_DATA.districts, m.id) ? '<div><button class="btn sm primary" data-act="district" data-id="' + esc(m.id) + '"><span aria-hidden="true">▶</span> Ir al distrito</button></div>' : '') + '</div>' +
       '<h2 class="h2">Modos del módulo</h2><div class="modes">' +
       modeBtn('tf', 'Relámpago', '10 afirmaciones, 12 s cada una', true) +
       modeBtn('scenario', '¿Qué usarías?', 'Decisiones de diseño en casos reales', true) +
@@ -1099,9 +1077,8 @@ const MODULES = [
   function render() {
     var h = '';
     var keepCity = V.name === 'city' || ((V.name === 'play' || V.name === 'results') && R && R.cfg && R.cfg.back && R.cfg.back.name === 'city');
-    tripStop();
     if (!keepCity) cityStop(); else if (V.name !== 'city') citySuspend();
-    try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results' || V.name === 'trip' || V.name === 'city'); document.body.classList.toggle('trip-on', V.name === 'trip'); document.body.classList.toggle('city-on', V.name === 'city'); } catch (e) {}
+    try { document.body.classList.toggle('game', V.name === 'play' || V.name === 'results' || V.name === 'city'); document.body.classList.toggle('city-on', V.name === 'city'); } catch (e) {}
     if (V.name === 'home') h = vHome();
     else if (V.name === 'module') h = vModule();
     else if (V.name === 'topic') h = vTopic();
@@ -1110,7 +1087,6 @@ const MODULES = [
     else if (V.name === 'results') h = vResults();
     else if (V.name === 'hero') h = vHero();
     app.innerHTML = h;
-    if (V.name === 'trip') tripStart();
     if (V.name === 'city') { if (CD && CD.suspended) cityResume(); else cityStart(); }
     if (R) R.fx = null;
     CitySprites.paintIcons(document.body);
@@ -1119,233 +1095,8 @@ const MODULES = [
     if (nb) { try { nb.focus({ preventScroll: true }); } catch (e) { nb.focus(); } }
   }
 
-  /*__TRIP__*/
   /*__CITY_VIEW__*/
-  /* ---------- viaje 3D "Viaja como paquete": ciclo de vida (escena, carga diferida, respaldo) ---------- */
-  var TD = null, tripGen = 0, threeP = null;
-  var TRIP_QUIT = '<button class="btn sm ghost trip-quit" data-act="tripquit" aria-label="Salir del viaje">Salir</button>';
-  function tripRootEl() { return document.getElementById('trip-root'); }
-  function dynImport(u) { var h = window.__TRIP_IMPORT__; return (window.__CITY_TEST__ === true && typeof h === 'function') ? h(u) : import(u); }
-  function loadThree() {
-    if (threeP) return threeP;
-    var el, url, p;
-    try {
-      el = document.getElementById('three-src');
-      url = URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' }));
-    } catch (e) { return Promise.reject(e); }
-    try { p = dynImport(url); } catch (e2) { URL.revokeObjectURL(url); return Promise.reject(e2); }
-    threeP = p.then(function (m) { URL.revokeObjectURL(url); el.remove(); return m; },
-      function (e3) { URL.revokeObjectURL(url); threeP = null; throw e3; });
-    return threeP;
-  }
-  function tripScenePath() {
-    var f = window.__TRIP_SCENE__;
-    if (window.__CITY_TEST__ === true && f && typeof f.create === 'function') return f;
-    return (typeof TripScene !== 'undefined') ? TripScene : null;
-  }
-  function tripExit() { go('module', { mod: 'M08' }); }
-  function tripFallback() {
-    var r = tripRootEl(); r.hidden = false;
-    r.innerHTML = '<div class="banner up" role="alert"><p>Tu navegador no pudo abrir el viaje 3D.</p><div class="actions">' +
-      '<button class="btn" data-act="tripround">Hacer ronda de M08</button><button class="btn primary" data-act="tripback">Volver</button></div></div>';
-    var b = r.querySelector('[data-act="tripback"]');
-    if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } }
-  }
-  function tripStop() {
-    tripGen++;
-    var td = TD; TD = null;
-    if (td) {
-      if (td.canvas && td.onLost) td.canvas.removeEventListener('webglcontextlost', td.onLost);
-      if (td.scene) { try { td.scene.dispose(); } catch (e) {} }
-    }
-    var r = tripRootEl();
-    if (r) { r.hidden = true; r.innerHTML = ''; }
-  }
-  function tripStart() {
-    var gen = ++tripGen, r = tripRootEl();
-    r.hidden = false;
-    r.innerHTML = '<canvas id="trip-cv" aria-hidden="true"></canvas><div id="trip-ui">' +
-      '<div class="trip-hud">' + TRIP_QUIT + '<span class="pill" id="trip-pill" hidden></span><div class="chips" id="trip-layers"></div>' +
-      '<div class="bar" id="trip-bar" role="img" hidden><i></i></div></div>' +
-      '<p role="status" id="trip-load">Preparando el viaje…</p><div id="trip-live" class="sronly" aria-live="polite"></div>' +
-      '<div id="trip-sheet" hidden></div><div id="trip-confirm" hidden></div></div>';
-    var cv = document.getElementById('trip-cv');
-    var onLost = function (ev) { if (TD && ev.target === TD.canvas) { tripStop(); tripFallback(); } };
-    TD = { gen: gen, canvas: cv, scene: null, flow: null, onLost: onLost, answered: false, confirm: false, pendingArrive: null, layers: 0 };
-    cv.addEventListener('webglcontextlost', onLost);
-    var fail = function () { if (gen === tripGen) { tripStop(); tripFallback(); } };
-    loadThree().then(function (THREE) {
-      if (gen !== tripGen || V.name !== 'trip') return;
-      var F = tripScenePath();
-      if (!F) throw new Error('sin escena');
-      var rm = false;
-      try { rm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
-      return Promise.resolve(F.create(THREE, cv, TRIP_STATIONS, { reducedMotion: rm })).then(function (scene) {
-        if (gen !== tripGen || V.name !== 'trip') { try { scene.dispose(); } catch (e) {} return; }
-        TD.scene = scene;
-        var ld = document.getElementById('trip-load'); if (ld) ld.remove();
-        TD.flow = TripFlow.create({
-          stations: TRIP_STATIONS, questionsByTopic: mod('M08').byTopic, prep: prep, rnd: Math.random,
-          onStation: tripOnStation, onAsk: tripOnAsk, onSummary: tripOnSummary,
-          onResult: function (r) { var g = tripRecord(r); if (!r.ok && TD && TD.scene) TD.scene.lost(); return g; },
-          onLayer: function (n) { if (TD && TD.scene) { TD.layers = n; TD.scene.setLayers(n); tripHud(); } }
-        });
-        TD.flow.start();
-      });
-    }).then(null, fail);
-  }
-  /* --- juego dentro del viaje --- */
-  var TRIP_LAYERS = ['Datos', 'Puerto', 'IP', 'Trama'];
-  function tId(id) { return document.getElementById(id); }
-  function tFocus(el) {
-    if (!el) return;
-    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
-    if (el.scrollIntoView && el.closest && el.closest('#trip-sheet')) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e2) {} }   // la hoja tiene scroll propio: que el foco quede a la vista
-  }
-  function tHudQuit() { return document.querySelector('#trip-ui [data-act="tripquit"]'); }
-  function tripRecord(r) {
-    touch();
-    var base = r.ok ? xpBase(r.q, r.consec) : 0;
-    var gain = xpWithPassive(base);
-    recordAnswer(r.q, r.ok, false, gain);
-    checkVirtues(); save();
-    return gain;
-  }
-  function tripHud() {
-    var c = tId('trip-layers');
-    if (c && TD) c.innerHTML = TRIP_LAYERS.slice(0, TD.layers).map(function (n) { return '<span class="chip">' + esc(n) + '</span>'; }).join('');
-  }
-  function tripSheet(h) { var sh = tId('trip-sheet'); if (sh) { sh.innerHTML = h; sh.hidden = false; } return sh; }
-  function tripOnStation(i) {
-    if (!TD || !TD.scene) return;
-    var sh = tId('trip-sheet'); sh.hidden = true; sh.innerHTML = '';
-    tFocus(tHudQuit());
-    TD.scene.setPaused('sheet', false);
-    var g = tripGen;
-    var arrive = function () {
-      if (g !== tripGen || !TD || !TD.scene) return;
-      var st = TRIP_STATIONS[i], n = i + 1, tot = TRIP_STATIONS.length, label = 'Estación ' + n + ' de ' + tot;
-      var pill = tId('trip-pill'); pill.textContent = label; pill.hidden = false;
-      var bar = tId('trip-bar'); bar.hidden = false; bar.setAttribute('aria-label', label); bar.firstChild.style.width = (n / tot * 100) + '%';
-      tId('trip-live').textContent = 'Estación ' + n + ': ' + st.name;
-      var kp = st.kp[0];
-      var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">' + esc('Estación ' + n + ' · ' + st.name) + '</span></div>' +
-        '<p>' + fmt(mod('M08').tById[kp.topic].keyPoints[kp.index]) + '</p><button class="btn primary wide" data-act="tripask">Ver pregunta</button></article>');
-      TD.scene.setPaused('sheet', true);
-      tFocus(sheet.querySelector('[data-act="tripask"]'));
-    };
-    TD.scene.goTo(i).then(function () {
-      if (g !== tripGen || !TD) return;
-      if (TD.confirm) TD.pendingArrive = arrive; else arrive();
-    }).then(null, function () { if (g === tripGen) tripFail(); });
-  }
-  function tripOpts(item, picked) {
-    return '<div class="opts" role="group" aria-label="Opciones de respuesta">' + item.labels.map(function (l, i) {
-      var cls = 'opt' + (picked === null ? '' : (i === item.correct ? ' ok' : (i === picked ? ' bad' : ' dim')));
-      return '<button class="' + cls + '" data-act="tripopt" data-k="' + i + '"' + (picked === null ? '' : ' disabled') + '><span class="key mono"><b class="kn">' + (i + 1) + '</b>' + ((picked !== null && i === item.correct) ? '<i class="mark" aria-hidden="true">✓</i><i class="sronly">respuesta correcta</i>' : ((picked !== null && i === picked) ? '<i class="mark" aria-hidden="true">✗</i><i class="sronly">tu respuesta</i>' : '')) + '</span><span>' + fmt(l) + '</span></button>';
-    }).join('') + '</div>';
-  }
-  function tripOnAsk(item) {
-    var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">' + esc(KIND_LABEL[item.q.type]) + '</span></div>' +
-      '<h2 class="prompt">' + fmt(item.q.prompt) + '</h2>' + tripOpts(item, null) + '</article>');
-    tFocus(sheet.querySelector('.opt'));
-  }
-  function tripShowResult(k) {
-    var st = TD.flow.state(), item = st.item, q = item.q, ok = st.lastOk;
-    var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">' + esc(KIND_LABEL[q.type]) + '</span></div>' +
-      '<h2 class="prompt">' + fmt(q.prompt) + '</h2>' + tripOpts(item, k) +
-      '<div class="fb ' + (ok ? 'good' : 'bad') + '" role="status"><strong><span class="fbt">' + (ok ? 'Correcto' : 'Paquete perdido: retransmitiendo') + '</span></strong>' +
-      (ok ? '' : '<p>Respuesta correcta: <b>' + fmt(item.labels[item.correct]) + '</b></p>') + '<p>' + fmt(q.explanation) + '</p></div>' +
-      '<button class="btn primary wide" data-act="tripnext">Continuar</button></article>');
-    var fb = sheet.querySelector('.fb');
-    if (fb && fb.scrollIntoView) { try { fb.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
-    tFocus(sheet.querySelector('[data-act="tripnext"]'));
-  }
-  function tripAnswer(k) {
-    if (!TD || !TD.flow || TD.confirm || TD.flow.state().phase !== 'ask') return;
-    TD.flow.answer(k);
-    TD.answered = true;
-    tripShowResult(k);
-  }
-  function tripOnSummary(sum) {
-    var rows = sum.perStation.map(function (p, i) { return '<li>' + esc(TRIP_STATIONS[i].name) + ': ' + p.ok + ' de ' + p.total + '</li>'; }).join('');
-    var sheet = tripSheet('<article class="qcard"><div class="chips"><span class="chip">Resumen del viaje</span></div><h2 class="prompt">Llegaste al servidor</h2>' +
-      '<ul>' + rows + '</ul><p>XP ganada: <b>' + sum.xp + '</b></p><div class="actions"><button class="btn primary" data-act="tripend">Terminar</button>' +
-      (sum.fails.length ? '<button class="btn" data-act="tripreplay">Repasar lo que fallé</button>' : '') + '</div></article>');
-    if (TD && TD.scene) TD.scene.setPaused('sheet', true);
-    tFocus(sheet.querySelector('[data-act="tripend"]'));
-  }
-  function tripInert(on) {   // con la confirmación abierta, lo de atrás no recibe foco ni toques
-    ['trip-sheet'].forEach(function (id) { var x = tId(id); if (x) { if (on) x.setAttribute('inert', ''); else x.removeAttribute('inert'); } });
-    var hud = document.querySelector('#trip-ui .trip-hud');
-    if (hud) { if (on) hud.setAttribute('inert', ''); else hud.removeAttribute('inert'); }
-  }
-  function tripOpenConfirm() {
-    var c = tId('trip-confirm'); if (!c || !TD) return;
-    c.innerHTML = '<div class="banner up" role="alertdialog" aria-labelledby="trip-confirm-msg"><p id="trip-confirm-msg">¿Salir del viaje? Lo que respondiste ya quedó guardado.</p><div class="actions">' +
-      '<button class="btn" data-act="tripconfirm">Salir</button><button class="btn primary" data-act="tripcancel">Seguir</button></div></div>';
-    c.hidden = false; TD.confirm = true;
-    tripInert(true);
-    tFocus(c.querySelector('[data-act="tripcancel"]'));
-  }
-  function tripCloseConfirm() {
-    var c = tId('trip-confirm'); if (!c || !TD) return;
-    c.hidden = true; c.innerHTML = ''; TD.confirm = false;
-    tripInert(false);
-    tFocus(tHudQuit());
-    var f = TD.pendingArrive; TD.pendingArrive = null;
-    if (f) f();
-  }
-  function tripFail() { if (TD) { tripStop(); tripFallback(); } }   // la escena falló a mitad del viaje: se libera y se ofrece el respaldo
-  function tripSafe(fn) { try { fn(); } catch (e) { tripFail(); } }
-  function tripQuit() {
-    if (TD && TD.confirm) tripCloseConfirm();
-    else if (TD && TD.answered) tripOpenConfirm();
-    else tripExit();
-  }
-  tripRootEl().addEventListener('click', function (e) {
-    var b = e.target.closest('[data-act]');
-    if (!b || b.disabled || V.name !== 'trip') return;
-    var a = b.dataset.act;
-    tripSafe(function () { tripAct(a, b); });
-  });
-  function tripAct(a, b) {
-    if (a === 'tripquit') tripQuit();
-    else if (a === 'tripback' || a === 'tripend' || a === 'tripconfirm') tripExit();
-    else if (a === 'tripcancel') tripCloseConfirm();
-    else if (a === 'tripround') { tripStop(); startRound({ kind: 'quiz', title: 'Quiz', mid: 'M08', back: { name: 'module', mod: 'M08' } }, itemsFor('quiz', mod('M08'), null)); }
-    else if (a === 'tripask') { if (TD && TD.flow && !TD.confirm) TD.flow.ask(); }
-    else if (a === 'tripopt') tripAnswer(parseInt(b.dataset.k, 10));
-    else if (a === 'tripnext') { if (TD && TD.flow && !TD.confirm) TD.flow.next(); }
-    else if (a === 'tripreplay') {
-      if (!TD || !TD.flow) return;
-      var fails = TD.flow.state().fails.slice();
-      tripStop();
-      startRound({ kind: 'replay', title: 'Repaso de fallos', mid: 'M08', back: { name: 'module', mod: 'M08' } }, shuffle(fails));
-    }
-  }
-  var TRIP_LOOK = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 10], ArrowDown: [0, -10] };
-  document.addEventListener('keydown', function (e) {
-    if (V.name !== 'trip' || e.ctrlKey || e.metaKey || e.altKey) return;
-    tripSafe(function () { tripKey(e); });
-  });
-  function tripKey(e) {
-    if (e.key === 'Escape') { e.preventDefault(); tripQuit(); return; }
-    if (!TD) return;
-    if (TRIP_LOOK[e.key]) { if (TD.scene && !TD.confirm) { e.preventDefault(); TD.scene.look(TRIP_LOOK[e.key][0], TRIP_LOOK[e.key][1]); } return; }
-    if (TD.confirm || !TD.flow) return;
-    var st = TD.flow.state();
-    if (/^[1-9]$/.test(e.key)) {
-      var k = parseInt(e.key, 10) - 1;
-      if (st.phase === 'ask' && k < st.item.labels.length) { e.preventDefault(); tripAnswer(k); }
-    } else if (e.key === 'Enter') {
-      var el = document.activeElement;
-      if (el && el.tagName === 'BUTTON') return;
-      if (st.phase === 'result') { e.preventDefault(); TD.flow.next(); }
-    }
-  }
-  window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
-  document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); if (CD && CD.world) CD.world.setPaused('hidden', document.hidden); });
+  document.addEventListener('visibilitychange', function () { if (CD && CD.world) CD.world.setPaused('hidden', document.hidden); });
 
   function beatenToday(mid, id) { var d = cityD(mid); return !!d && d.beaten[id] === today(); }
   /* Pool barajado de preguntas mcq+tf de los temas, sin repetir: las primeras n son la ronda y arr.pool guarda el resto */
@@ -1383,7 +1134,6 @@ const MODULES = [
     if (!b || b.disabled) return;
     var d = b.dataset, a = d.act;
     if (a === 'home') go('home');
-    else if (a === 'trip') go('trip');
     else if (a === 'city') go('city');
     else if (a === 'district') { var e0 = Object.prototype.hasOwnProperty.call(CITY_DATA.districts, d.id) ? CITY_DATA.districts[d.id].entry : null; if (e0) { S.city.scene = d.id; S.city.at = { x: e0.x, z: e0.z, yaw: e0.yaw }; save(); go('city'); } }
     else if (a === 'hero') go('hero');

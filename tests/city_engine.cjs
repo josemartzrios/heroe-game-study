@@ -1,5 +1,5 @@
 // Vista `city` del motor (jsdom, sin WebGL): ciclo de vida, suspender/reanudar, estados, HUD, pausa, aviso de girar y hojas.
-// Las funciones auxiliares se copian de tests/trip_engine.cjs (no se puede hacer require: ejecuta su suite).
+// Arnés jsdom con mundo falso: las funciones auxiliares viven en este archivo (no se puede hacer require de otra prueba: ejecuta su suite).
 const { JSDOM, VirtualConsole } = require('jsdom');
 const fs = require('fs');
 const html = fs.readFileSync(require('path').join(__dirname, '..', 'juego_estudio.html'), 'utf8');
@@ -15,7 +15,7 @@ function boot(opts = {}) {
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push('jsdomError: ' + (e.detail || e.message)));
   vc.on('error', (e) => errors.push('console.error: ' + e));
-  const st = { creates: 0, disposed: 0, calls: [], worlds: [], canvases: [], lastOpts: null, resolveCreate: null, trips: 0 };
+  const st = { creates: 0, disposed: 0, calls: [], worlds: [], canvases: [], lastOpts: null, resolveCreate: null };
   const dom = new JSDOM(html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
@@ -26,10 +26,8 @@ function boot(opts = {}) {
       if (opts.rndSeed) { let s = opts.rndSeed; w.Math.random = function () { s |= 0; s = (s + 0x6D2B79F5) | 0; let x = Math.imul(s ^ (s >>> 15), 1 | s); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
       if (opts.clock) { const RD = w.Date; class FD extends RD { constructor(...a) { if (a.length === 0) super(RD.now() + opts.clock.ms); else super(...a); } static now() { return RD.now() + opts.clock.ms; } } w.Date = FD; }
       if (opts.matchMedia !== undefined) w.matchMedia = () => ({ matches: !!opts.matchMedia });
-      w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return opts.noCtx ? null : fake(this); };
-      w.__TRIP_IMPORT__ = () => { st.trips++; return Promise.resolve({ THREE_FAKE: true }); };
       {
         w.__CITY_WORLD__ = {
           create(canvas, D, sceneId, o) {
@@ -94,7 +92,6 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     ok('(a) pasado ese tiempo aparece "Preparando la ciudad…" en role=status con "Salir"', /Preparando la ciudad…/.test(($(e, '#city-load') || {}).textContent || '') && $(e, '#city-load').getAttribute('role') === 'status' && !!btnText(e, /^Salir$/));
     e.st.resolveCreate(); await tick();
     ok('(a) al resolver desaparece "Preparando" y la vista queda activa', !$(e, '#city-load') && e.d.body.classList.contains('city-on') && e.st.creates === 1);
-    ok('(a) la ciudad nunca pide el import de Three (e.trips = 0)', e.st.trips === 0);
     ok('(a) opts del mundo: exactamente reducedMotion, tick, state y onLost', JSON.stringify(Object.keys(e.st.lastOpts).sort()) === JSON.stringify(['onLost', 'reducedMotion', 'state', 'tick']), Object.keys(e.st.lastOpts).join());
     ok('(a) sin errores de consola', e.errors.length === 0, e.errors.join('|'));
     e.w.close();

@@ -250,6 +250,23 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const txt = parent.kids[0] && parent.kids[0].textContent;
     ok('(m) ?fps=1: div con solo números y las palabras permitidas; dispose lo quita', !!txt && /^[0-9.·\sfpsp95ticknodibujomartnpmsfpsms]+$/i.test(txt) && /fps/.test(txt) && (api.dispose(), parent.kids.length === 0), txt);
     delete global.document; }
+  // ---- Pauser (pausa por motivos), propio del mundo 2D ----
+  { ok('(n) CityWorld2D exporta Pauser además de create, y nada más', typeof W.Pauser === 'function' && typeof W.create === 'function' && Object.keys(W).sort().join() === 'Pauser,create');
+    const P = W.Pauser();
+    ok('(n) Pauser corre sin motivos', P.running());
+    P.set('sheet', true); P.set('hidden', true); P.set('hidden', false);
+    ok('(n) con "sheet" activo sigue en pausa aunque "hidden" se quite', !P.running() && P.has('sheet') && !P.has('hidden'));
+    P.set('sheet', false);
+    ok('(n) sin motivos vuelve a correr', P.running() && !P.has('sheet'));
+    P.set('x', true); P.set('x', true); P.set('x', false);
+    ok('(n) un motivo repetido no cuenta dos veces: un solo "false" lo libera', P.running());
+    P.set('nunca', false);
+    ok('(n) quitar un motivo que no está no rompe el conteo', P.running());
+    const P2 = W.Pauser(); P2.tick(1000);
+    ok('(n) el segundo tick limita dt a 50', P2.tick(5000) === 50);
+    P2.set('sheet', true); P2.set('sheet', false);
+    ok('(n) tras reanudar el primer tick devuelve 16', P2.tick(9000) === 16);
+    ok('(n) el primer tick de un Pauser nuevo devuelve 16', W.Pauser().tick(123456) === 16); }
   results.forEach((r) => { if (r[0] === 'FAIL') console.log(r.join(' | ')); });
   const fails = results.filter((r) => r[0] === 'FAIL').length;
   console.log(fails ? fails + ' FALLOS' : 'CITY_WORLD2D OK (' + results.length + ')'); process.exit(fails ? 1 : 0);

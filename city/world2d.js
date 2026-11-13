@@ -3,15 +3,30 @@
    api = { resize, setPaused(reason, on), dispose, encounter(id), dissolve(id), stats(), setRoute(done) }.
    El mapa de la escena se prerenderiza una sola vez a 8 px/m (sin dpr ni zoom); cada cuadro copia el rectángulo visible y dibuja encima
    sprites, la ruta del paquete (pads, cable y paquete) y partículas. Por cuadro NO se usa shadowBlur, filter, composite distinto de
-   source-over, canvas nuevos ni get/putImageData; encender un tramo de la ruta nunca repinta el mapa. */
+   source-over, canvas nuevos ni get/putImageData; encender un tramo de la ruta nunca repinta el mapa. También exporta Pauser() (pausa por motivos). */
 var CityWorld2D = (function () {
-  /* alias distintos de los globales: un `var Three3D` aquí taparía al global en el navegador */
-  var T3 = (typeof Three3D !== 'undefined') ? Three3D : require('../three/shared.js');
+  /* alias distintos de los globales: un `var CitySprites` aquí taparía al global en el navegador */
   var SP = (typeof CitySprites !== 'undefined') ? CitySprites : require('./sprites2d.js');
   var CMv = (typeof CityMove !== 'undefined') ? CityMove : require('./move.js');
   var PX = 8, BG = '#0d1230', FOG = 'rgba(176,108,255,0.08)', STAR_COL = ['#6b7280', '#cd7f32', '#cfd6e6', '#ffd23f'];
   var NEON = ['#5ce1ff', '#ff4fd8', '#7dff8a', '#ffd76a'];
   var NPART = 200, CABLE_OFF = '#2a3358', CHECK = '#eafff3', PACKET = '#ffffff', PACKET_MS = 800;
+
+  /* Pausa por motivos: el bucle corre solo si no hay ninguno activo; tick(ts) da el dt en ms (tope 50; 16 tras reanudar). */
+  function Pauser() {
+    var reasons = {}, count = 0, last = 0;
+    return {
+      set: function (r, on) {
+        var was = count === 0;
+        if (on && !reasons[r]) { reasons[r] = true; count++; }
+        else if (!on && reasons[r]) { delete reasons[r]; count--; }
+        if (!was && count === 0) last = 0;
+      },
+      running: function () { return count === 0; },
+      has: function (r) { return !!reasons[r]; },
+      tick: function (ts) { var dt = last ? Math.min(50, ts - last) : 16; last = ts; return dt; }
+    };
+  }
 
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -110,7 +125,7 @@ var CityWorld2D = (function () {
     pr = clamp(pr, 1, 1.5);
     var search = opts.search !== undefined ? opts.search : (typeof location !== 'undefined' ? location.search : '');
     var reduced = !!opts.reducedMotion;
-    var pauser = T3.Pauser(), pending = null, wantFrame = false, disposed = false, time = 0, enc = null, encRes = null, encTimer = null;
+    var pauser = Pauser(), pending = null, wantFrame = false, disposed = false, time = 0, enc = null, encRes = null, encTimer = null;
     var camOffX = 0, camOffZ = 0, dis = {}, W_ = 0, H_ = 0, portrait = true;
     var parts = [], nLive = 0, sparkT = 0, st = { npc: 0, part: 0, tick: 0, draw: 0, p95: 0 }, times = [], frames = 0;
     var i;
@@ -357,6 +372,6 @@ var CityWorld2D = (function () {
     return Promise.resolve(api);
   }
 
-  return { create: create };
+  return { create: create, Pauser: Pauser };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityWorld2D;
