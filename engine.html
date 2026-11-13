@@ -300,6 +300,10 @@ body.trip-on{overflow:hidden}
 #city-cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; overscroll-behavior:none}
 body.city-on{overflow:hidden}
 #city-ui-main{position:absolute; inset:0; pointer-events:none}
+#city-joy{position:absolute; left:calc(max(env(safe-area-inset-left), 0px) + 84px); bottom:calc(max(env(safe-area-inset-bottom), 0px) + 128px); width:0; height:0; pointer-events:none; z-index:1; opacity:.45}
+#city-joy.on{opacity:1}
+#city-joy .jbase{position:absolute; left:-56px; top:-56px; width:112px; height:112px; border-radius:50%; border:3px solid var(--cyan); background:rgba(92,225,255,.1); box-shadow:0 0 12px rgba(92,225,255,.45)}
+#city-joy .jknob{position:absolute; left:-26px; top:-26px; width:52px; height:52px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#ff9bee,#ff4fd8); box-shadow:0 0 14px rgba(255,79,216,.7)}
 #city-ui-main > *, #city-ui-main .city-hud > *{pointer-events:auto}
 .city-hud{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); pointer-events:none}
 #city-pause,#city-run,#city-act{min-height:44px; min-width:44px}

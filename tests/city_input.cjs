@@ -20,16 +20,16 @@ function setup(over = {}) {
 }
 
 // (a) joystick
-{ const t = setup(); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 148, 700, 1);
+{ const t = setup(); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 156, 700, 1);
   const i = t.inp.intent();
-  ok('a joystick: 48 px a la derecha → mx ≈ 1, mag ≈ 1 y corre', Math.abs(i.mx - 1) < 1e-6 && Math.abs(i.mag - 1) < 1e-6 && i.run === true, JSON.stringify(i));
-  t.ptr('pointermove', t.root, 100, 676, 1); const j = t.inp.intent();
-  ok('a joystick: 24 px hacia arriba → mz = -0.5, mag 0.5 y camina', Math.abs(j.mz + 0.5) < 1e-6 && Math.abs(j.mag - 0.5) < 1e-6 && j.run === false, JSON.stringify(j));
+  ok('a joystick: 56 px a la derecha → mx ≈ 1, mag ≈ 1 y corre', Math.abs(i.mx - 1) < 1e-6 && Math.abs(i.mag - 1) < 1e-6 && i.run === true, JSON.stringify(i));
+  t.ptr('pointermove', t.root, 100, 672, 1); const j = t.inp.intent();
+  ok('a joystick: 28 px hacia arriba → mz = -0.5, mag 0.5 y camina', Math.abs(j.mz + 0.5) < 1e-6 && Math.abs(j.mag - 0.5) < 1e-6 && j.run === false, JSON.stringify(j));
   ok('a la captura de puntero se pidió (opcional)', t.captures() >= 1);
   t.ptr('pointerup', t.root, 100, 676, 1); ok('a al soltar, intent vuelve a 0', t.inp.intent().mag === 0); t.inp.dispose(); }
 
 // (c) dos dedos a la vez + cancel + soltar fuera
-{ const t = setup(); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 148, 700, 1);
+{ const t = setup(); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 156, 700, 1);
   ok('c joystick activo', t.inp.intent().mx > 0.99);
   t.ptr('pointercancel', t.root, 148, 700, 1); ok('c pointercancel del joystick devuelve intent a 0', t.inp.intent().mag === 0);
   t.ptr('pointerdown', t.root, 100, 700, 3); t.ptr('pointerup', t.w, 100, 700, 3); t.ptr('pointermove', t.root, 148, 700, 3);
@@ -45,7 +45,7 @@ function setup(over = {}) {
   ok('e un toque en el margen izquierdo de 16 px no crea joystick', t.inp.intent().mag === 0); t.inp.dispose(); }
 { const t = setup({ safe: { left: 0, bottom: 34 } }); t.ptr('pointerdown', t.root, 100, 824, 1); t.ptr('pointermove', t.root, 148, 824, 1);
   ok('e con safe.bottom = 34, un toque a 20 px del borde inferior no hace nada', t.inp.intent().mag === 0);
-  t.ptr('pointerdown', t.root, 100, 760, 2); t.ptr('pointermove', t.root, 148, 760, 2); ok('e a 84 px del borde inferior sí crea el joystick', t.inp.intent().mag > 0.99); t.inp.dispose(); }
+  t.ptr('pointerdown', t.root, 100, 760, 2); t.ptr('pointermove', t.root, 156, 760, 2); ok('e a 84 px del borde inferior sí crea el joystick', t.inp.intent().mag > 0.99); t.inp.dispose(); }
 
 // (f) teclado
 { const t = setup(); t.key('keydown', 'w'); t.key('keydown', 'Shift', { shiftKey: true });
@@ -55,21 +55,36 @@ function setup(over = {}) {
   t.key('keydown', 'w', { ctrlKey: true }); ok('f Ctrl+W no mueve', t.inp.intent().mag === 0);
   t.d.getElementById('inp').focus(); t.key('keydown', 'w', { target: t.d.getElementById('inp') }); ok('f con el foco en un input las teclas de juego se ignoran', t.inp.intent().mag === 0); t.d.getElementById('inp').blur(); t.inp.dispose(); }
 
+// (j) palanca flotante y visible: aparece donde se toca en el 45 % izquierdo (bajo la barra superior)
+{ const t = setup(); const j0 = t.inp.joy();
+  ok('j sin dedo: palanca inactiva', j0.on === false);
+  t.ptr('pointerdown', t.root, 120, 500, 1); let j = t.inp.joy();
+  ok('j al tocar en la zona izquierda aparece bajo el dedo (x=120, y=500) y sin desplazamiento', j.on === true && j.x === 120 && j.y === 500 && j.kx === 0 && j.ky === 0, JSON.stringify(j));
+  t.ptr('pointermove', t.root, 160, 500, 1); j = t.inp.joy();
+  ok('j el botón sigue al dedo hasta el radio máximo (56 px)', j.kx === 40 && j.ky === 0 && j.on === true);
+  t.ptr('pointermove', t.root, 400, 500, 1); j = t.inp.joy();
+  ok('j más allá del radio el botón se queda en el borde (56 px)', Math.abs(Math.hypot(j.kx, j.ky) - 56) < 1e-6, JSON.stringify(j));
+  ok('j con 56 px a la derecha el intent es mx = 1', Math.abs(t.inp.intent().mx - 1) < 1e-6);
+  t.ptr('pointerup', t.root, 400, 500, 1); ok('j al soltar vuelve a inactiva', t.inp.joy().on === false);
+  t.ptr('pointerdown', t.root, 100, 100, 2); ok('j un toque arriba (bajo el 20 % superior no cuenta) no crea palanca', t.inp.joy().on === false);
+  t.ptr('pointerdown', t.root, 250, 600, 3); ok('j un toque en el lado derecho tampoco', t.inp.joy().on === false);
+  t.inp.dispose(); ok('j tras dispose() la palanca está inactiva', t.inp.joy().on === false); }
+
 // (z) zoom: pellizco
-{ const t = setup(); t.ptr('pointerdown', t.root, 150, 300, 5); t.ptr('pointerdown', t.root, 250, 300, 6);
-  t.ptr('pointermove', t.root, 100, 300, 5); t.ptr('pointermove', t.root, 300, 300, 6);
+{ const t = setup(); t.ptr('pointerdown', t.root, 250, 300, 5); t.ptr('pointerdown', t.root, 350, 300, 6);
+  t.ptr('pointermove', t.root, 200, 300, 5); t.ptr('pointermove', t.root, 400, 300, 6);
   const z = t.inp.consumeZoom(); ok('z pellizco de 100 a 200 px → factor ≈ 2', Math.abs(z.factor - 2) < 1e-6 && z.steps === 0, JSON.stringify(z));
   ok('z un segundo consumeZoom da factor 1', t.inp.consumeZoom().factor === 1);
-  t.ptr('pointermove', t.root, 0, 300, 5); t.ptr('pointermove', t.root, 400, 300, 6);
+  t.ptr('pointermove', t.root, 180, 300, 5); t.ptr('pointermove', t.root, 400, 300, 6);
   ok('z cada evento de pellizco se limita a [0.5, 2]', t.inp.consumeZoom().factor <= 2 + 1e-9);
-  t.ptr('pointerup', t.root, 300, 300, 6); t.ptr('pointermove', t.root, 120, 300, 5); t.ptr('pointermove', t.root, 60, 300, 5);
+  t.ptr('pointerup', t.root, 400, 300, 6); t.ptr('pointermove', t.root, 220, 300, 5); t.ptr('pointermove', t.root, 190, 300, 5);
   ok('z al soltar un dedo el pellizco termina: el dedo restante no hace nada (Foco de revisión 1)', t.inp.consumeZoom().factor === 1 && t.inp.intent().mag === 0);
-  t.ptr('pointerup', t.root, 60, 300, 5); t.inp.dispose(); }
-{ const t = setup(); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 148, 700, 1);
+  t.ptr('pointerup', t.root, 190, 300, 5); t.inp.dispose(); }
+{ const t = setup(); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 156, 700, 1);
   t.ptr('pointerdown', t.root, 250, 300, 2); t.ptr('pointerdown', t.root, 300, 300, 3); t.ptr('pointermove', t.root, 200, 300, 2); t.ptr('pointermove', t.root, 350, 300, 3);
   ok('z un dedo que nace en el joystick sigue siendo joystick aunque haya pellizco', t.inp.intent().mx > 0.99 && t.inp.consumeZoom().factor > 1);
   t.ptr('pointercancel', t.root, 200, 300, 2); t.ptr('pointermove', t.root, 400, 300, 3); ok('z pointercancel de un dedo del pellizco: el otro no hace nada', t.inp.consumeZoom().factor === 1); t.inp.dispose(); }
-{ const t = setup(); t.ptr('pointerdown', t.d.getElementById('hud'), 150, 300, 1); t.ptr('pointerdown', t.root, 250, 300, 2); t.ptr('pointermove', t.root, 400, 300, 2); t.ptr('pointermove', t.root, 0, 300, 1);
+{ const t = setup(); t.ptr('pointerdown', t.d.getElementById('hud'), 250, 300, 1); t.ptr('pointerdown', t.root, 300, 300, 2); t.ptr('pointermove', t.root, 400, 300, 2); t.ptr('pointermove', t.root, 150, 300, 1);
   ok('z un pellizco que empieza sobre un botón no hace nada', t.inp.consumeZoom().factor === 1); t.inp.dispose(); }
 // (r) rueda
 { const t = setup(); t.clock.t = 1000; const ev = t.wheel(-100);

@@ -466,9 +466,9 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       ok('(u) ni baja de 1', zoom() === 1);
       root(e5).getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 844, right: 390, bottom: 844, x: 0, y: 0 });
       const ptr = (type, x, y, id) => root(e5).dispatchEvent(new e5.w.PointerEvent(type, { bubbles: true, pointerId: id, clientX: x, clientY: y, pointerType: 'touch' }));
-      ptr('pointerdown', 150, 300, 7); ptr('pointerdown', 250, 300, 8); ptr('pointermove', 50, 300, 7); ptr('pointermove', 350, 300, 8); tickW(e5);
+      ptr('pointerdown', 250, 300, 7); ptr('pointerdown', 300, 300, 8); ptr('pointermove', 200, 300, 7); ptr('pointermove', 380, 300, 8); tickW(e5);
       ok('(u) un pellizco enorme se limita a 1.75', zoom() === 1.75, String(zoom()));
-      ptr('pointerup', 50, 300, 7); ptr('pointerup', 350, 300, 8);
+      ptr('pointerup', 200, 300, 7); ptr('pointerup', 380, 300, 8);
       click(e5.w, $(e5, '#city-pause')); const zo = btnText(e5, /^Alejar$/, '#city-pausebox'), zi = btnText(e5, /^Acercar$/, '#city-pausebox');
       ok('(u) la pausa tiene "Acercar" y "Alejar" de ≥ 44 px', !!zo && !!zi);
       click(e5.w, zo); ok('(u) "Alejar" baja 0.25 y la pausa sigue abierta', zoom() === 1.5 && !$(e5, '#city-pausebox').hidden, String(zoom()));
@@ -522,6 +522,21 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       api(e8).teleport(a2.x, a2.z + 1); click(e8.w, $(e8, '#city-act')); answerRight(e8.w, e8.d);
       ok('(v) sin Liderazgo no hay bono al corregir', !/Bono de Liderazgo/.test($(e8, 'main').textContent));
       e8.w.close(); }
+
+    // (w) palanca visible y flotante (spec: intuitiva)
+    { const e9 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e9);
+      root(e9).getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 844, right: 390, bottom: 844, x: 0, y: 0 });
+      const joy = () => $(e9, '#city-joy'), ptr = (type, x, y, id) => root(e9).dispatchEvent(new e9.w.PointerEvent(type, { bubbles: true, pointerId: id, clientX: x, clientY: y, pointerType: 'touch' }));
+      ok('(w) siempre hay una palanca a la vista (atenuada) aunque no se toque, y no captura toques', !!joy() && !joy().classList.contains('on') && joy().getAttribute('aria-hidden') === 'true' && !!joy().querySelector('.jbase') && !!joy().querySelector('.jknob'));
+      ptr('pointerdown', 120, 500, 1); tickW(e9);
+      ok('(w) al tocar en el lado izquierdo aparece bajo el dedo (120, 500) y se resalta', joy().classList.contains('on') && joy().style.left === '120px' && joy().style.top === '500px', joy().style.left + ' ' + joy().style.top);
+      ptr('pointermove', 150, 500, 1); tickW(e9);
+      ok('(w) el botón central se desplaza con el dedo', /^translate\(30px/.test(joy().querySelector('.jknob').style.transform), joy().querySelector('.jknob').style.transform);
+      const z0 = e9.st.lastOpts.state().hero.z; key(e9, 'q'); ptr('pointermove', 120, 450, 1); for (let i = 0; i < 10; i++) tickW(e9, 50);
+      ok('(w) empujar la palanca hacia arriba mueve al héroe hacia arriba (z baja)', e9.st.lastOpts.state().hero.z < z0 - 1, z0 + ' → ' + e9.st.lastOpts.state().hero.z);
+      ptr('pointerup', 120, 450, 1); tickW(e9);
+      ok('(w) al soltar la palanca vuelve a su sitio y se atenúa', !joy().classList.contains('on') && joy().style.left === '' && joy().style.top === '');
+      e9.w.close(); }
 
     // (n) el mundo 2D ya no existe
     { const e2 = boot({ seed: base() });

@@ -2,7 +2,7 @@
    El teclado se escucha en la ventana del propio root (root.ownerDocument.defaultView).
    consumeZoom() → { factor, steps }: factor = producto acumulado del pellizco (cada evento en [0.5, 2]); steps = pasos de rueda y teclas (±1). */
 var CityInput = (function () {
-  var JOY_R = 48, EDGE = 16, WHEEL_MS = 120;
+  var JOY_R = 56, EDGE = 16, WHEEL_MS = 120, JOY_X = 0.45, JOY_Y = 0.2;
   var KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right' };
 
   function create(root, opts) {
@@ -19,8 +19,8 @@ var CityInput = (function () {
       if (dead || fingers[e.pointerId] || !isFree(e.target)) return;
       var r = root.getBoundingClientRect(), s = safe(), lx = e.clientX - r.left, ly = e.clientY - r.top;
       if (lx < (s.left || 0) + EDGE || (r.height - ly) < (s.bottom || 0) + EDGE) return;       // margen de los gestos del sistema: no hace nada
-      var joy = lx < r.width * 0.5 && ly > r.height * 0.75;
-      fingers[e.pointerId] = joy ? { kind: 'joy', ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 } : { kind: 'free', x: e.clientX, y: e.clientY };
+      var joy = lx < r.width * JOY_X && ly > r.height * JOY_Y;   // palanca flotante: nace bajo el dedo en el 45 % izquierdo, bajo la barra superior
+      fingers[e.pointerId] = joy ? { kind: 'joy', ox: e.clientX, oy: e.clientY, rx: lx, ry: ly, dx: 0, dy: 0 } : { kind: 'free', x: e.clientX, y: e.clientY };
       if (!joy && !pinch) {
         var fr = Object.keys(fingers).filter(function (k) { return fingers[k].kind === 'free'; });
         if (fr.length === 2) pinch = { a: fr[0], b: fr[1], d: Math.max(1, dist(fingers[fr[0]], fingers[fr[1]])) };
@@ -88,6 +88,14 @@ var CityInput = (function () {
       run = f ? mag >= 0.7 : !!down.shift && mag > 0;
       return { mx: mx, mz: mz, mag: mag, run: run };
     }
+    /* Estado de la palanca para dibujarla: centro (x, y) relativo al root y desplazamiento del botón (kx, ky) limitado al radio */
+    function joy() {
+      var id, f = null;
+      if (!dead) for (id in fingers) if (fingers[id].kind === 'joy') { f = fingers[id]; break; }
+      if (!f) return { on: false, x: 0, y: 0, kx: 0, ky: 0 };
+      var m = Math.hypot(f.dx, f.dy), k = m > JOY_R ? JOY_R / m : 1;
+      return { on: true, x: f.rx, y: f.ry, kx: f.dx * k, ky: f.dy * k };
+    }
     function consumeZoom() { var r = { factor: zoomF, steps: zoomS }; zoomF = 1; zoomS = 0; return r; }
     function consumeAction() { var a = action; action = false; return a; }
     function consumePause() { var p = pause; pause = false; return p; }
@@ -98,7 +106,7 @@ var CityInput = (function () {
       win.removeEventListener('pointerup', onUp); win.removeEventListener('pointercancel', onUp);
       win.removeEventListener('keydown', onKeyDown); win.removeEventListener('keyup', onKeyUp);
     }
-    return { intent: intent, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
+    return { intent: intent, joy: joy, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
   }
   return { create: create };
 })();

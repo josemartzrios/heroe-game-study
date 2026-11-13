@@ -1,7 +1,7 @@
 /* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, dirección del héroe, cercanos y distribución de edificios.
    Sin DOM. Vista desde arriba: el movimiento es relativo a la pantalla (mz = -1 va a -z, arriba) y yaw 0 mira hacia -z. */
 var CityMove = (function () {
-  var WALK = 4, RUN = 7, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
+  var WALK = 7, RUN = 11, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
 
   function isNum(v) { return typeof v === 'number' && isFinite(v); }
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
@@ -117,6 +117,6 @@ var CityMove = (function () {
   }
   function nearest(pos, items, maxDist) { var w = within(pos, items, maxDist); return w.length ? w[0] : null; }
 
-  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, nearest: nearest, within: within };
+  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, nearest: nearest, within: within };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityMove;

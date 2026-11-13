@@ -113,7 +113,7 @@ function cityPauseKey() {
 function cityFlush() { if (CD && CD.input) { CD.input.consumeAction(); CD.input.consumeZoom(); } }
 function cityHtml() {
   var run = levelOf(S.xp) >= 5 ? '<button class="btn sm" id="city-run" data-act="cx" data-c="run" aria-pressed="' + (S.city.run ? 'true' : 'false') + '">Correr</button>' : '';
-  return '<canvas id="city-cv" aria-hidden="true"></canvas>' +
+  return '<canvas id="city-cv" aria-hidden="true"></canvas><div id="city-joy" aria-hidden="true"><i class="jbase"></i><i class="jknob"></i></div>' +
     '<div id="city-ui-main"><div class="city-hud"><button class="btn sm" id="city-pause" data-act="cx" data-c="pause">Pausa</button>' +
     '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run +
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
@@ -293,6 +293,7 @@ function cityTick(dt) {
   if (cityBlocked()) return;
   cityZoomBy(zm.factor, zm.steps);
   var it = c.input.intent();
+  cityJoyDraw(c);
   var canRun = levelOf(S.xp) >= 5 && S.city.run === true;
   var nh = CityMove.step(c.hero, { mx: it.mx, mz: it.mz, run: it.run }, sec, c.boxes, { canRun: canRun, radius: CITY_DATA.radius, safe: c.safe });
   c.hero = nh; c.safe = { x: nh.x, z: nh.z, yaw: nh.yaw };
@@ -308,6 +309,17 @@ function cityTick(dt) {
   cityUpdateNear(false);
   if (act && c.nearId) { var o = cityItem(c.nearId); if (o) cityOpen(o); }
 }
+/* Dibuja la palanca: atenuada en su sitio de reposo y, al tocar, bajo el dedo con el botón desplazado (solo escribe si cambió) */
+function cityJoyDraw(c) {
+  var el = cId('city-joy'); if (!el || !c.input) return;
+  var j = c.input.joy(), key = j.on ? Math.round(j.x) + ',' + Math.round(j.y) + ',' + Math.round(j.kx) + ',' + Math.round(j.ky) : '';
+  if (key === c.joyKey) return;
+  c.joyKey = key;
+  var knob = el.lastChild;
+  if (j.on) { el.classList.add('on'); el.style.left = Math.round(j.x) + 'px'; el.style.top = Math.round(j.y) + 'px'; el.style.bottom = 'auto'; knob.style.transform = 'translate(' + Math.round(j.kx) + 'px, ' + Math.round(j.ky) + 'px)'; }
+  else { el.classList.remove('on'); el.style.left = ''; el.style.top = ''; el.style.bottom = ''; knob.style.transform = ''; }
+}
+
 /* ---------- hojas ---------- */
 function cityOpenSheet(html, focusSel, forId) {
   if (!CD) return;

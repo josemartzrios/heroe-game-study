@@ -31,7 +31,7 @@ const J = (v) => JSON.stringify(v, (k, x) => (typeof x === 'number' && !Number.i
 // =====================================================================================
 // 1. Referencia de CityMove (Tarea 5, literal)
 // =====================================================================================
-const R = 0.4, WALK = 4, RUN = 7, ACC = 0.15, ARM_MIN = 1.2;
+let R = 0.4, WALK = 4, RUN = 7, ACC = 0.15;   // referencia literal del plan; con REAL=1 las velocidades salen de city/move.js
 const fin = Number.isFinite;
 
 // coord: "v acotado si es finito, o fallback". El spec §6.4 dice "con isFinite" (global, coerciona).
@@ -110,6 +110,7 @@ function crossed(p, q, b) {
 // Con REAL=1 las comprobaciones de step se ejecutan contra la implementación real (city/move.js).
 if (process.env.REAL) {
   const CMr = require('../../city/move.js');
+  WALK = CMr.WALK; RUN = CMr.RUN;
   step = (s, it, dt, b, op) => CMr.step(s, it, dt, b, Object.assign({ safe: { x: s && Number.isFinite(s.x) ? s.x : 0, z: s && Number.isFinite(s.z) ? s.z : 0, yaw: 0 } }, op));
 }
 // ---------- 1a. fuzz: dt ∈ [0, 50 ms], cajas aleatorias (incluye muros 6×2), 7 m/s ----------
@@ -133,7 +134,7 @@ function fuzzStep(seed, n, dtMax, overlapOk) {
   const r = rng(seed); const bad = { nan: [], pen: [], tunnel: [], speed: [] }; let cases = 0;
   for (let i = 0; i < n; i++) {
     const boxes = randBoxes(r, overlapOk); const p = freeStart(r, boxes); if (!p) continue;
-    const vmag = r.range(0, 7), ang = r.range(-Math.PI, Math.PI);
+    const vmag = r.range(0, RUN), ang = r.range(-Math.PI, Math.PI);
     const s = { x: p.x, z: p.z, yaw: 0, vx: Math.sin(ang) * vmag, vz: Math.cos(ang) * vmag, speed: vmag };
     const intent = { mx: r.range(-1, 1), mz: r.range(-1, 1), run: true };
     const dt = r.bool(0.1) ? dtMax : r.range(0, dtMax);

@@ -56,26 +56,26 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
 
   // ---- step ----
   const run = { mx: 0, mz: -1, run: true };
-  { let s = { x: 0, z: 1 + R + 1e-9, yaw: 0, vx: 0, vz: -7, speed: 7 };
+  { let s = { x: 0, z: 1 + R + 1e-9, yaw: 0, vx: 0, vz: -CM.RUN, speed: CM.RUN };
     for (let i = 0; i < 100; i++) s = CM.step(s, run, 0.05, [box(0, 0, 6, 2)], { canRun: true, safe: { x: 0, z: 5, yaw: 0 } });
-    ok('step S2: un muro 6×2 resiste 100 pasos de 50 ms a 7 m/s', s.z >= 1 + R - 1e-6, 'z=' + s.z); }
+    ok('step S2: un muro 6×2 resiste 100 pasos de 50 ms a la velocidad de carrera', s.z >= 1 + R - 1e-6, 'z=' + s.z); }
   { const bad = [];
     for (const dt of [0.12, 0.2, 0.5, 1, 5]) for (const [n, b] of [['muro 6×2', box(0, 0, 6, 2)], ['borde 0.1', box(0, 0, 6, 0.1)], ['grosor 0', box(0, 0, 6, 0)]]) {
-      const s = { x: 0, z: (b.maxZ - b.minZ) / 2 + R + 0.01, yaw: 0, vx: 0, vz: -7, speed: 7 };
+      const s = { x: 0, z: (b.maxZ - b.minZ) / 2 + R + 0.01, yaw: 0, vx: 0, vz: -CM.RUN, speed: CM.RUN };
       const q = CM.step(s, run, dt, [b], { canRun: true, safe: { x: 0, z: 9, yaw: 0 } });
       if (q.z < b.minZ) bad.push(`${n} dt=${dt}`);
     }
     ok('step S3: dt grande (0.12–5 s) no atraviesa muros (se limita a 50 ms)', bad.length === 0, bad.join(' | ')); }
   { const bad = [];
-    for (const dt of [0.1, 0.16, 0.25, 0.5, 5]) { const q = CM.step(st0, run, dt, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } }); if (q.speed > 7 + 1e-9) bad.push(`dt=${dt} v=${q.speed}`); }
-    ok('step S4: la velocidad nunca pasa de 7 m/s con dt grande', bad.length === 0, bad.join(' | '));
+    for (const dt of [0.1, 0.16, 0.25, 0.5, 5]) { const q = CM.step(st0, run, dt, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } }); if (q.speed > CM.RUN + 1e-9) bad.push(`dt=${dt} v=${q.speed}`); }
+    ok('step S4: la velocidad nunca pasa de la de carrera con dt grande', bad.length === 0, bad.join(' | '));
     let s = st0; for (let i = 0; i < 3; i++) s = CM.step(s, { mx: 0, mz: -1 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
-    ok('step: a los 0.15 s ya lleva más del 60 % de 4 m/s y nunca se pasa', s.speed >= 0.6 * 4 && s.speed <= 4 + 1e-9, 'speed=' + s.speed);
+    ok('step: a los 0.15 s ya lleva más del 60 % de la velocidad de caminar y nunca se pasa', s.speed >= 0.6 * CM.WALK && s.speed <= CM.WALK + 1e-9, 'speed=' + s.speed);
     for (let i = 0; i < 12; i++) s = CM.step(s, { mx: 0, mz: -1 }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
-    ok('step: a los 0.75 s alcanza los 4 m/s', s.speed > 3.95 && s.speed <= 4 + 1e-9, 'speed=' + s.speed);
+    ok('step: a los 0.75 s alcanza la velocidad de caminar', s.speed > CM.WALK - 0.05 && s.speed <= CM.WALK + 1e-9, 'speed=' + s.speed);
     const w = CM.step(st0, { mx: 0, mz: -1, run: true }, 0.05, [], { canRun: false, safe: { x: 0, z: 0, yaw: 0 } });
-    const r2 = CM.step({ ...st0, vz: -4 }, { mx: 0, mz: -1, run: true }, 0.05, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } });
-    ok('step: corre (7) solo con canRun', w.speed < 4.0001 && r2.speed > 4.5, `${w.speed} / ${r2.speed}`); }
+    const r2 = CM.step({ ...st0, vz: -CM.WALK }, { mx: 0, mz: -1, run: true }, 0.05, [], { canRun: true, safe: { x: 0, z: 0, yaw: 0 } });
+    ok('step: corre solo con canRun', w.speed < CM.WALK + 1e-4 && r2.speed > CM.WALK + 0.5, `${w.speed} / ${r2.speed}`); }
   { const r = rng(5); let stuck = 0, back = 0;
     for (let i = 0; i < 300; i++) {
       const zTop = r.range(-170, 40), x0 = r.range(-60, 60), w1 = r.range(5, 9), w2 = r.range(5, 9);
@@ -107,7 +107,7 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
       for (let k = 0; k < n; k++) { const thin = r.bool(0.4), w = thin ? (r.bool() ? 6 : 2) : r.range(0.05, 9), d = thin ? (w === 6 ? 2 : 6) : r.range(0.05, 9); const b = box(r.range(-10, 10), r.range(-10, 10), w, d); if (boxes.every((o) => b.maxX < o.minX - 1 || b.minX > o.maxX + 1 || b.maxZ < o.minZ - 1 || b.minZ > o.maxZ + 1)) boxes.push(b); }
       let p = null; for (let k = 0; k < 200 && !p; k++) { const x = r.range(-14, 14), z = r.range(-14, 14); if (boxes.every((b) => d2(x, z, b) >= R * R)) p = { x, z }; }
       if (!p) continue;
-      const vm = r.range(0, 7), an = r.range(-Math.PI, Math.PI), s = { x: p.x, z: p.z, yaw: 0, vx: Math.sin(an) * vm, vz: Math.cos(an) * vm, speed: vm };
+      const vm = r.range(0, CM.RUN), an = r.range(-Math.PI, Math.PI), s = { x: p.x, z: p.z, yaw: 0, vx: Math.sin(an) * vm, vz: Math.cos(an) * vm, speed: vm };
       const q = CM.step(s, { mx: r.range(-1, 1), mz: r.range(-1, 1), run: true }, r.bool(0.1) ? 0.05 : r.range(0, 0.05), boxes, { canRun: true, safe: { x: p.x, z: p.z, yaw: 0 } }); cases++;
       if (![q.x, q.z, q.vx, q.vz, q.speed].every(Number.isFinite)) bNan++;
       if (pen(q.x, q.z, boxes)) bPen++;
@@ -115,6 +115,7 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
     }
     ok('step S1: ' + cases + ' casos con cajas separadas — sin NaN, penetración ni túnel', bNan === 0 && bPen === 0 && bTun === 0, `nan=${bNan} pen=${bPen} túnel=${bTun}`); }
 
+  ok('velocidades: caminar ≥ 6 m/s (≈ 48 px/s a zoom 1) y correr > caminar, ambas ≤ 12', CM.WALK >= 6 && CM.RUN > CM.WALK && CM.RUN <= 12, CM.WALK + ' / ' + CM.RUN);
   // ---- cámara 2D: sin brazo de cámara y con faceOf ----
   ok('cameraArm ya no existe', CM.cameraArm === undefined);
   { const f = CM.faceOf, PI = Math.PI;
