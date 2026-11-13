@@ -322,6 +322,17 @@ const finite = (h) => ['x', 'z', 'speed'].every((k) => Number.isFinite(h[k]));
       for (let i = 0; i < 4; i++) click(e.w, btnText(e, /^Acercar$/, '#city-pausebox'));
       ok('9i en 175 % "Acercar" queda desactivado', /175 %/.test(live().textContent) && btnText(e, /^Acercar$/, '#city-pausebox').disabled === true, live().textContent);
       e.w.close(); }
+
+    // ---- 10. La lección se abre desde arriba (título visible) y no salta al último botón
+    { e = boot({ seed: base() }); await enter(e);
+      const scrolled = []; e.w.Element.prototype.scrollIntoView = function () { scrolled.push(this.closest && this.closest('#city-sheet') ? 'hoja' : 'otro'); };
+      api(e).teleport(m01.x, m01.z + 1); click(e.w, $(e, '#city-act'));
+      const sh = $(e, '#city-sheet');
+      ok('10a al abrir la lección la hoja empieza arriba (scrollTop = 0) y el foco queda en "Practicar"', sh.scrollTop === 0 && e.d.activeElement && /^Practicar$/.test(e.d.activeElement.textContent), sh.scrollTop + ' ' + (e.d.activeElement && e.d.activeElement.textContent));
+      ok('10b enfocar un botón de la hoja no la desplaza (no se llama a scrollIntoView dentro de la hoja)', !scrolled.includes('hoja'), scrolled.join());
+      sh.scrollTop = 200; click(e.w, btnText(e, /^Cerrar$/, '#city-sheet')); click(e.w, $(e, '#city-act'));
+      ok('10c al volver a abrir otra hoja empieza de nuevo arriba', $(e, '#city-sheet').scrollTop === 0);
+      e.w.close(); }
   } catch (x) { results.push(['FAIL', 'excepción', x.stack]); }
   const fails = results.filter((r) => r[0] === 'FAIL');
   fails.forEach((r) => console.log(r.join(' | ')));

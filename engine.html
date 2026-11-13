@@ -313,9 +313,10 @@ body.city-on{overflow:hidden}
 #city-act[hidden]{display:none}
 #city-root.sheet-open #city-act{display:none}
 #city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600}
-#city-sheet{position:absolute; left:0; right:0; bottom:0; max-height:50dvh; overflow:auto; background:var(--surface); border-top:2px solid var(--line); padding:12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); z-index:2}
+#city-sheet{position:absolute; inset:0; overflow:auto; overscroll-behavior:contain; background:var(--surface); padding:max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); z-index:2}
+#city-sheet .qcard{max-width:720px; margin:0 auto}
+#city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
-#city-sheet .qcard{margin-top:0}
 #city-pausebox{position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
 #city-pausebox[hidden]{display:none}
 #city-pausebox .banner{width:100%; background:var(--surface)}
@@ -323,7 +324,6 @@ body.city-on{overflow:hidden}
 #city-rotate{position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center; background:var(--bg); font-weight:700; text-align:center}
 #city-rotate[hidden]{display:none}
 #city-root .banner{background:var(--surface)}
-@media (orientation:landscape) and (min-height:500px){#city-sheet{max-height:85dvh}}
 </style>
 <div class="shell" id="app"></div>
 <div id="trip-root" hidden></div>

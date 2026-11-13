@@ -12,7 +12,6 @@ function cId(id) { return document.getElementById(id); }
 function cFocus(el) {
   if (!el) return;
   try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
-  if (el.scrollIntoView && el.closest && el.closest('#city-sheet')) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e2) {} }
 }
 function cityWorldFactory() {
   var f = window.__CITY_WORLD__;
@@ -345,7 +344,7 @@ function cityOpenSheet(html, focusSel, forId) {
   if (!CD) return;
   var sh = cId('city-sheet'); if (!sh) return;
   citySave();
-  sh.innerHTML = html; sh.hidden = false; citySheetLabel(sh);
+  sh.innerHTML = html; sh.hidden = false; sh.scrollTop = 0; citySheetLabel(sh);   // siempre se abre desde arriba (el título a la vista)
   CD.sheet = true; CD.sheetFor = forId || null;
   cityRootEl().classList.add('sheet-open'); cityInert();
   if (CD.world) CD.world.setPaused('sheet', true);
