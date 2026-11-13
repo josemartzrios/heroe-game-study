@@ -2736,12 +2736,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
       stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: {} }
     };
   }
+  /* Nombre del héroe: máximo 20 unidades UTF-16 sin cortar un emoji a la mitad (se quitan sustitutos sueltos y el alto final) */
+  function clipName(s) {
+    var t = s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1').slice(0, 20);
+    return /[\uD800-\uDBFF]$/.test(t) ? t.slice(0, -1) : t;
+  }
   function migrate(o) {
     var f = fresh(), cityRaw = o.city, worldRaw = o.world;
     for (var k in f) if (!(k in o)) o[k] = f[k];
     /* el héroe se reconstruye con lista blanca: solo el nombre (se descartan los campos del editor anterior y cualquier clave extra o __proto__) */
     var ownp = Object.prototype.hasOwnProperty;
-    o.hero = { name: (plainObj(o.hero) && ownp.call(o.hero, 'name') && typeof o.hero.name === 'string') ? o.hero.name.slice(0, 20) : 'Héroe' };
+    o.hero = { name: (plainObj(o.hero) && ownp.call(o.hero, 'name') && typeof o.hero.name === 'string') ? clipName(o.hero.name) : 'Héroe' };
     if (!plainObj(o.virtues)) o.virtues = {};
     var stSrc = plainObj(o.stats) ? o.stats : {}, bfNew = {};
     if (plainObj(stSrc.bossFailed)) Object.keys(stSrc.bossFailed).forEach(function (k) { if (/^M\d{2}$/.test(k) && stSrc.bossFailed[k] === true) bfNew[k] = true; });
@@ -2758,12 +2763,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     o.days.count = Math.floor(num(o.days.count, 0));
     if (!plainObj(o.topics)) o.topics = {};
     Object.keys(o.topics).forEach(function (k) {
+      if (k === '__proto__') { delete o.topics[k]; return; }   // clave propia venida de JSON: no se conserva ni se vuelve a guardar
       var h = o.topics[k];
       if (!Array.isArray(h)) { delete o.topics[k]; return; }
       o.topics[k] = h.filter(function (x) { return typeof x === 'number' && isFinite(x) && x >= 0 && x <= 1; }).slice(-10);
     });
     if (!plainObj(o.qs)) o.qs = {};
     Object.keys(o.qs).forEach(function (k) {
+      if (k === '__proto__') { delete o.qs[k]; return; }   // clave propia venida de JSON: no se conserva ni se vuelve a guardar
       var r = o.qs[k];
       if (!plainObj(r)) { delete o.qs[k]; return; }
       var a = Math.floor(num(r.a, 0)), c = Math.floor(num(r.c, 0));
@@ -2771,6 +2778,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     });
     if (!plainObj(o.boss)) o.boss = {};
     Object.keys(o.boss).forEach(function (k) {
+      if (k === '__proto__') { delete o.boss[k]; return; }   // clave propia venida de JSON: no se conserva ni se vuelve a guardar
       var b = o.boss[k];
       if (!plainObj(b)) { delete o.boss[k]; return; }
       o.boss[k] = { best: Math.min(20, Math.floor(num(b.best, 0))), passed: b.passed === true };   // best llega a innerHTML: siempre un entero
@@ -2785,11 +2793,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     delete o.world;
     return o;
   }
+  /* Si hay un guardado que no se puede usar (JSON roto, versión desconocida o migrate falla), se copia a KEY_bak antes de que
+     el próximo save() lo pise. No se pisa un respaldo anterior; un fallo al respaldar (cuota llena) nunca impide arrancar. */
   function load() {
-    try {
-      var raw = localStorage.getItem(KEY);
-      if (raw) { var o = JSON.parse(raw); if (o && o.v === 1) return migrate(o); }
-    } catch (e) {}
+    var raw = null;
+    try { raw = localStorage.getItem(KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    try { var o = JSON.parse(raw); if (o && o.v === 1) return migrate(o); } catch (e2) {}
+    try { if (localStorage.getItem(KEY + '_bak') === null) localStorage.setItem(KEY + '_bak', raw); } catch (e3) {}
     return null;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { saveWarn(); } }
@@ -5074,7 +5085,7 @@ if (window.__CITY_TEST__ === true) {
 
   app.addEventListener('input', function (e) {
     if (e.target && e.target.id === 'hero-name') {
-      S.hero.name = String(e.target.value).slice(0, 20);
+      S.hero.name = clipName(String(e.target.value));
       save();
     }
   });
