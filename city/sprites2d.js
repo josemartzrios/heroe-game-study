@@ -1,15 +1,33 @@
 /* Sprites 2D de Ciudad Núcleo: pixel art neón generado por código, un atlas (un canvas) por tipo, cuadros de 14×14 px.
-   Sin imágenes externas. Las variantes salen solo de ids de CITY_DATA, nunca del guardado. */
+   Sin imágenes externas. Las variantes salen solo de CITY_DATA (nunca del guardado): 'iris' y 'mid:id' para cada mentor, aprendiz y criatura
+   de cada distrito, porque un id (m01) se repite entre distritos. El aspecto del primer distrito se conserva; los demás tienen el suyo. */
 var CitySprites = (function () {
   var CELL = 14, FACES = ['up', 'down', 'left', 'right'];
-  var PERSON = ['iris']; (function () { var i; for (i = 1; i <= 23; i++) PERSON.push('m' + (i < 10 ? '0' : '') + i); for (i = 1; i <= 12; i++) PERSON.push('a' + (i < 10 ? '0' : '') + i); })();
-  var CREATURE = ['bit', 'silicio', 'kernel', 'eco', 'huerfano', 'alucina'];
-  var THING = ['repair', 'repaired', 'lamp', 'lampOn', 'ask'];
+  /* listas de variantes (se rellenan en setData; las arrays son siempre las mismas para que `kinds` no quede viejo) */
+  var PERSON = ['iris'], CREATURE = [], THING = ['repair', 'repaired', 'lamp', 'lampOn', 'ask'];
+  var LOOK = ['iris'], STYLE = [], FIRST = { mentor: '', apprentice: '', creature: '' };
   var KINDS = { hero: [''], person: PERSON, creature: CREATURE, thing: THING };
   var SUIT = ['#3d7ad8', '#e0533a', '#3aa36b', '#9b5fd8', '#f2c14e', '#6bb6d6'], SKIN = ['#f1c9a5', '#d9a273', '#a86f46', '#7b4a2d'];
-  var doc = null, atlas = {};
+  var doc = null, atlas = {}, data = null;
 
-  function init(d) { doc = d; atlas = {}; }
+  function init(d) { if (d !== doc) { doc = d; atlas = {}; } }
+  /* Genera las variantes desde CITY_DATA. Con los mismos datos no hace nada (los atlas siguen valiendo); con otros los descarta. */
+  function setData(D) {
+    if (D === data) return;
+    data = D; atlas = {};
+    PERSON.length = 0; CREATURE.length = 0; LOOK.length = 0; STYLE.length = 0;
+    PERSON.push('iris'); LOOK.push('iris'); FIRST.mentor = ''; FIRST.apprentice = ''; FIRST.creature = '';
+    var mids = D && D.districts ? Object.keys(D.districts) : [];
+    mids.forEach(function (mid, di) {
+      var M = D.districts[mid];
+      function add(list, kind) {
+        list.forEach(function (o) { var v = mid + ':' + o.id; PERSON.push(v); LOOK.push(di === 0 ? o.id : v); if (!FIRST[kind]) FIRST[kind] = v; });
+      }
+      add(M.mentors || [], 'mentor');
+      add(M.apprentices || [], 'apprentice');
+      (M.creatures || []).forEach(function (c, ci) { var v = mid + ':' + c.id; CREATURE.push(v); STYLE.push((ci + di * 3) % 6); if (!FIRST.creature) FIRST.creature = v; });
+    });
+  }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
   function idx(list, v) { var i = list.indexOf(v); return i < 0 ? 0 : i; }
   function px(g, c, x, y, w, h) { g.fillStyle = c; g.fillRect(x, y, w, h); }
@@ -30,8 +48,8 @@ var CitySprites = (function () {
     var h = hash(id), isIris = id === 'iris';
     person(g, ox, oy, face, step, isIris ? '#ffd23f' : SUIT[h % 6], SKIN[(h >>> 3) % 4], isIris ? '#e8ecff' : ['#3b2a20', '#1f1a17', '#6b4423', '#b9772f'][(h >>> 5) % 4], isIris ? '#ff4fd8' : '#12162e');
   }
-  function creature(g, ox, oy, step, id) {
-    var i = idx(CREATURE, id), body = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'][i], dk = '#3a2470', y = step ? 1 : 0;
+  function creature(g, ox, oy, step, i) {
+    var body = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'][i], dk = '#3a2470', y = step ? 1 : 0;
     px(g, 'rgba(0,0,0,0.30)', ox + 2, oy + 12, 10, 2);
     px(g, body, ox + 2, oy + 4 + y, 10, 7); px(g, body, ox + 3, oy + 3 + y, 8, 1);
     if (i === 0) { px(g, dk, ox + 3, oy + 1 + y, 2, 3); px(g, dk, ox + 9, oy + 1 + y, 2, 3); }
@@ -53,15 +71,15 @@ var CitySprites = (function () {
   function build(kind) {
     var list = KINDS[kind], cols, rows, cv, g, v, f, s;
     if (kind === 'hero' || kind === 'person') { cols = 8; rows = list.length; }
-    else if (kind === 'creature') { cols = 2; rows = list.length; }
+    else if (kind === 'creature') { cols = 2; rows = Math.max(1, list.length); }
     else { cols = list.length; rows = 1; }
     cv = doc.createElement('canvas'); cv.width = cols * CELL; cv.height = rows * CELL;
     g = cv.getContext('2d');
     if (!g) throw new Error('sin-2d');
     for (v = 0; v < list.length; v++) {
       if (kind === 'hero') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) hero(g, (f * 2 + s) * CELL, 0, f, s);
-      else if (kind === 'person') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) personV(g, (f * 2 + s) * CELL, v * CELL, f, s, list[v]);
-      else if (kind === 'creature') for (s = 0; s < 2; s++) creature(g, s * CELL, v * CELL, s, list[v]);
+      else if (kind === 'person') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) personV(g, (f * 2 + s) * CELL, v * CELL, f, s, LOOK[v]);
+      else if (kind === 'creature') for (s = 0; s < 2; s++) creature(g, s * CELL, v * CELL, s, STYLE[v]);
       else thing(g, v * CELL, 0, list[v]);
     }
     return cv;
@@ -79,16 +97,25 @@ var CitySprites = (function () {
     return { img: atlas[kind], sx: sx, sy: sy, w: CELL, h: CELL };
   }
 
-  /* Pinta cada canvas[data-spr="hero"] de root con el héroe de frente, sin suavizado. */
+  /* Pinta cada canvas[data-spr] de root (hero, mentor, creature o apprentice) con su personaje de frente, sin suavizado. */
+  function iconOf(name) {
+    if (name === 'hero') return ['hero', ''];
+    if (name === 'mentor') return ['person', FIRST.mentor];
+    if (name === 'apprentice') return ['person', FIRST.apprentice];
+    if (name === 'creature') return ['creature', FIRST.creature];
+    return null;
+  }
   function paintIcons(root) {
     if (!root || !root.querySelectorAll) return;
-    var list = root.querySelectorAll('canvas[data-spr="hero"]'), i, cv, g, r;
+    var list = root.querySelectorAll('canvas[data-spr]'), i, cv, g, r, ic;
     for (i = 0; i < list.length; i++) {
       cv = list[i]; g = null;
+      ic = iconOf(cv.getAttribute ? cv.getAttribute('data-spr') : null);
+      if (!ic) continue;
       try { g = cv.getContext('2d'); } catch (e) {}
       if (!g) continue;
       try {
-        r = frame('hero', '', 'down', 0);
+        r = frame(ic[0], ic[1], 'down', 0);
         g.imageSmoothingEnabled = false;
         g.clearRect(0, 0, cv.width, cv.height);
         g.drawImage(r.img, r.sx, r.sy, r.w, r.h, 0, 0, cv.width, cv.height);
@@ -97,6 +124,7 @@ var CitySprites = (function () {
   }
 
   if (typeof document !== 'undefined') init(document);
-  return { init: init, frame: frame, paintIcons: paintIcons, kinds: KINDS, CELL: CELL };
+  if (typeof CITY_DATA !== 'undefined') setData(CITY_DATA);   // en el navegador los datos ya están en el mismo ámbito
+  return { init: init, setData: setData, frame: frame, paintIcons: paintIcons, kinds: KINDS, CELL: CELL };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CitySprites;
