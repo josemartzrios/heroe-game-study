@@ -414,7 +414,7 @@ const MODULES = [
     return {
       v: 1, xp: 0, days: { last: null, count: 0 }, session: 0, lastActive: 0, topics: {}, qs: {}, boss: {},
       hero: { name: 'Héroe' },
-      virtues: {}, city: CityStory.normalizeCity({}, CITY_DATA, false, today()),
+      virtues: {}, city: CityStory.normalizeCity({}, CITY_DATA, function () { return false; }, today()),
       stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: {} }
     };
   }
@@ -423,6 +423,9 @@ const MODULES = [
     var t = s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1').slice(0, 20);
     return /[\uD800-\uDBFF]$/.test(t) ? t.slice(0, -1) : t;
   }
+  /* Jefe aprobado de un módulo. bossPassedIn lee un objeto boss (lo usa migrate, que corre antes de que exista S); bossPassedOf lee el estado vivo. */
+  function bossPassedIn(boss, mid) { var b = (boss && Object.prototype.hasOwnProperty.call(boss, mid)) ? boss[mid] : null; return !!b && b.passed === true; }
+  function bossPassedOf(mid) { return bossPassedIn(S.boss, mid); }
   function migrate(o) {
     var f = fresh(), cityRaw = o.city, worldRaw = o.world;
     for (var k in f) if (!(k in o)) o[k] = f[k];
@@ -467,7 +470,7 @@ const MODULES = [
     });
     o.stats.cleared = Math.floor(num(o.stats.cleared, 0)); o.stats.roundsNoPower = Math.floor(num(o.stats.roundsNoPower, 0));
     /* S.city: lista blanca completa; city.run hereda world.run solo si el guardado no traía city.run propio */
-    var bp = !!(o.boss.M02 && o.boss.M02.passed === true);
+    var bp = function (mid) { return bossPassedIn(o.boss, mid); };   // migrate corre antes de que exista S: lee el boss que está migrando
     var oldRun = plainObj(worldRaw) ? !!worldRaw.run : null;
     var hadRun = plainObj(cityRaw) && typeof cityRaw.run === 'boolean';
     o.city = CityStory.normalizeCity(cityRaw, CITY_DATA, bp, today());
@@ -485,7 +488,7 @@ const MODULES = [
     try { if (localStorage.getItem(KEY + '_bak') === null) localStorage.setItem(KEY + '_bak', raw); } catch (e3) {}
     return null;
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { saveWarn(); } }
+  function save() { try { CityStory.mirror(S.city); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { saveWarn(); } }   // mirror: los campos planos de M02 que lee una pestaña con el código anterior
   function saveWarn() {
     try {
       if (document.getElementById('savewarn')) return;
@@ -773,15 +776,17 @@ const MODULES = [
     R.i++;
     if (R.i >= R.items.length) finish(); else present();
   }
-  /* Registra el resultado de una ronda de la ciudad (cfg.city): vencida, reparada o enseñada */
+  /* Progreso de un distrito (S.city.d[mid]); null si mid no es un distrito de los datos */
+  function cityD(mid) { return (typeof mid === 'string' && Object.prototype.hasOwnProperty.call(S.city.d, mid)) ? S.city.d[mid] : null; }
+  /* Registra el resultado de una ronda de la ciudad (cfg.city = { kind, id, mid }): vencida, reparada o enseñada, en el distrito de la ronda */
   function cityResolve() {
-    var c = R.cfg.city;
-    if (!c || typeof c.id !== 'string') return;
-    if (c.kind === 'battle') { if (R.won) S.city.beaten[c.id] = today(); }
-    else if (c.kind === 'repair') { if (R.ok === 2 && R.assisted === 0) S.city.repairs[c.id] = true; }
-    else if (c.kind === 'teach') { if (R.ok === 1) S.city.taught[c.id] = true; }
+    var c = R.cfg.city, d = c ? cityD(c.mid) : null;
+    if (!c || !d || typeof c.id !== 'string') return;
+    if (c.kind === 'battle') { if (R.won) d.beaten[c.id] = today(); }
+    else if (c.kind === 'repair') { if (R.ok === 2 && R.assisted === 0) d.repairs[c.id] = true; }
+    else if (c.kind === 'teach') { if (R.ok === 1) d.taught[c.id] = true; }
   }
-  var cityRestorePending = false;
+  var cityRestorePending = [];   // ids de los distritos recién restaurados que aún no se celebraron
   /* Gancho de prueba: solo existe si la página de pruebas lo pide antes de cargar */
   if (window.__CITY_TEST__ === true) window.__CITY_ROUND__ = { startRound: startRound, battleItems: battleItems, repairItems: repairItems };
   function finish() {
@@ -811,8 +816,8 @@ const MODULES = [
     checkVirtues();
     if (R.battle) { R.won = R.battle.hp <= 0; R.tie = !R.won && R.battle.en > 0; }   // sin preguntas con vida y energía: Empate
     cityResolve();
-    var rs = CityStory.applyRestore(S.city, CITY_DATA, !!(S.boss.M02 && S.boss.M02.passed === true));
-    if (rs.changed) cityRestorePending = true;
+    var rs = CityStory.applyRestore(S.city, CITY_DATA, bossPassedOf);
+    if (rs.changed.length) cityRestorePending = cityRestorePending.concat(rs.changed);
     R.lvl1 = levelOf(S.xp);
     R.done = true;
     save();
@@ -1328,7 +1333,7 @@ const MODULES = [
   window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
   document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); if (CD && CD.world) CD.world.setPaused('hidden', document.hidden); });
 
-  function beatenToday(id) { return S.city.beaten[id] === today(); }
+  function beatenToday(mid, id) { var d = cityD(mid); return !!d && d.beaten[id] === today(); }
   /* Pool barajado de preguntas mcq+tf de los temas, sin repetir: las primeras n son la ronda y arr.pool guarda el resto */
   function battleItems(v) {
     var m = mod(v.mod), pool = [];

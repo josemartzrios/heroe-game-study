@@ -44,7 +44,7 @@ function answerOne(w, d, right) {
 }
 const nextQ = (w, d) => { const b = d.querySelector('#nextbtn'); if (b) L.click(w, b); };
 const R = (w) => w.__CITY_ROUND__;
-const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: 'Bit Errante' }, city: { kind: 'battle', id: 'bit' } };
+const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: 'Bit Errante' }, city: { kind: 'battle', id: 'bit', mid: 'M02' } };
 
 (async () => {
   try {
@@ -90,7 +90,7 @@ const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city'
       if (fin && !won(e.d) && lastHp === 0) bad = bad || 'derrota con vida 0';
       if (fin && !won(e.d) && lastEn !== 0) bad = bad || 'derrota con energía ' + lastEn;
       ok('Batalla azarosa #' + seed + ': termina; victoria solo con vida 0, derrota solo con energía 0', !bad && n < 60, bad + ' n=' + n);
-      ok('Batalla azarosa #' + seed + ': beaten solo si ganó', !!(s.city && s.city.beaten && s.city.beaten.bit) === won(e.d));
+      ok('Batalla azarosa #' + seed + ': d.M02.beaten solo si ganó', !!s.city.d.M02.beaten.bit === won(e.d));
       e.w.close();
     }
 
@@ -101,38 +101,38 @@ const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city'
       answerOne(e.w, e.d, false); nextQ(e.w, e.d); answerOne(e.w, e.d, false); nextQ(e.w, e.d);
       ok('B7 tras 5 respuestas con vida 1 la ronda sigue (pool) y no hay victoria por puntos', !isResults(e.d) && hp(e.d) === 1 && en(e.d) >= 1, 'hp=' + hp(e.d) + ' en=' + en(e.d));
       let g = 0; while (!isResults(e.d) && g++ < 6) { answerOne(e.w, e.d, false); nextQ(e.w, e.d); }
-      ok('B7 sigue hasta energía 0: derrota y sin vencido', isResults(e.d) && !won(e.d) && !(saved(e.w).city.beaten || {}).bit);
+      ok('B7 sigue hasta energía 0: derrota y sin vencido', isResults(e.d) && !won(e.d) && !saved(e.w).city.d.M02.beaten.bit);
       e.w.close(); }
 
     // --- 8 respuestas correctas seguidas no hacen falta: con 4 aciertos gana (pool no se consume de más)
     { const e = boot(fresh()); startBattle(e.w);
       for (let i = 0; i < 4; i++) { answerOne(e.w, e.d, true); nextQ(e.w, e.d); }
       const s = saved(e.w);
-      ok('4 aciertos: victoria, beaten.bit = hoy', won(e.d) && s.city.beaten.bit === L_today(e.w) && d_big(e.d) === '4/4', d_big(e.d));
+      ok('4 aciertos: victoria, beaten.bit = hoy', won(e.d) && s.city.d.M02.beaten.bit === L_today(e.w) && d_big(e.d) === '4/4', d_big(e.d));
       e.w.close(); }
 
     // --- reparaciones: cfg.city.kind repair
-    const startRepair = (e, tid, id) => R(e.w).startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id } }, R(e.w).repairItems('M02', tid));
+    const startRepair = (e, tid, id) => R(e.w).startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id, mid: 'M02' } }, R(e.w).repairItems('M02', tid));
     { const e = boot(fresh()); startRepair(e, 'T15', 'r09');
       answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, true); nextQ(e.w, e.d);
-      ok('Reparación con 2 aciertos marca repairs.r09', saved(e.w).city.repairs.r09 === true, JSON.stringify(saved(e.w).city));
+      ok('Reparación con 2 aciertos marca d.M02.repairs.r09', saved(e.w).city.d.M02.repairs.r09 === true, JSON.stringify(saved(e.w).city));
       e.w.close(); }
     { const e = boot(fresh()); startRepair(e, 'T15', 'r09');
       answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, false); nextQ(e.w, e.d);
-      ok('Reparación con 1 acierto no marca', !(saved(e.w).city.repairs || {}).r09);
+      ok('Reparación con 1 acierto no marca', !saved(e.w).city.d.M02.repairs.r09);
       e.w.close(); }
     { const e = boot(fresh()); startRepair(e, 'T15', 'r09');
       const laser = e.d.querySelector('[data-pw="laser"]'); if (laser) L.click(e.w, laser);
       answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, true); nextQ(e.w, e.d);
-      ok('Reparación con láser (asistida) no marca', !!laser && !(saved(e.w).city.repairs || {}).r09, 'laser=' + !!laser);
+      ok('Reparación con láser (asistida) no marca', !!laser && !saved(e.w).city.d.M02.repairs.r09, 'laser=' + !!laser);
       e.w.close(); }
 
     // --- enseñar: cfg.city.kind teach
     { const e = boot(fresh());
       const q = e.w.eval('MODULES').find((m) => m.id === 'M02').questions.find((x) => x.topic === 'T01' && x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01' } }, [q]);
+      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01', mid: 'M02' } }, [q]);
       answerOne(e.w, e.d, true); nextQ(e.w, e.d);
-      ok('Enseñar con 1 acierto marca taught.a01', saved(e.w).city.taught.a01 === true);
+      ok('Enseñar con 1 acierto marca d.M02.taught.a01', saved(e.w).city.d.M02.taught.a01 === true);
       e.w.close(); }
 
     // --- vResults: Volver a la ciudad
@@ -179,14 +179,14 @@ const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city'
       R(e.w).startRound(Object.assign({}, BIT), items);
       answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, true); nextQ(e.w, e.d);
       const s = saved(e.w);
-      ok('sin preguntas y con vida y energía: "Empate", sin vencer y sin marcar derrota', /Empate/.test(e.d.querySelector('.gtitle').textContent) && /Se acabaron las preguntas: vuelve a intentarlo/.test(e.d.querySelector('main').textContent) && !(s.city.beaten || {}).bit && !(s.stats.bossFailed || {}).M02, e.d.querySelector('.gtitle').textContent);
+      ok('sin preguntas y con vida y energía: "Empate", sin vencer y sin marcar derrota', /Empate/.test(e.d.querySelector('.gtitle').textContent) && /Se acabaron las preguntas: vuelve a intentarlo/.test(e.d.querySelector('main').textContent) && !s.city.d.M02.beaten.bit && !(s.stats.bossFailed || {}).M02, e.d.querySelector('.gtitle').textContent);
       ok('el Empate no es victoria ni derrota', !won(e.d) && !/Derrota/.test(e.d.querySelector('.gtitle').textContent));
       e.w.close(); }
 
     // --- fresh / migrate: S.city existe y city.run toma world.run
     { const e = boot(fresh()); startRepair(e, 'T15', 'r09'); answerOne(e.w, e.d, true);
       const c = saved(e.w).city;
-      ok('Sin city en el guardado: migrate crea S.city con prologue false y vacío', c && c.prologue === false && Object.keys(c.beaten).length === 0 && c.run === false, JSON.stringify(c));
+      ok('Sin city en el guardado: migrate crea S.city en la plaza con prologue false y d vacío', c && c.prologue === false && c.scene === 'plaza' && Object.keys(c.d.M02.beaten).length === 0 && Object.keys(c.d.M08.beaten).length === 0 && c.run === false, JSON.stringify(c));
       e.w.close(); }
     { const e = boot(fresh({ world: { at: 'hub', pos: {}, talked: {}, beaten: {}, run: true } })); startRepair(e, 'T15', 'r09'); answerOne(e.w, e.d, true);
       ok('migrate: city.run toma world.run cuando city no trae run', saved(e.w).city.run === true, JSON.stringify(saved(e.w).city));
