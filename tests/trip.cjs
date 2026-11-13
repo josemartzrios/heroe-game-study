@@ -15,7 +15,7 @@ function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; 
 const prep = (q) => ({ q, labels: q.type === 'tf' ? ['Verdadero', 'Falso'] : q.options, correct: q.type === 'tf' ? (q.answer ? 0 : 1) : q.answer });
 
 (async () => {
-  const { stations } = await import(path.join(__dirname, '..', 'trip', 'stations.mjs'));
+  const { stations } = await import(path.join(__dirname, '..', 'city', 'districts', 'm08_route.mjs'));
   const TripFlow = require('../trip/flow.js');
 
   function make(over = {}, seed = 1) {

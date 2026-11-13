@@ -11,11 +11,12 @@ const html0 = fs.readFileSync(path.join(root, 'juego_estudio.html'), 'utf8');
 const OPEN = '<script type="text/plain" id="three-src" data-version="0.169.0">';
 
 // Ejecuta validate.mjs contra un HTML dado (copia validate.mjs junto al HTML en un directorio nuevo)
-function validate(htmlText) {
+function validate(htmlText, mutate) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'val-'));
   fs.copyFileSync(path.join(root, 'validate.mjs'), path.join(dir, 'validate.mjs'));
-  fs.mkdirSync(path.join(dir, 'city')); fs.copyFileSync(path.join(root, 'city', 'move.js'), path.join(dir, 'city', 'move.js'));   // validate.mjs lo carga para comprobar posiciones
+  fs.cpSync(path.join(root, 'city'), path.join(dir, 'city'), { recursive: true });   // validate.mjs carga city/move.js, check_district.mjs y los distritos
   fs.writeFileSync(path.join(dir, 'juego_estudio.html'), htmlText);
+  if (mutate) mutate(dir);
   const r = spawnSync('node', ['validate.mjs'], { cwd: dir, encoding: 'utf8' });
   fs.rmSync(dir, { recursive: true, force: true });
   return { status: r.status, out: (r.stdout || '') + (r.stderr || '') };
@@ -55,23 +56,27 @@ const edit = (dir, file, fn) => { const p = path.join(dir, file); fs.writeFileSy
 { const r = validate(html0.replace('data-version="0.169.0"', 'data-version="0.170.0"'));
   ok('v4 otra data-version: falla con "falta data-version"', r.status === 1 && /vendor: falta data-version="0\.169\.0"/.test(r.out), 'status=' + r.status); }
 
-{ const r = validate(html0.replace(/var TRIP_STATIONS = /, 'var TRIP_STAT = '));
-  ok('v5 sin TRIP_STATIONS: falla con "Falta TRIP_STATIONS"', r.status === 1 && /Falta TRIP_STATIONS/.test(r.out), 'status=' + r.status); }
+// la ruta de M08 se valida desde su archivo de datos (city/districts/m08_route.mjs, regla R8 de check_district.mjs)
+const ROUTE = 'city/districts/m08_route.mjs';
+const vRoute = (fn) => validate(html0, (d) => edit(d, ROUTE, fn));
 
-{ const r = validate(html0.replace('"id":"S0","name":"Prólogo: la red","topics":["T01"],"ask":1', '"id":"S0","name":"Prólogo: la red","topics":["T01"],"ask":2'));
-  ok('v6 suma de ask = 19: falla con "La suma de ask debe ser 18"', r.status === 1 && /La suma de ask debe ser 18/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
+{ const r = vRoute((t) => t.replace("kp: [{ topic: 'T01', index: 0, expect: 'computadoras autónomas conectadas' }]", 'kp: []'));
+  ok('v5 estación sin kp: falla con "kp debe tener 1 elemento"', r.status === 1 && /R8: M08: estación S0: kp debe tener 1 elemento/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
-{ const r = validate(html0.replace('"ask":1,"layers":0', '"ask":3,"layers":0'));
-  ok('v7 ask = 3 en S0: falla con "S0: ask debe ser 1 o 2"', r.status === 1 && /S0: ask debe ser 1 o 2/.test(r.out), 'status=' + r.status); }
+{ const r = vRoute((t) => t.replace(/\n  \{ id: 'S9'[^\n]*/, ''));
+  ok('v6 una estación menos: falla con "pads para 9 estaciones"', r.status === 1 && /R8: M08: hay 10 pads para 9 estaciones/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
-{ const r = validate(html0.replace('"kp":[{"topic":"T01","index":0,', '"kp":[{"topic":"T01","index":99,'));
-  ok('v8 kp.index fuera de rango: falla con "kp desalineado en S0"', r.status === 1 && /kp desalineado en S0/.test(r.out), 'status=' + r.status); }
+{ const r = vRoute((t) => t.replace('ask: 1, layers: 0', 'ask: 3, layers: 0'));
+  ok('v7 ask = 3 en S0: falla con "S0: ask debe ser 1 o 2"', r.status === 1 && /estación S0: ask debe ser 1 o 2/.test(r.out), 'status=' + r.status); }
 
-{ const r = validate(html0.replace('"topics":["T01"]', '"topics":["T99"]'));
-  ok('v9 tema inexistente: falla con "S0: tema T99 no existe en M08"', r.status === 1 && /S0: tema T99 no existe en M08/.test(r.out), 'status=' + r.status); }
+{ const r = vRoute((t) => t.replace("kp: [{ topic: 'T01', index: 0,", "kp: [{ topic: 'T01', index: 99,"));
+  ok('v8 kp.index fuera de rango: falla con "kp desalineado" en S0', r.status === 1 && /estación S0: kp desalineado/.test(r.out), 'status=' + r.status); }
 
-{ const r = validate(html0.replace('"expect":"computadoras autónomas conectadas"', '"expect":"corto"'));
-  ok('v10 expect de 5 caracteres: falla (kp desalineado o longitud de expect)', r.status === 1 && /S0: expect debe medir de 15 a 40 caracteres|kp desalineado en S0/.test(r.out), 'status=' + r.status); }
+{ const r = vRoute((t) => t.replace("topics: ['T01'], ask: 1", "topics: ['T99'], ask: 1"));
+  ok('v9 tema inexistente: falla con "S0: tema T99 no existe"', r.status === 1 && /estación S0: tema T99 no existe/.test(r.out), 'status=' + r.status); }
+
+{ const r = vRoute((t) => t.replace("expect: 'computadoras autónomas conectadas'", "expect: 'corto'"));
+  ok('v10 expect de 5 caracteres: falla (longitud de expect o kp desalineado)', r.status === 1 && /estación S0: expect debe medir de 15 a 40 caracteres|estación S0: kp desalineado/.test(r.out), 'status=' + r.status); }
 
 { const i = html0.indexOf(OPEN) + OPEN.length;
   const r = validate(html0.slice(0, i) + 'Batman' + html0.slice(i));
@@ -92,7 +97,7 @@ const edit = (dir, file, fn) => { const p = path.join(dir, file); fs.writeFileSy
 { const r = build((d) => edit(d, 'engine.html', (t) => t.replace('<!--__THREE__-->', '')));
   ok('b2 sin el ancla <!--__THREE__-->: build falla y no escribe el HTML', r.status !== 0 && /falta el ancla <!--__THREE__-->/.test(r.msg) && r.out === null, 'status=' + r.status); }
 
-{ const r = build((d) => edit(d, 'trip/stations.mjs', (t) => t.replace("name: 'Prólogo: la red'", () => "name: 'Prólogo $& $1 red'")));
+{ const r = build((d) => edit(d, 'city/districts/m08_route.mjs', (t) => t.replace("name: 'Prólogo: la red'", () => "name: 'Prólogo $& $1 red'")));
   ok('b3 "$&" y "$1" en una estación se copian literales', r.status === 0 && !!r.out && r.out.includes('"name":"Prólogo $& $1 red"'), 'status=' + r.status); }
 
 { const r = build((d) => edit(d, 'trip/flow.js', (t) => t + "\n/* marca $' $` */\n"));

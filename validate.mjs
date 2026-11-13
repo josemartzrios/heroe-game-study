@@ -1,5 +1,8 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { checkDistrict, FORBIDDEN } from './city/check_district.mjs';
+import { district as dM02 } from './city/districts/m02.mjs';
+import { district as dM08 } from './city/districts/m08.mjs';
 
 const html = fs.readFileSync(new URL('./juego_estudio.html', import.meta.url), 'utf8');
 // Three.js incrustado como texto inerte: se valida aparte y se excluye de las reglas del motor
@@ -22,7 +25,7 @@ if (backupPath) {
   for (const id of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10']) if (block(old, id) !== block(html, id)) bad(`El bloque ${id} cambió respecto a la versión publicada`);
 }
 // Palabras prohibidas (IP ajena) en todo el archivo
-const forbidden = [/Marvel/i, /DC Comics/i, /LEGO/i, /Spider/i, /Batman/i, /Superman/i, /Cyclops/i, /Wolverine/i, /Hulk/i, /Iron Man/i, /\bThor\b/, /Wonder Woman/i, /\bFlash\b/, /Avengers/i, /X-Men/i];
+const forbidden = FORBIDDEN;
 for (const re of forbidden) if (re.test(htmlNoV)) bad('Palabra prohibida: ' + re);
 if (MODULES.length !== 10 || MODULES.map((m) => m.id).join() !== 'M01,M02,M03,M04,M05,M06,M07,M08,M09,M10') bad('MODULES debe tener M01..M10 en ese orden');
 if (!html.includes("'estudio_isw_v1'")) bad('Falta la clave localStorage');
@@ -318,101 +321,30 @@ console.log('Por tema M02:', JSON.stringify(r2.perTopic));
     }
   }
 }
-// ---------- Ciudad Núcleo: CITY_DATA ----------
+// ---------- Ciudad Núcleo: distritos y plaza ----------
 {
+  // reglas genéricas de cada distrito (city/check_district.mjs) sobre sus archivos de datos; la ruta de M08 incluye las estaciones
+  for (const dist of [dM02, dM08]) {
+    const mod = MODULES.find((x) => x.id === dist.id);
+    if (!mod) bad(`Distrito ${dist.id}: no existe el módulo ${dist.id}`);
+    else for (const e of checkDistrict(dist, mod)) bad(e);
+  }
   const mt = htmlNoV.match(/var CITY_DATA = (\{[\s\S]*?\n?\});\n/);
   if (!mt) bad('Falta CITY_DATA');
   else {
     const D = vm.runInNewContext('(' + mt[1] + ')');
-    const m2 = MODULES.find((m) => m.id === 'M02'), m1 = MODULES.find((m) => m.id === 'M01');
-    const dist = D.districts && D.districts.M02;
-    if (!dist) bad('CITY_DATA.districts.M02 no existe');
-    else {
-      const FORBID = new Set(['__proto__', 'constructor', 'prototype', ...Object.getOwnPropertyNames(Object.prototype)]);
-      const idOk = (id) => typeof id === 'string' && /^[a-z0-9_-]+$/.test(id) && !FORBID.has(id);
-      const topics = m2.topics.map((t) => t.id);
-      const count = (types, tid) => m2.questions.filter((q) => types.includes(q.type) && q.topic === tid).length;
-      const allIds = [];
-      const take = (arr, what) => arr.forEach((o) => { if (!idOk(o.id)) bad(`${what}: id inseguro ${o.id}`); allIds.push(o.id); });
-      // mentores
-      if (dist.mentors.length !== 23) bad('Debe haber 23 mentores');
-      if (new Set(dist.mentors.map((x) => x.topic)).size !== 23 || topics.some((t) => !dist.mentors.some((x) => x.topic === t))) bad('Los mentores deben cubrir T01–T23 una vez');
-      if (new Set(dist.mentors.map((x) => x.name)).size !== dist.mentors.length) bad('Nombres de mentor repetidos');
-      take(dist.mentors, 'mentor');
-      // criaturas
-      if (dist.creatures.length !== 6) bad('Debe haber 6 criaturas');
-      const seen = {};
-      for (const c of dist.creatures) {
-        for (const t of c.topics) seen[t] = (seen[t] || 0) + 1;
-        const n = c.topics.reduce((a, t) => a + count(['mcq', 'tf'], t), 0);
-        if (n < 8) bad(`${c.id}: solo ${n} preguntas mcq+tf`);
-      }
-      if (topics.some((t) => seen[t] !== 1)) bad('Las criaturas deben cubrir cada tema de M02 exactamente una vez');
-      take(dist.creatures, 'criatura');
-      // retos
-      if (dist.repairs.length !== 10) bad('Debe haber 10 retos');
-      if (new Set(dist.repairs.map((r) => r.topic)).size !== dist.repairs.length) bad('Los retos deben tener temas distintos');
-      for (const r of dist.repairs) if (count(['scenario', 'error'], r.topic) < 2) bad(`${r.id}: el tema ${r.topic} necesita >= 2 preguntas scenario+error`);
-      take(dist.repairs, 'reto');
-      // aprendices
-      if (dist.apprentices.length !== 12) bad('Debe haber 12 puestos de aprendiz');
-      if (new Set(dist.apprentices.map((a) => a.topic)).size !== 12) bad('Los aprendices deben tener temas distintos');
-      const mentorNames = new Set(dist.mentors.map((x) => x.name));
-      for (const a of dist.apprentices) {
-        if (!topics.includes(a.topic)) bad(`${a.id}: tema inexistente`);
-        if (a.mode !== 'explain' && a.mode !== 'correct') bad(`${a.id}: modo inválido`);
-        if (a.mode === 'correct' && count(['error'], a.topic) < 1) bad(`${a.id}: 'correct' necesita >= 1 pregunta error en ${a.topic}`);
-        if (mentorNames.has(a.name)) bad(`${a.id}: el nombre ${a.name} choca con un mentor`);
-      }
-      if (new Set(dist.apprentices.map((a) => a.name)).size !== 12) bad('Nombres de aprendiz repetidos');
-      take(dist.apprentices, 'aprendiz');
-      if (dist.need !== 8) bad('need debe ser 8');
-      if (new Set(allIds).size !== allIds.length) bad('Ids repetidos entre mentores, criaturas, retos y aprendices');
-      // palabras prohibidas en nombres y etiquetas
-      const names = [...dist.mentors, ...dist.creatures, ...dist.apprentices].map((x) => x.name).concat(dist.repairs.map((r) => r.label), [D.plaza.director.name]);
-      for (const n of names) for (const re of forbidden) if (re.test(n)) bad(`Palabra prohibida ${re} en "${n}"`);
-      // posiciones: dentro de los límites y de cada zona, y separadas >= 4 m
-      const B = D.bounds, inB = (o) => o.x >= B.minX && o.x <= B.maxX && o.z >= B.minZ && o.z <= B.maxZ;
-      const R = dist.rect, inR = (o) => o.x >= R.minX && o.x <= R.maxX && o.z >= R.minZ && o.z <= R.maxZ;
-      const pts = [...dist.mentors, ...dist.repairs, ...dist.apprentices, ...dist.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), dist.tower, dist.bridge];
-      for (const o of pts) { if (!inB(o)) bad(`${o.id}: fuera de los límites del mundo`); if (!inR(o)) bad(`${o.id}: fuera del rectángulo del distrito`); }
-      for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) if (Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z) < 4) bad(`${pts[i].id} y ${pts[j].id} están a menos de 4 m`);
-      for (const o of [D.plaza.director, D.plaza.mirror, D.spawn]) if (!inB(o)) bad(`${o.id || 'spawn'}: fuera de los límites`);
-      if (D.plaza.roads.length !== 10) bad('La plaza debe tener 10 muros');
-      // ningún interactuable dentro de un edificio ni de una caja de colisión (margen 0.6 m)
-      const CM = vm.runInNewContext((await import('node:fs')).readFileSync(new URL('./city/move.js', import.meta.url), 'utf8') + '\n;CityMove');
-      const solid = CM.boxesFor(D, false);
-      const free = [...dist.mentors, ...dist.repairs, ...dist.apprentices, ...dist.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), D.plaza.director, D.plaza.mirror, CM.door(dist.tower), CM.door(dist.bridge), D.spawn];
-      for (const p of free) for (const b of solid) { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); if (Math.hypot(p.x - cx, p.z - cz) < 0.6) bad(`${p.id || 'spawn'}: dentro o junto a una caja de colisión`); }
-    }
-    // rangos y villanos de M01
+    if (!D.districts || !D.districts.M02) bad('CITY_DATA.districts.M02 no existe');
+    // plaza: puntos dentro de los límites del mundo y fuera de toda caja sólida (margen 0.6 m)
+    const B = D.bounds, inB = (o) => o.x >= B.minX && o.x <= B.maxX && o.z >= B.minZ && o.z <= B.maxZ;
+    for (const o of [D.plaza.director, D.plaza.mirror, D.spawn]) if (!inB(o)) bad(`${o.id || 'spawn'}: fuera de los límites`);
+    if (D.plaza.roads.length !== 10) bad('La plaza debe tener 10 muros');
+    for (const re of forbidden) if (re.test(D.plaza.director.name)) bad(`Palabra prohibida ${re} en "${D.plaza.director.name}"`);
+    const CM = vm.runInNewContext((await import('node:fs')).readFileSync(new URL('./city/move.js', import.meta.url), 'utf8') + '\n;CityMove');
+    const solid = CM.boxesFor(D, false);
+    for (const p of [D.plaza.director, D.plaza.mirror, D.spawn]) for (const b of solid) { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); if (Math.hypot(p.x - cx, p.z - cz) < 0.6) bad(`${p.id || 'spawn'}: dentro o junto a una caja de colisión`); }
+    // rangos
     const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];
     if (JSON.stringify(D.ranks) !== JSON.stringify(want)) bad('La tabla de rangos no coincide con el spec');
-  }
-}
-// ---------- Viaje 3D: estaciones (TRIP_STATIONS) ----------
-{
-  const mt = html.match(/var TRIP_STATIONS = (\[[\s\S]*?\]);/);
-  if (!mt) bad('Falta TRIP_STATIONS');
-  else {
-    const st = vm.runInNewContext(mt[1]);
-    const m8 = MODULES.find((m) => m.id === 'M08');
-    const byId = Object.fromEntries(m8.topics.map((t) => [t.id, t]));
-    if (st.length !== 10) bad('TRIP_STATIONS debe tener 10 estaciones');
-    const union = new Set();
-    for (const s of st) {
-      for (const t of s.topics) { if (!byId[t]) bad(`${s.id}: tema ${t} no existe en M08`); union.add(t); }
-      if (s.ask !== 1 && s.ask !== 2) bad(`${s.id}: ask debe ser 1 o 2`);
-      if (!Array.isArray(s.kp) || s.kp.length !== 1) bad(`${s.id}: kp debe tener 1 elemento`);
-      else {
-        const k = s.kp[0], t = byId[k.topic];
-        if (!t || !Number.isInteger(k.index) || k.index < 0 || k.index >= t.keyPoints.length || !t.keyPoints[k.index].includes(k.expect)) bad('kp desalineado en ' + s.id);
-        if (typeof k.expect !== 'string' || k.expect.length < 15 || k.expect.length > 40) bad(`${s.id}: expect debe medir de 15 a 40 caracteres`);
-        if (!s.topics.includes(k.topic)) bad(`${s.id}: kp.topic no está en topics`);
-      }
-    }
-    if (m8.topics.some((t) => !union.has(t.id))) bad('TRIP_STATIONS no cubre los 15 temas de M08');
-    if (st.reduce((n, s) => n + s.ask, 0) !== 18) bad('La suma de ask debe ser 18');
   }
 }
 if (errs.length) { console.log('ERRORES:\n- ' + errs.join('\n- ')); process.exit(1); }

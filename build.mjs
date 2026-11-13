@@ -9,52 +9,14 @@ import * as c7 from './content_m07.mjs';
 import * as c8 from './content_m08.mjs';
 import * as c9 from './content_m09.mjs';
 import * as c10 from './content_m10.mjs';
-import { stations as tripStations } from './trip/stations.mjs';
+import { stations as tripStations } from './city/districts/m08_route.mjs';
+import { expandModule, moduleSource } from './content_expand.mjs';
 import { city as cityData } from './city/districts.mjs';
 
-const pad = (n) => String(n).padStart(3, '0');
-
-// Expande el formato compacto al esquema A2. La rotación de la posición correcta
-// es local a cada módulo, así M01 queda idéntico a su versión publicada.
-function expand(id, title, c) {
-  let rot = 0;
-  const place = (correct, wrong) => {
-    const idx = rot++ % 4;
-    const options = wrong.slice();
-    options.splice(idx, 0, correct);
-    return { options, answer: idx };
-  };
-  const questions = [];
-  c.mcq.forEach(([topic, difficulty, prompt, ok, bad, explanation], i) => {
-    questions.push({ id: `${id}-Q${pad(i + 1)}`, topic, type: 'mcq', difficulty, prompt, ...place(ok, bad), explanation });
-  });
-  c.tf.forEach(([topic, difficulty, prompt, answer, explanation], i) => {
-    questions.push({ id: `${id}-V${pad(i + 1)}`, topic, type: 'tf', difficulty, prompt, answer, explanation });
-  });
-  c.scenario.forEach(([topic, difficulty, prompt, ok, bad, explanation], i) => {
-    questions.push({ id: `${id}-S${pad(i + 1)}`, topic, type: 'scenario', difficulty, prompt, ...place(ok, bad), explanation });
-  });
-  c.error.forEach(([topic, difficulty, frag, ok, bad, explanation], i) => {
-    questions.push({
-      id: `${id}-E${pad(i + 1)}`, topic, type: 'error', difficulty,
-      prompt: `Este fragmento contiene un error:\n“${frag}”\n¿Cuál es el error?`,
-      ...place(ok, bad), explanation,
-    });
-  });
-  const ind = (s, n) => ' '.repeat(n) + s;
-  return [
-    ind('{', 2),
-    ind(`id: ${JSON.stringify(id)},`, 4),
-    ind(`title: ${JSON.stringify(title)},`, 4),
-    ind('topics: [', 4),
-    ...c.topics.map((t) => ind(JSON.stringify(t) + ',', 6)),
-    ind('],', 4),
-    ind('questions: [', 4),
-    ...questions.map((q) => ind(JSON.stringify(q) + ',', 6)),
-    ind(']', 4),
-    ind('},', 2),
-  ].join('\n');
-}
+// Expansión del formato compacto al esquema A2 (la rotación de la posición correcta es local a cada módulo,
+// así M01 queda idéntico a su versión publicada). Vive en content_expand.mjs para que validate.mjs y las pruebas la importen
+// sin ejecutar esta build.
+const expand = (id, title, c) => moduleSource(expandModule(id, title, c));
 
 const m1 = expand('M01', 'Diseño de sistemas', c1);
 const m2 = expand('M02', 'Fundamentos de ingeniería de software', c2);

@@ -18,7 +18,7 @@ Un solo archivo HTML autocontenido: `juego_estudio.html`. Ábrelo en el navegado
 ## Viaje 3D "Viaja como paquete" (M08 Redes)
 Modo nuevo dentro de M08: botón "Viaja como paquete". Recorres 10 estaciones (capas, router, internet, servidor) como un paquete, con estética de holograma técnico.
 Las preguntas salen del banco de M08 y suman estrellas, repaso y XP igual que una ronda; no sustituye al jefe ni a las rondas.
-- `trip/stations.mjs` datos · `trip/flow.js` lógica sin 3D · `trip/scene.js` escena Three.js
+- `city/districts/m08_route.mjs` datos · `trip/flow.js` lógica sin 3D · `trip/scene.js` escena Three.js
 - Pruebas: `node tests/trip.cjs`, `node tests/trip_engine.cjs`, `node tests/scene.cjs`, `node tests/build_vendor.cjs`
 - Para Netlify, `_headers` trae una CSP compatible con el `import()` desde `blob:`.
 - Diseño y plan: `docs/superpowers/specs/` y `docs/superpowers/plans/`

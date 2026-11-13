@@ -199,7 +199,7 @@ async function propScene(THREE, stations, name, hostile, runs) {
 
 (async () => {
   const t0 = Date.now();
-  const { stations } = await import(pathToFileURL(path.join(__dirname, '..', '..', 'trip', 'stations.mjs')).href);
+  const { stations } = await import(pathToFileURL(path.join(__dirname, '..', '..', 'city', 'districts', 'm08_route.mjs')).href);
   const THREE = await import(pathToFileURL(path.join(__dirname, '..', '..', 'vendor', 'three.module.min.js')).href);
   console.log('semilla=' + SEED + ' runs=' + RUNS);
 

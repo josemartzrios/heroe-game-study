@@ -1,5 +1,5 @@
 // Factibilidad de datos del spec 2026-11-12-ciudad-distritos-design.md (§4.3 y §4.5).
-// Comprueba con el contenido REAL (content_m08.mjs, content_m02.mjs, trip/stations.mjs, city/districts.mjs)
+// Comprueba con el contenido REAL (content_m08.mjs, content_m02.mjs, city/districts/m08_route.mjs, city/districts.mjs)
 // que el reparto propuesto para M08 y el M02 actual cumplen las reglas de distrito. Solo lee datos.
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -42,7 +42,7 @@ function checkRules(label, content, dist) {
 (async () => {
   const m08 = await imp('content_m08.mjs');
   const m02 = await imp('content_m02.mjs');
-  const { stations } = await imp('trip/stations.mjs');
+  const { stations } = await imp('city/districts/m08_route.mjs');
   const { city } = await imp('city/districts.mjs');
 
   // ---- M08: temas ----

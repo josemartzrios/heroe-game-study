@@ -7,7 +7,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
   const THREE = await import(pathToFileURL(path.join(__dirname, '..', 'vendor', 'three.module.min.js')).href);
-  const { stations } = await import(pathToFileURL(path.join(__dirname, '..', 'trip', 'stations.mjs')).href);
+  const { stations } = await import(pathToFileURL(path.join(__dirname, '..', 'city', 'districts', 'm08_route.mjs')).href);
   const S = require('../trip/scene.js');
 
   // ---- buildWorld ----
