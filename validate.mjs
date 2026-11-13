@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { checkDistrict, FORBIDDEN } from './city/check_district.mjs';
-import { district as dM02 } from './city/districts/m02.mjs';
-import { district as dM08 } from './city/districts/m08.mjs';
+import { checkDistrict, checkPlaza, FORBIDDEN } from './city/check_district.mjs';
 
 const html = fs.readFileSync(new URL('./juego_estudio.html', import.meta.url), 'utf8');
 // Three.js incrustado como texto inerte: se valida aparte y se excluye de las reglas del motor
@@ -321,30 +319,19 @@ console.log('Por tema M02:', JSON.stringify(r2.perTopic));
     }
   }
 }
-// ---------- Ciudad Núcleo: distritos y plaza ----------
+// ---------- Ciudad Núcleo: distritos y plaza (los datos que de verdad van en el HTML) ----------
 {
-  // reglas genéricas de cada distrito (city/check_district.mjs) sobre sus archivos de datos; la ruta de M08 incluye las estaciones
-  for (const dist of [dM02, dM08]) {
-    const mod = MODULES.find((x) => x.id === dist.id);
-    if (!mod) bad(`Distrito ${dist.id}: no existe el módulo ${dist.id}`);
-    else for (const e of checkDistrict(dist, mod)) bad(e);
-  }
   const mt = htmlNoV.match(/var CITY_DATA = (\{[\s\S]*?\n?\});\n/);
   if (!mt) bad('Falta CITY_DATA');
   else {
     const D = vm.runInNewContext('(' + mt[1] + ')');
-    if (!D.districts || !D.districts.M02) bad('CITY_DATA.districts.M02 no existe');
-    // plaza: puntos dentro de los límites del mundo y fuera de toda caja sólida (margen 0.6 m)
-    const B = D.bounds, inB = (o) => o.x >= B.minX && o.x <= B.maxX && o.z >= B.minZ && o.z <= B.maxZ;
-    for (const o of [D.plaza.director, D.plaza.mirror, D.spawn]) if (!inB(o)) bad(`${o.id || 'spawn'}: fuera de los límites`);
-    if (D.plaza.roads.length !== 10) bad('La plaza debe tener 10 muros');
-    for (const re of forbidden) if (re.test(D.plaza.director.name)) bad(`Palabra prohibida ${re} en "${D.plaza.director.name}"`);
-    const CM = vm.runInNewContext((await import('node:fs')).readFileSync(new URL('./city/move.js', import.meta.url), 'utf8') + '\n;CityMove');
-    const solid = CM.boxesFor(D, false);
-    for (const p of [D.plaza.director, D.plaza.mirror, D.spawn]) for (const b of solid) { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); if (Math.hypot(p.x - cx, p.z - cz) < 0.6) bad(`${p.id || 'spawn'}: dentro o junto a una caja de colisión`); }
-    // rangos
-    const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];
-    if (JSON.stringify(D.ranks) !== JSON.stringify(want)) bad('La tabla de rangos no coincide con el spec');
+    // reglas genéricas de cada distrito (city/check_district.mjs); la ruta de un distrito incluye sus estaciones
+    for (const mid of Object.keys(D.districts)) {
+      const mod = MODULES.find((x) => x.id === mid);
+      if (!mod) bad(`Distrito ${mid}: no existe el módulo ${mid}`);
+      else for (const e of checkDistrict(D.districts[mid], mod)) bad(e);
+    }
+    for (const e of checkPlaza(D)) bad(e);   // portales (R9), rangos (R10) y puntos libres de la plaza
   }
 }
 if (errs.length) { console.log('ERRORES:\n- ' + errs.join('\n- ')); process.exit(1); }

@@ -94,12 +94,10 @@ function checkRules(label, content, dist) {
   ok('M02: el distrito existe en city/districts.mjs', !!D2);
   checkRules('M02', m02, D2);
   ok('M02: need (8) <= número de aprendices', D2.need === 8 && D2.need <= D2.apprentices.length, `need=${D2.need} aprendices=${D2.apprentices.length}`);
-  ok('M02: rect actual es -60..60 x -185..-50 (spec §2)', JSON.stringify(D2.rect) === JSON.stringify({ minX: -60, maxX: 60, minZ: -185, maxZ: -50 }));
-  const spanX = D2.rect.maxX - D2.rect.minX, spanZ = -46 - (-185);
-  ok('M02: bounds del spec (-60..60 x -185..-46) <= 140 x 160 m', spanX <= 140 && spanZ <= 160, `${spanX}x${spanZ}`);
+  ok('M02: bounds -60..60 x -185..-44 (spec §2), <= 140 x 160 m', JSON.stringify(D2.bounds) === JSON.stringify({ minX: -60, maxX: 60, minZ: -185, maxZ: -44 }) && D2.bounds.maxX - D2.bounds.minX <= 140 && D2.bounds.maxZ - D2.bounds.minZ <= 160);
   const pts = [...D2.mentors, ...D2.repairs, ...D2.apprentices, ...D2.creatures.map((c) => c.area), D2.tower];
-  const outside = pts.filter((p) => p.x < -60 || p.x > 60 || p.z < -185 || p.z > -46).map((p) => `${p.x},${p.z}`);
-  ok('M02: todos los puntos (sin puente) dentro de los bounds del spec', outside.length === 0, outside.join(' '));
+  const B2 = D2.bounds, outside = pts.filter((p) => p.x < B2.minX || p.x > B2.maxX || p.z < B2.minZ || p.z > B2.maxZ).map((p) => `${p.x},${p.z}`);
+  ok('M02: todos los puntos dentro de sus bounds', outside.length === 0, outside.join(' '));
 
   const fails = results.filter((r) => r[0] === 'FAIL'); results.forEach((r) => console.log(r.join(' ')));
   console.log(fails.length ? 'FALLAS ' + fails.length : 'SPEC DISTRITOS FACTIBLE OK (' + results.length + ')'); process.exit(fails.length ? 1 : 0);

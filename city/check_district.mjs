@@ -102,3 +102,36 @@ export function checkDistrict(dist, mod, opts = {}) {
   }
   return errs;
 }
+
+// Reglas de la plaza y de la ciudad (spec §4.3 reglas 9 y 10): portales, rangos y puntos libres de la plaza.
+// D = CITY_DATA (o el objeto `city` de districts.mjs). Devuelve errores "R<n>: plaza: …". opts.forbidden como en checkDistrict.
+export function checkPlaza(D, opts = {}) {
+  const errs = [], forbidden = opts.forbidden || FORBIDDEN, P = D.plaza, B = P.bounds;
+  const bad = (rule, msg) => errs.push(`R${rule}: plaza: ${msg}`);
+  const inB = (o) => o.x >= B.minX && o.x <= B.maxX && o.z >= B.minZ && o.z <= B.maxZ;
+  const boxes = CM.boxesFor(D, 'plaza');
+  const near = (p) => boxes.some((b) => { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); return Math.hypot(p.x - cx, p.z - cz) < 0.6; });
+
+  // R9 portales: uno por distrito de ORDER (sin repetir y sin portales de más), todos los distritos existentes en ORDER, back libre
+  const seen = {};
+  for (const p of P.portals) seen[p.dist] = (seen[p.dist] || 0) + 1;
+  for (const k of Object.keys(seen)) { if (seen[k] > 1) bad(9, `portal repetido: ${k}`); if (!D.order.includes(k)) bad(9, `portal de ${k}, que no está en ORDER`); }
+  for (const k of D.order) if (!seen[k]) bad(9, `el distrito ${k} de ORDER no tiene portal`);
+  for (const k of Object.keys(D.districts)) if (!D.order.includes(k)) bad(9, `el distrito ${k} existe pero no está en ORDER`);
+  for (const p of P.portals) {
+    if (!inB(p.back)) bad(9, `back del portal ${p.dist}: fuera de los bounds`);
+    else if (near(p.back) || CM.portalAt(D, 'plaza', p.back.x, p.back.z) !== null || P.portals.some((q) => Math.abs(p.back.x - q.x) <= q.w / 2 && Math.abs(p.back.z - q.z) <= q.d / 2)) bad(9, `back del portal ${p.dist}: dentro de una caja sólida o de la boca de un portal`);
+  }
+
+  // puntos de la plaza libres (directora, espejo, entrada) y nombre sin palabras prohibidas
+  for (const q of [P.director, P.mirror, { id: 'entry', x: P.entry.x, z: P.entry.z }]) {
+    if (!inB(q)) bad(7, `${q.id}: fuera de los bounds`);
+    else if (near(q)) bad(7, `${q.id}: dentro o junto a una caja de colisión`);
+  }
+  for (const re of forbidden) if (re.test(P.director.name)) bad(6, `palabra prohibida ${re} en "${P.director.name}"`);
+
+  // R10 tabla de rangos
+  const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];
+  if (JSON.stringify(D.ranks) !== JSON.stringify(want)) bad(10, 'la tabla de rangos no coincide con el spec');
+  return errs;
+}

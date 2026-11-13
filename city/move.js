@@ -1,4 +1,4 @@
-/* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, dirección del héroe, cercanos y distribución de edificios.
+/* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, escenas (plaza y distritos), portales, dirección del héroe, cercanos y distribución de edificios.
    Sin DOM. Vista desde arriba: el movimiento es relativo a la pantalla (mz = -1 va a -z, arriba) y yaw 0 mira hacia -z. */
 var CityMove = (function () {
   var WALK = 10, RUN = 14, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
@@ -32,22 +32,42 @@ var CityMove = (function () {
   /* punto de interacción de una caja sólida (torre, puente): su puerta, 1.2 m al frente (lado sur) */
   function door(o) { return { x: o.x, z: o.z + o.d / 2 + 1.2 }; }
 
-  /* Cajas de colisión: edificios, torre, sede, muros de la plaza, puente (cerrado si !restored) con sus muros laterales, y el borde del mundo. */
-  function boxesFor(D, restored) {
-    var M = D.districts.M02, B = D.bounds, boxes = [];
-    layoutBuildings(M).forEach(function (b) { boxes.push(aabb(b)); });
-    boxes.push(aabb(M.tower));
-    if (D.plaza.hq) boxes.push(aabb(D.plaza.hq));
-    D.plaza.roads.forEach(function (r) { boxes.push(aabb(r.wall)); });
-    var br = M.bridge, z0 = br.z - br.d / 2, z1 = br.z + br.d / 2, big = 10;
-    boxes.push({ minX: B.minX - big, maxX: br.x - br.w / 2, minZ: z0, maxZ: z1 });          // muros laterales del puente
-    boxes.push({ minX: br.x + br.w / 2, maxX: B.maxX + big, minZ: z0, maxZ: z1 });
-    if (!restored) boxes.push(aabb(br));
+  var own = Object.prototype.hasOwnProperty;
+  /* Escena por id: 'plaza', o un distrito propio de D.districts; null para cualquier otro texto (nunca resuelve __proto__, constructor…). */
+  function scene(D, id) {
+    if (id === 'plaza') return D.plaza;
+    return (typeof id === 'string' && own.call(D.districts, id)) ? D.districts[id] : null;
+  }
+  /* Cajas de colisión de una escena: en la plaza, la sede y los muros de los portales sin distrito (los portales abiertos no son sólidos);
+     en un distrito, sus edificios y su torre; y siempre el borde del mundo. Escena inválida → []. */
+  function boxesFor(D, sceneId) {
+    var sc = scene(D, sceneId), B, boxes = [], big = 10;
+    if (!sc) return boxes;
+    B = sc.bounds;
+    if (sceneId === 'plaza') {
+      if (sc.hq) boxes.push(aabb(sc.hq));
+      sc.portals.forEach(function (p) { if (!own.call(D.districts, p.dist)) boxes.push(aabb(p)); });
+    } else {
+      layoutBuildings(sc).forEach(function (b) { boxes.push(aabb(b)); });
+      boxes.push(aabb(sc.tower));
+    }
     boxes.push({ minX: B.minX - big, maxX: B.minX, minZ: B.minZ - big, maxZ: B.maxZ + big });  // borde del mundo
     boxes.push({ minX: B.maxX, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.maxZ + big });
     boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.minZ });
     boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.maxZ, maxZ: B.maxZ + big });
     return boxes;
+  }
+  /* Portal que contiene el punto (el centro del héroe dentro de su caja): en la plaza el id del distrito (solo si existe);
+     en un distrito, 'plaza' si está en su salida; null en cualquier otro caso. */
+  function portalAt(D, sceneId, x, z) {
+    var sc = scene(D, sceneId), i, b, p;
+    if (!sc || !isNum(x) || !isNum(z)) return null;
+    function inside(o) { b = aabb(o); return x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ; }
+    if (sceneId === 'plaza') {
+      for (i = 0; i < sc.portals.length; i++) { p = sc.portals[i]; if (own.call(D.districts, p.dist) && inside(p)) return p.dist; }
+      return null;
+    }
+    return inside(sc.exit) ? 'plaza' : null;
   }
 
   function overlaps(x, z, r, b) {
@@ -117,6 +137,6 @@ var CityMove = (function () {
     return out;
   }
 
-  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, within: within };
+  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, scene: scene, boxesFor: boxesFor, portalAt: portalAt, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, within: within };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityMove;

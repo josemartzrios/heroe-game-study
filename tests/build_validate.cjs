@@ -56,27 +56,34 @@ const edit = (dir, file, fn) => { const p = path.join(dir, file); fs.writeFileSy
 { const r = validate(html0.replace('data-version="0.169.0"', 'data-version="0.170.0"'));
   ok('v4 otra data-version: falla con "falta data-version"', r.status === 1 && /vendor: falta data-version="0\.169\.0"/.test(r.out), 'status=' + r.status); }
 
-// la ruta de M08 se valida desde su archivo de datos (city/districts/m08_route.mjs, regla R8 de check_district.mjs)
-const ROUTE = 'city/districts/m08_route.mjs';
-const vRoute = (fn) => validate(html0, (d) => edit(d, ROUTE, fn));
+// la ruta de M08 y el resto de datos de ciudad se validan desde el CITY_DATA que va en el HTML (reglas de city/check_district.mjs)
+const vCity = (from, to) => {
+  const i = html0.indexOf('var CITY_DATA = '), j = html0.indexOf(';\n', i), seg = html0.slice(i, j);
+  if (seg.indexOf(from) < 0) return { status: -1, out: 'no se encontró en CITY_DATA: ' + from };
+  return validate(html0.slice(0, i) + seg.replace(from, () => to) + html0.slice(j));
+};
+const S0 = '"id":"S0","name":"Prólogo: la red","topics":["T01"],"ask":1,"layers":0,"kp":[{"topic":"T01","index":0,"expect":"computadoras autónomas conectadas"}]';
 
-{ const r = vRoute((t) => t.replace("kp: [{ topic: 'T01', index: 0, expect: 'computadoras autónomas conectadas' }]", 'kp: []'));
+{ const r = vCity(S0, S0.replace(/"kp":\[\{.*\}\]$/, '"kp":[]'));
   ok('v5 estación sin kp: falla con "kp debe tener 1 elemento"', r.status === 1 && /R8: M08: estación S0: kp debe tener 1 elemento/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
-{ const r = vRoute((t) => t.replace(/\n  \{ id: 'S9'[^\n]*/, ''));
-  ok('v6 una estación menos: falla con "pads para 9 estaciones"', r.status === 1 && /R8: M08: hay 10 pads para 9 estaciones/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
+{ const r = vCity('"pads":[{"x":0,"z":44},', '"pads":[');
+  ok('v6 un pad menos: falla con "9 pads para 10 estaciones"', r.status === 1 && /R8: M08: hay 9 pads para 10 estaciones/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
-{ const r = vRoute((t) => t.replace('ask: 1, layers: 0', 'ask: 3, layers: 0'));
-  ok('v7 ask = 3 en S0: falla con "S0: ask debe ser 1 o 2"', r.status === 1 && /estación S0: ask debe ser 1 o 2/.test(r.out), 'status=' + r.status); }
+{ const r = vCity('"ask":1,"layers":0', '"ask":3,"layers":0');
+  ok('v7 ask = 3 en S0: falla con "S0: ask debe ser 1 o 2"', r.status === 1 && /estación S0: ask debe ser 1 o 2/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
-{ const r = vRoute((t) => t.replace("kp: [{ topic: 'T01', index: 0,", "kp: [{ topic: 'T01', index: 99,"));
+{ const r = vCity('"kp":[{"topic":"T01","index":0,', '"kp":[{"topic":"T01","index":99,');
   ok('v8 kp.index fuera de rango: falla con "kp desalineado" en S0', r.status === 1 && /estación S0: kp desalineado/.test(r.out), 'status=' + r.status); }
 
-{ const r = vRoute((t) => t.replace("topics: ['T01'], ask: 1", "topics: ['T99'], ask: 1"));
+{ const r = vCity('"id":"S0","name":"Prólogo: la red","topics":["T01"]', '"id":"S0","name":"Prólogo: la red","topics":["T99"]');
   ok('v9 tema inexistente: falla con "S0: tema T99 no existe"', r.status === 1 && /estación S0: tema T99 no existe/.test(r.out), 'status=' + r.status); }
 
-{ const r = vRoute((t) => t.replace("expect: 'computadoras autónomas conectadas'", "expect: 'corto'"));
+{ const r = vCity('"expect":"computadoras autónomas conectadas"', '"expect":"corto"');
   ok('v10 expect de 5 caracteres: falla (longitud de expect o kp desalineado)', r.status === 1 && /estación S0: expect debe medir de 15 a 40 caracteres|estación S0: kp desalineado/.test(r.out), 'status=' + r.status); }
+
+{ const r = vCity('"name":"Nodo Enlace"', '"name":"Hulk Enlace"');
+  ok('v10b palabra prohibida en el nombre de un distrito: falla con R6', r.status === 1 && /R6: M08: palabra prohibida/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
 { const i = html0.indexOf(OPEN) + OPEN.length;
   const r = validate(html0.slice(0, i) + 'Batman' + html0.slice(i));

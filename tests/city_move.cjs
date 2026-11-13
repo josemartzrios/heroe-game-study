@@ -44,15 +44,32 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
     }
     ok('layoutBuildings: cada edificio queda dentro de su manzana y con tamaños del spec', outside === 0 && badSize === 0, `fuera=${outside} tamaño=${badSize}`); }
 
-  // ---- boxesFor ----
-  const closed = CM.boxesFor(D, false), open = CM.boxesFor(D, true);
-  ok('boxesFor: las cajas de colisión no llevan altura (el dibujo 2D no la usa)', closed.concat(open).every((b) => !('h' in b) && ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => Number.isFinite(b[k]))));
-  ok('boxesFor: el puente solo existe si !restored', closed.length === open.length + 1, `${closed.length}/${open.length}`);
-  ok('boxesFor: todas las cajas tienen minX/maxX/minZ/maxZ finitos', closed.every((b) => ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => typeof b[k] === 'number' && Number.isFinite(b[k]))));
-  ok('boxesFor: el spawn queda libre', !pen(D.spawn.x, D.spawn.z, closed));
-  { const pts = [...M2.mentors, ...M2.repairs, ...M2.apprentices, ...M2.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), D.plaza.director, D.plaza.mirror];
-    const bad = pts.filter((p) => closed.some((b) => d2(p.x, p.z, b) < 0.6 * 0.6)).map((p) => p.id);
-    ok('boxesFor: ningún interactuable queda dentro de una caja (margen 0.6 m)', bad.length === 0, bad.join(',')); }
+  // ---- scene / boxesFor / portalAt (por escena) ----
+  const M8 = D.districts.M08, P = D.plaza, aabbOf = (o) => ({ minX: o.x - o.w / 2, maxX: o.x + o.w / 2, minZ: o.z - o.d / 2, maxZ: o.z + o.d / 2 });
+  ok('scene: plaza, distritos propios y null para nombres que no son escenas', CM.scene(D, 'plaza') === D.plaza && CM.scene(D, 'M02') === M2 && CM.scene(D, 'M08') === M8 && ['M99', '__proto__', 'constructor', 'toString', '', null, 5, undefined].every((id) => CM.scene(D, id) === null));
+  const plazaBoxes = CM.boxesFor(D, 'plaza'), m2Boxes = CM.boxesFor(D, 'M02'), m8Boxes = CM.boxesFor(D, 'M08');
+  const finite = (b) => ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => typeof b[k] === 'number' && Number.isFinite(b[k]));
+  ok('boxesFor: cajas finitas y sin altura (el dibujo 2D no la usa)', plazaBoxes.concat(m2Boxes, m8Boxes).every((b) => finite(b) && !('h' in b)));
+  const sameBox = (a, b) => ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => Math.abs(a[k] - b[k]) < 1e-9);
+  const existing = P.portals.filter((p) => D.districts[p.dist]), pending = P.portals.filter((p) => !D.districts[p.dist]);
+  ok('portales: 11 en total (2 abiertos y 9 sin distrito)', P.portals.length === 11 && existing.length === 2 && pending.length === 9, existing.length + '/' + pending.length);
+  ok('boxesFor plaza: sede + 9 muros sin distrito + 4 bordes', plazaBoxes.length === 1 + 9 + 4, 'n=' + plazaBoxes.length);
+  ok('boxesFor plaza: los portales M02 y M08 NO son sólidos y los muros "Próximamente" sí', existing.every((p) => !plazaBoxes.some((b) => sameBox(b, aabbOf(p)))) && pending.every((p) => plazaBoxes.some((b) => sameBox(b, aabbOf(p)))));
+  ok('boxesFor M02: edificios + torre + 4 bordes (sin puente)', m2Boxes.length === CM.layoutBuildings(M2).length + 1 + 4, 'n=' + m2Boxes.length);
+  ok('boxesFor M08: edificios + torre + 4 bordes', m8Boxes.length === CM.layoutBuildings(M8).length + 1 + 4, 'n=' + m8Boxes.length);
+  ok('boxesFor con escena inválida → []', ['M99', '__proto__', 'constructor', null, 7].every((id) => Array.isArray(CM.boxesFor(D, id)) && CM.boxesFor(D, id).length === 0));
+  ok('entradas de las tres escenas quedan libres', !pen(P.entry.x, P.entry.z, plazaBoxes) && !pen(M2.entry.x, M2.entry.z, m2Boxes) && !pen(M8.entry.x, M8.entry.z, m8Boxes));
+  ok('los puntos "back" de los portales quedan libres de cajas y fuera de todo portal', P.portals.every((p) => !pen(p.back.x, p.back.z, plazaBoxes) && CM.portalAt(D, 'plaza', p.back.x, p.back.z) === null));
+  { const bad = [[P, plazaBoxes, [P.director, P.mirror]], [M2, m2Boxes, [...M2.mentors, ...M2.repairs, ...M2.apprentices, ...M2.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), CM.door(M2.tower)]],
+      [M8, m8Boxes, [...M8.mentors, ...M8.repairs, ...M8.apprentices, ...M8.creatures.map((c) => ({ id: c.id, x: c.area.x, z: c.area.z })), CM.door(M8.tower), ...M8.route.pads]]]
+      .flatMap(([, boxes, pts]) => pts.filter((q) => boxes.some((b) => d2(q.x, q.z, b) < 0.6 * 0.6)).map((q) => q.id || 'pad'));
+    ok('boxesFor: ningún interactuable queda dentro de una caja en su escena (margen 0.6 m)', bad.length === 0, bad.join(',')); }
+  { const at = (o) => [o.x, o.z];
+    const m8p = P.portals.find((p) => p.dist === 'M08'), m2p = P.portals.find((p) => p.dist === 'M02'), m3p = P.portals.find((p) => p.dist === 'M03');
+    ok('portalAt: la boca del portal M08 → "M08" y la del M02 → "M02"', CM.portalAt(D, 'plaza', ...at(m8p)) === 'M08' && CM.portalAt(D, 'plaza', ...at(m2p)) === 'M02');
+    ok('portalAt: un muro "Próximamente" (M03) → null, y la entrada de la plaza → null', CM.portalAt(D, 'plaza', ...at(m3p)) === null && CM.portalAt(D, 'plaza', P.entry.x, P.entry.z) === null);
+    ok('portalAt: la salida de M02 y la de M08 → "plaza"; su entrada → null', CM.portalAt(D, 'M02', M2.exit.x, M2.exit.z) === 'plaza' && CM.portalAt(D, 'M08', M8.exit.x, M8.exit.z) === 'plaza' && CM.portalAt(D, 'M02', M2.entry.x, M2.entry.z) === null && CM.portalAt(D, 'M08', M8.entry.x, M8.entry.z) === null);
+    ok('portalAt: escena inválida o coordenadas no finitas → null', CM.portalAt(D, 'M99', 0, 0) === null && CM.portalAt(D, 'plaza', NaN, 0) === null && CM.portalAt(D, 'plaza', 0, '5') === null && CM.portalAt(D, '__proto__', 0, 0) === null); }
 
   // ---- step ----
   const run = { mx: 0, mz: -1, run: true };
@@ -120,6 +137,7 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
   ok('cameraArm ya no existe', CM.cameraArm === undefined);
   ok('nearest se retiró (la vista busca el lugar más cercano por su cuenta)', CM.nearest === undefined);
   ok('layoutBuildings devuelve el índice de manzana y ya no un color sin uso', CM.layoutBuildings(D.districts.M02).every((b) => Number.isInteger(b.block) && b.block >= 0 && b.block < 16 && !('color' in b)));
+  ok('layoutBuildings M08: determinista, 16 manzanas y edificios dentro de su manzana', JSON.stringify(CM.layoutBuildings(D.districts.M08)) === JSON.stringify(CM.layoutBuildings(D.districts.M08)) && CM.layoutBuildings(D.districts.M08).every((b) => b.block >= 0 && b.block < 16));
   { const f = CM.faceOf, PI = Math.PI;
     ok('faceOf: yaw 0 → up, π → down, π/2 → left, -π/2 → right', f(0) === 'up' && f(PI) === 'down' && f(PI / 2) === 'left' && f(-PI / 2) === 'right');
     ok('faceOf: en el empate a 45° gana el eje vertical', f(PI / 4) === 'up' && f(-PI / 4) === 'up' && f(3 * PI / 4) === 'down' && f(-3 * PI / 4) === 'down');

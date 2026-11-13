@@ -8,7 +8,8 @@ const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href)
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 (async () => {
-  const { checkDistrict } = await imp('city/check_district.mjs');
+  const { checkDistrict, checkPlaza } = await imp('city/check_district.mjs');
+  const { city } = await imp('city/districts.mjs');
   const { expandModule } = await imp('content_expand.mjs');
   const mod8 = expandModule('M08', 'Redes informáticas', await imp('content_m08.mjs'));
   const mod2 = expandModule('M02', 'Fundamentos de ingeniería de software', await imp('content_m02.mjs'));
@@ -55,6 +56,21 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
   expectRule('R8 expect de 10 caracteres', mutate((d) => { d.route.stations[0].kp[0].expect = 'computador'; }), 'R8', /expect/);
   expectRule('R8 nueve pads para diez estaciones', mutate((d) => { d.route.pads = d.route.pads.slice(0, 9); }), 'R8', /pad/);
   expectRule('R8 estaciones que no cubren todos los temas', mutate((d) => { d.route.stations[9].topics = ['T01']; d.route.stations[9].kp = [{ topic: 'T01', index: 0, expect: 'computadoras autónomas conectadas' }]; d.route.stations[8].topics = ['T05']; d.route.stations[8].kp = [{ topic: 'T05', index: 0, expect: 'protocolo' }]; }), 'R8', /cubr|tema/i);
+
+  // ---- plaza: portales (R9) y rangos (R10) ----
+  const ep = checkPlaza(city);
+  ok('plaza válida: sin errores (11 portales, rangos, puntos libres)', ep.length === 0, ep.join(' || '));
+  const mutP = (fn) => { const D = clone(city); fn(D); return checkPlaza(D); };
+  expectRule('R9 portal repetido', mutP((D) => { D.plaza.portals[1].dist = D.plaza.portals[0].dist; }), 'R9', /repetid/);
+  expectRule('R9 distrito de ORDER sin portal', mutP((D) => { D.plaza.portals = D.plaza.portals.filter((p) => p.dist !== 'M05'); }), 'R9', /M05/);
+  expectRule('R9 portal de un distrito que no está en ORDER', mutP((D) => { D.plaza.portals[2].dist = 'M99'; }), 'R9', /M99/);
+  expectRule('R9 distrito existente fuera de ORDER', mutP((D) => { D.order = D.order.filter((m) => m !== 'M08'); }), 'R9', /M08/);
+  expectRule('R9 back dentro de un muro sólido', mutP((D) => { const w = D.plaza.portals.find((p) => p.dist === 'M03'); D.plaza.portals.find((p) => p.dist === 'M08').back = { x: w.x, z: w.z, yaw: 0 }; }), 'R9', /back/);
+  expectRule('R9 back dentro de la boca de un portal abierto', mutP((D) => { const q = D.plaza.portals.find((p) => p.dist === 'M02'); q.back = { x: q.x, z: q.z, yaw: 0 }; }), 'R9', /back/);
+  expectRule('R9 back fuera de los bounds de la plaza', mutP((D) => { D.plaza.portals[0].back.x = 200; }), 'R9', /back/);
+  expectRule('R10 tabla de rangos distinta', mutP((D) => { D.ranks[2][0] = 4; }), 'R10', /rangos/);
+  expectRule('R7 director dentro de la sede', mutP((D) => { D.plaza.director.x = 0; D.plaza.director.z = -14; }), 'R7', /iris/);
+  expectRule('R6 palabra prohibida en el nombre de la directora', mutP((D) => { D.plaza.director.name = 'Hulk'; }), 'R6', /Hulk|prohibida/i);
 
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
