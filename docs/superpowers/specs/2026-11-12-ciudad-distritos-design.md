@@ -282,3 +282,33 @@ Un solo mapa vivo; el anterior se deja a 0 × 0 en `dispose`, y `dispose`/`creat
 
 - Agregado: cambios en `engine.html` (§5.5), escena activa única en `view.js`/`world2d.js` (§6), sprites desde datos (§6), validador genérico que conserva las reglas actuales (§4.3), claves con `hasOwnProperty` (§5.1), `bossPassedOf` tolerante y respaldo `_bak` (§5.1, §5.5), migración sin ambigüedades con `LEGACY_M02_RECT` y precedencia de `d` (§5.2), espejo para pestaña vieja (§5.4), portales con acción explícita, foco, anuncio e `inert` (§2), pistas que no se pierden (§3.3), controles correctos e híbridos (§3.6), ruta con resumen de sesión, repetición, flecha al pad y API `setRoute` (§5.6, §6), fundido sin `transitionend` y sin rAF huérfano (§2, §8), chispas sin listas vacías (§6), celebración desde datos (§4.4–4.5, §5.5), artículos en las etiquetas (§4.2), geometría de M08 (§4.5), HUD en la plaza (§2), `Pauser` dentro de `world2d.js` (§6), lista completa de borrados y guarda ampliada (§7).
 - Corregido en el código durante la revisión: `normalizeCity` no era idempotente con yaw negativos diminutos (`city/story.js`, función `normYaw`; prueba `REG` en `tests/adv/spec_districts_attack.cjs`).
+
+## 13. Cambios de la implementación (rulings y desviaciones)
+
+Decididos durante la ejecución del plan, con lo que cuesta si estaban equivocados.
+
+**Escenas y datos**
+- **Portal y salida:** el disparador es toda su caja (6 × 2 m), no los "2 × 2 m en la boca" de §2: con un portal de 6 m, activar solo 2 m confundía y `back`/`entry` están a 5 m de la caja. Portales y salida son ítems con radio propio (r = 4 m) para el botón "Entrar a…" / "Volver a la plaza" (el texto secundario va en `#city-act .act-sub`); los pads de la ruta usan r = 2,5 m. Coste si se equivoca: ajustar `w`/`d`/`r`.
+- **Guardado:** `at` se acota a `bounds` ± radio (como ya hacía el código). `scene` presente pero desconocida → plaza en su entrada sin usar `at`; `scene` ausente → migración con `LEGACY_M02_RECT`. `city/story.js` es el único código que nombra `M02` (solo para migrar). Coste: perder la posición de un guardado corrupto.
+- **Validación:** `validate.mjs` valida el `CITY_DATA` que viaja en el HTML (cada distrito contra su módulo en `MODULES`, y R9/R10 de la plaza) en vez de importar `m02`/`m08`. Regla estática: `view`, `world2d`, `sprites2d`, `input`, `intro`, `route` y `route_view` no contienen literales `'Mxx'`.
+- **Sprites:** `CitySprites.init(doc)` es idempotente por documento y `setData(D)` por objeto de datos; las variantes salen de `CITY_DATA`. El primer distrito conserva su aspecto anterior; los demás usan el hash del variante completo y desfasan la forma de criatura.
+- **Mundo 2D:** `CityWorld2D` exporta `{ create, Pauser }` (`Pauser` se movió de `three/shared.js`). `setRoute(n)`: la primera llamada solo fija el estado; avanzar exactamente +1 lanza el paquete 800 ms (sin movimiento reducido). Cable en tramos en L. Pads: terminado ✓, activo relleno, siguientes solo contorno.
+- **Vista:** token `c.wtok` por creación de mundo (un `onLost` de un mundo ya liberado no cuenta); el foco al terminar el fundido va a `#city-pause` si estaba en `body`, desconectado u oculto.
+- **M11:** no tiene módulo todavía. Su portal está en la plaza con el muro "Próximamente" y la hoja no ofrece "Ir al módulo". Para sumarlo: su archivo en `city/districts/` y quitar el muro.
+
+**Introducción y ruta**
+- El prólogo se abre solo en `cityStart.ready` si `S.city.prologue` es falso (no en `cityEnter`); "Ir al distrito" sin prólogo pasa por él al llegar. Las pistas cuentan 6 s por tick (sin `setTimeout`), así que se congelan solas con hoja, pausa o fundido.
+- `city/route.js` es una copia de `TripFlow` con `deps.from`. El aviso "Retomarás en la estación N." va a `#city-live`; el resumen sale de la visita (`CD.route`), no del flujo; cerrar la hoja a mitad descarta el flujo y lo recrea con `from = done`, conservando XP y fallos de la visita.
+
+**Borrado del 3D y seguridad**
+- El botón "Viaja como paquete" convivió con "Ir al distrito" hasta la 8b y se quitó junto con todo el 3D. `CITY_DATA` se inyecta con `<` escapado (`\u003c`) y `_headers` ya no permite `blob:`.
+- La regla de `validate.mjs` sobre `esc()`/`fmt()` en `innerHTML` es heurística (por línea); la garantía real es `tests/xss_data.cjs` (cargas `<img onerror>` y `</script>` en nombres, etiquetas, estaciones y celebración; quitar `esc()` hace fallar la prueba).
+
+**Hallazgos del humo en navegador (Chromium, 390×844, 320×640, 1280×800 y movimiento reducido) y su arreglo**
+- La pista (`#city-tip`) quedaba dibujada sobre la hoja abierta y en 320 px tapaba "Cerrar" (el contador estaba congelado, así que no se iba). Ahora `cityInert()` la oculta mientras haya hoja, pausa, aviso de girar o fundido; su texto y su cuenta quedan pendientes y vuelve al cerrar. Prueba: `(c6)–(c10)` de `tests/city_intro.cjs`.
+- En 320 × 640 el HUD medía 161 px (25,2 %, más que el límite del 25 %). Con `@media (max-width:360px)` baja a 125 px (19,5 %).
+- Resultado final del humo: 156 comprobaciones en verde (0 errores de consola, HUD ≤ 25 % del alto, hud/pista/botón de acción sin cruzarse, sin scroll horizontal, hojas dentro de la pantalla, banner "No se pudo abrir Nodo Enlace." con Reintentar al forzar el fallo del mapa).
+
+**Límites conocidos**
+- Una pestaña abierta con el código anterior que guarde después de la nueva conserva M02 (por el espejo plano) pero deja el progreso de M08 en cero.
+- Fuera de lo pedido y anotado para después: `?fps=1` sigue activo en producción; `_headers` sin HSTS/COOP y las fuentes de Google sin SRI; la CSP conserva `'unsafe-inline'` (propuesta: hash del único script); `migrate` no limita el número de claves; `view.js` y `finish()`/`migrate()` son largos.

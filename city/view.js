@@ -343,7 +343,9 @@ function cityRotateCheck() {
 }
 function cityInert() {
   var u = cId('city-ui-main'); if (!u || !CD) return;
-  if (CD.paused || CD.rotate || CD.sheet || CD.fading) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  var busy = CD.paused || CD.rotate || CD.sheet || CD.fading;
+  if (busy) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  var tp = cId('city-tip'); if (tp) tp.hidden = !!busy;   // la pista no tapa hojas ni pausa: se queda pendiente (con su texto y su cuenta) hasta que vuelva la vista libre
   [cId('city-sheet'), cId('city-pausebox')].forEach(function (el) { if (el) { if (CD.rotate) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } });
 }
 

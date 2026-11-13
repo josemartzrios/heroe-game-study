@@ -289,6 +289,7 @@ body.city-on{overflow:hidden}
 #city-pause,#city-run,#city-act{min-height:44px; min-width:44px}
 .city-objrow{flex:1 1 100%; margin:0; display:flex; align-items:center; gap:8px; font-weight:600; background:var(--surface); border-radius:10px; padding:4px 10px; pointer-events:none; width:fit-content; max-width:100%; flex-basis:auto}
 #city-arrow{display:inline-block; transition:transform .1s}
+@media (max-width:360px){.city-hud{gap:6px; padding-bottom:6px} .city-objrow{font-size:.9rem; padding:3px 8px}}   /* teléfono chico: el HUD no pasa del 25 % del alto (320×640) */
 #city-act{position:absolute; right:max(16px, env(safe-area-inset-right)); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 64px)}
 #city-act[hidden]{display:none}
 #city-root.sheet-open #city-act{display:none}
@@ -4435,7 +4436,9 @@ function cityRotateCheck() {
 }
 function cityInert() {
   var u = cId('city-ui-main'); if (!u || !CD) return;
-  if (CD.paused || CD.rotate || CD.sheet || CD.fading) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  var busy = CD.paused || CD.rotate || CD.sheet || CD.fading;
+  if (busy) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  var tp = cId('city-tip'); if (tp) tp.hidden = !!busy;   // la pista no tapa hojas ni pausa: se queda pendiente (con su texto y su cuenta) hasta que vuelva la vista libre
   [cId('city-sheet'), cId('city-pausebox')].forEach(function (el) { if (el) { if (CD.rotate) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } });
 }
 

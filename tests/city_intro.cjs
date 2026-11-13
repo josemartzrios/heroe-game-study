@@ -98,6 +98,19 @@ const TIP = { talk: 'Toca «Hablar con…» o pulsa E para aprender su tema.', c
     api(e).teleport(m1.x + 30, m1.z); api(e).teleport(m1.x, m1.z + 1); for (let i = 0; i < 300; i++) tickW(e, 16);
     ok('(c5) no se repite aunque vuelvas a acercarte ni en 300 cuadros', tip(e) === '');
     e.w.close();
+    // la pista no tapa la hoja ni la pausa (en un teléfono de 320 px cubría "Cerrar"): con una abierta se oculta, sigue pendiente y al cerrar vuelve
+    e = boot({ seed: base({ city: m2city() }) }); await enterCity(e);
+    api(e).teleport(m1.x, m1.z + 1);
+    ok('(c6) con la pista a la vista el elemento no está oculto', tip(e) === TIP.talk && !$(e, '#city-tip').hidden);
+    click(e.w, $(e, '#city-act'));
+    ok('(c7) al abrirse la hoja del mentor la pista se oculta, con su texto pendiente', !$(e, '#city-sheet').hidden && $(e, '#city-tip').hidden && tip(e) === TIP.talk, 'hidden=' + $(e, '#city-tip').hidden);
+    click(e.w, $(e, '#city-sheet [data-c="sheetclose"]'));
+    ok('(c8) al cerrar la hoja la pista vuelve a verse', $(e, '#city-sheet').hidden && !$(e, '#city-tip').hidden && tip(e) === TIP.talk);
+    click(e.w, $(e, '#city-pause'));
+    ok('(c9) con la pausa abierta la pista se oculta', !$(e, '#city-pausebox').hidden && $(e, '#city-tip').hidden);
+    click(e.w, $(e, '#city-pause'));   // el mismo botón cierra la pausa
+    ok('(c10) al salir de la pausa la pista vuelve a verse', $(e, '#city-pausebox').hidden && !$(e, '#city-tip').hidden && tip(e) === TIP.talk);
+    e.w.close();
     e = boot({ seed: base({ topics: six('M02', 23), city: m2city() }) }); await enterCity(e);
     ok('(d) con todas las estrellas la torre queda abierta y sale "tower"', tip(e) === TIP.tower, tip(e));
     api(e).teleport(m1.x, m1.z + 1);
