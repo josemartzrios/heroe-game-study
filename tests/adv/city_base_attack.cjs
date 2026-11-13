@@ -317,7 +317,7 @@ if (!isMainThread) {
   counts.adv++;
   try {
     const clock = { ms: 0 }, tk = async () => { for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0)); };
-    e = boot(fresh({ city: { scene: 'M02', beaten: { bit: todayStr() } } }), { clock, cityWorld: true });   // en M02: la criatura vive ahí
+    e = boot(fresh({ city: { prologue: true, scene: 'M02', beaten: { bit: todayStr() } } }), { clock, cityWorld: true });   // en M02: la criatura vive ahí
     click(e.w, e.d.querySelector('[data-act="city"]')); await tk();
     const A = D0.districts.M02.creatures.find((c) => c.id === 'bit').area, tick = () => e.w.__fakeOpts.tick(16);
     e.w.__CITY_TEST_API__.teleport(A.x, A.z); tick();
