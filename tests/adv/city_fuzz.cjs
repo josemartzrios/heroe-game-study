@@ -31,8 +31,8 @@ function boot(cfg, r, seedState) {
       Object.defineProperty(w.document, 'hidden', { configurable: true, get: () => st.hidden });
       w.matchMedia = () => ({ matches: st.rotate });
       w.__CITY_WORLD__ = {
-        create(canvas, D, o) {
-          st.creates++; st.canvases.push(canvas); let dead = false;
+        create(canvas, D, sceneId, o) {
+          st.creates++; st.scene = sceneId; st.canvases.push(canvas); let dead = false;
           const live = (n) => { if (dead) st.afterDispose.push(n); };
           const api = {
             resize: () => live('resize'), setPaused: () => live('setPaused'), dissolve: () => live('dissolve'),
@@ -59,7 +59,9 @@ async function session(seed) {
   const r = L.rng(seed);
   const cfg = { create: r.pick([['ok'], ['pending'], ['ok', 'pending', 'throw']]), deep: r.bool(0.3) };
   const M = D.districts.M02;
-  const spots = [D.plaza.director, D.plaza.mirror].concat(M.mentors, M.repairs, M.apprentices, M.creatures.map((c) => ({ x: c.area.x, z: c.area.z })), [{ x: M.tower.x, z: M.tower.z + 5.2 }, { x: M.bridge.x, z: M.bridge.z + 6.2 }]);
+  // lugares a los que teletransportarse, por escena (la plaza: Iris, espejo y la boca de cada portal; un distrito: sus lugares, la torre, la salida y los pads de su ruta)
+  const spotsBy = { plaza: [D.plaza.director, D.plaza.mirror].concat(D.plaza.portals.map((p) => ({ x: p.x, z: p.z }))) };
+  Object.keys(D.districts).forEach((k) => { const Q = D.districts[k]; spotsBy[k] = [].concat(Q.mentors, Q.repairs, Q.apprentices, Q.creatures.map((c) => ({ x: c.area.x, z: c.area.z })), [{ x: Q.tower.x, z: Q.tower.z + 5.2 }, { x: Q.exit.x, z: Q.exit.z }], Q.route ? Q.route.pads : []); });
   const six = {}; for (let i = 1; i <= 23; i++) six['M02:T' + String(i).padStart(2, '0')] = [1, 1, 1, 1, 1, 1];
   const seedState = r.bool(0.5) ? { v: 1, xp: r.pick([0, 450, 1000, 2500]), days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: r.bool() ? six : {}, qs: {}, boss: r.bool(0.2) ? { M02: { best: 20, passed: true } } : {}, hero: { name: 'Zed' }, city: { prologue: r.bool(0.7) } } : null;
   const e = boot(cfg, r, seedState), { w, d, st } = e;
@@ -83,7 +85,7 @@ async function session(seed) {
       const p = r(); let ev;
       if (p < 0.2) { const k = r.pick(KEYS); ev = 'key ' + k; w.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true })); if (r.bool(0.5)) w.dispatchEvent(new w.KeyboardEvent('keyup', { key: k, bubbles: true })); }
       else if (p < 0.3) { ev = 'tick'; if (st.opts) { try { st.opts.tick(r.int(0, 80)); st.opts.state(); } catch (x) { viol.push('I9 tick/state lanzó: ' + x.message); } } else ev = 'tick (sin mundo)'; }
-      else if (p < 0.4) { const s = r.pick(spots); ev = 'teleport ' + s.x + ',' + s.z; if (w.__CITY_TEST_API__) w.__CITY_TEST_API__.teleport(s.x + r.pick([0, 0.5, 1.5]), s.z + r.pick([0, 1])); }
+      else if (p < 0.4) { const s = r.pick(spotsBy[st.scene] || spotsBy.plaza); ev = 'teleport ' + s.x + ',' + s.z; if (w.__CITY_TEST_API__) w.__CITY_TEST_API__.teleport(s.x + r.pick([0, 0.5, 1.5]), s.z + r.pick([0, 1])); }
       else if (p < 0.62) {
         const acts = [...d.querySelectorAll('#city-root [data-act], #app [data-act], #city-act')].filter((b) => visible(b) && !b.disabled);
         if (acts.length) { const b = r.pick(acts); ev = 'click ' + (b.dataset.act || b.id) + (b.dataset.c ? ':' + b.dataset.c : ''); L.click(w, b); } else ev = 'click (nada)';
@@ -109,10 +111,10 @@ async function session(seed) {
       if (raw !== null) {
         let o = null; try { o = JSON.parse(raw); } catch (x) { viol.push('I4 localStorage no es JSON ' + at); }
         if (o && o.city) {
-          const c = o.city, B = D.bounds, rad = D.radius;
+          const c = o.city, sc = c.scene === 'plaza' ? D.plaza : D.districts[c.scene], B = sc ? sc.bounds : D.plaza.bounds, rad = D.radius;
           if (c.at !== undefined && !(c.at && Number.isFinite(c.at.x) && Number.isFinite(c.at.z) && c.at.x >= B.minX + rad - 1e-6 && c.at.x <= B.maxX - rad + 1e-6 && c.at.z >= B.minZ + rad - 1e-6 && c.at.z <= B.maxZ - rad + 1e-6)) viol.push('I5 S.city.at fuera de bounds ' + JSON.stringify(c.at) + ' ' + at);
-          const valid = M.apprentices.filter((a) => c.taught && c.taught[a.id] === true).length;
-          if (c.restored && c.restored.M02 && !(o.boss && o.boss.M02 && o.boss.M02.passed === true && valid >= 8)) viol.push('I6 restored.M02 sin jefe aprobado y 8 enseñados ' + at);
+          if (c.d !== undefined) Object.keys(c.restored || {}).forEach((mid) => { const Q = D.districts[mid], valid = Q ? Q.apprentices.filter((a) => c.d && c.d[mid] && c.d[mid].taught[a.id] === true).length : 0; if (!Q || !(o.boss && o.boss[mid] && o.boss[mid].passed === true && valid >= Q.need)) viol.push('I6 restored.' + mid + ' sin jefe aprobado y los aprendices necesarios ' + at); });
+          if (c.d !== undefined && !(c.scene === 'plaza' || D.districts[c.scene])) viol.push('I9 scene inválida ' + String(c.scene) + ' ' + at);
         }
       }
       if (st.afterDispose.length) viol.push('I7 el motor llamó ' + st.afterDispose[0] + '() en un mundo ya liberado ' + at);

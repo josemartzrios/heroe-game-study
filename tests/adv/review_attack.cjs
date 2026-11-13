@@ -182,7 +182,7 @@ function boot(raw, opts = {}) {
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       const q = []; w.requestAnimationFrame = (cb) => { q.push(cb); return q.length; }; w.cancelAnimationFrame = () => { q.length = 0; };
-      if (opts.world) w.__CITY_WORLD__ = { create(canvas, D, o) { st.creates++; st.lastOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter: () => Promise.resolve(), dispose() { st.disposed++; } }); } };
+      if (opts.world) w.__CITY_WORLD__ = { create(canvas, D, sceneId, o) { st.creates++; st.lastOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter: () => Promise.resolve(), dispose() { st.disposed++; } }); } };
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors, st };
@@ -305,14 +305,14 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
   // vía la vista real: zoom en [1,1.75], hero en bounds, sin cajas, velocidad ≤ 14
   console.log('[1b] input → vista real');
   {
-    const e = boot(JSON.stringify({ v: 1, xp: 5000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' }, city: { run: true, prologue: true } }), { world: true });
+    const e = boot(JSON.stringify({ v: 1, xp: 5000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' }, city: { run: true, prologue: true, scene: 'M02', at: { x: D.districts.M02.entry.x, z: D.districts.M02.entry.z, yaw: Math.PI } } }), { world: true });   // los eventos hostiles corren dentro de M02: sus cajas y límites son los de la comprobación
     const clk = { t: 1000 }; try { e.w.performance.now = () => clk.t; } catch (x) {}
     e.d.querySelector('[data-act="city"]').dispatchEvent(new e.w.MouseEvent('click', { bubbles: true })); await tick();
     const root = e.d.getElementById('city-root');
     root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 844, right: 390, bottom: 844, x: 0, y: 0 });
     e.w.Element.prototype.setPointerCapture = function () {}; e.w.Element.prototype.releasePointerCapture = function () {};
     const T = { w: e.w, root, clock: clk, hud: root, inpEl: e.d.body, act: { v: true }, raw: (type, target, props) => { const ev = new e.w.Event(type, { bubbles: true, cancelable: true }); for (const k in props) Object.defineProperty(ev, k, { value: props[k], configurable: true }); target.dispatchEvent(ev); return ev; }, inp: { consumeZoom() {}, consumeAction() {}, consumePause() {}, dispose() {} } };
-    const boxes = CM.boxesFor(D, false), r = D.radius;
+    const boxes = CM.boxesFor(D, 'M02'), r = D.radius;
     let viewBad = null, hs = 0, runs = 0;
     const seqA = fc.array(evA.filter((x) => ['pd', 'pm', 'pu', 'pc', 'wh', 'kd', 'ku'].includes(x.t) && !(x.t === 'kd' && x.k === 'Escape') && !(x.t === 'kd' && x.k === 'e') && !(x.t === 'kd' && x.k === 'E') && !(x.t === 'kd' && x.k === 'Enter')), { minLength: 5, maxLength: 60 });
     prop('vista: tras eventos hostiles zoom∈[1,1.75] finito, héroe en bounds fuera de cajas y velocidad ≤ 14', seqA, (seq) => {
@@ -329,7 +329,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
         const h = s.hero;
         if (![h.x, h.z, h.speed].every(fin)) throw new Error('héroe no finito ' + JSON.stringify(h));
         if (h.speed > 14 + 1e-9) throw new Error('velocidad ' + h.speed);
-        if (h.x < D.bounds.minX + r - 1e-6 || h.x > D.bounds.maxX - r + 1e-6 || h.z < D.bounds.minZ + r - 1e-6 || h.z > D.bounds.maxZ - r + 1e-6) throw new Error('fuera de bounds ' + JSON.stringify(h));
+        if (h.x < D.districts.M02.bounds.minX + r - 1e-6 || h.x > D.districts.M02.bounds.maxX - r + 1e-6 || h.z < D.districts.M02.bounds.minZ + r - 1e-6 || h.z > D.districts.M02.bounds.maxZ - r + 1e-6) throw new Error('fuera de bounds ' + JSON.stringify(h));
         if (['up', 'down', 'left', 'right'].indexOf(h.face) < 0) throw new Error('face=' + h.face);
         for (const b of boxes) { const cx = Math.min(b.maxX, Math.max(b.minX, h.x)), cz = Math.min(b.maxZ, Math.max(b.minZ, h.z)); if (Math.hypot(h.x - cx, h.z - cz) < r - 1e-5) throw new Error('héroe dentro de caja ' + JSON.stringify(h)); }
       }
@@ -349,7 +349,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     { restored: 1, lit: 1e308, stars: JSON.parse('{"__proto__":{"m01":9}}'), repairs: 'r01', beatenToday: 'bit', apprenticesVisible: [] }, { lit: NaN, stars: { m01: NaN, m02: -5, m03: 'x', m04: 1e308 } }, { stars: 7, repairs: 7 }];
   await attack('state() hostil: hero con NaN/Infinity/strings/objetos y zoom raro no lanza, 1 rAF máx, ≤200 partículas', async () => {
     for (const zoom of [NaN, 1e308, -1e308, -3, 0, Infinity, '2', null, undefined, {}, 1.75, 1]) for (const hv of HOST) {
-      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts);
+      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts);
       f.state = { hero: { x: hv, z: hv, face: hv, speed: hv }, zoom, flags: hostFlags[Math.abs(HOST.indexOf(hv)) % hostFlags.length] };
       api.dissolve('bit'); if (!pumpWorld(f, 5)) return 'lanzó con hero=' + (() => { try { return String(hv).slice(0, 20); } catch (e) { return typeof hv; } })() + ' zoom=' + String(zoom) + ': ' + f.threw[0];
       if (f.pend.size > 1 || api.stats().part > 200) return 'rAF pendientes/partículas fuera de rango';
@@ -359,8 +359,8 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
   await attack('state() hostil: flags nulos / __proto__ / tipos erróneos no lanza', async () => {
     for (let i = 0; i < hostFlags.length; i++) {
       for (const restored of [false, true]) {
-        const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts);
-        f.state = { hero: { x: D.districts.M02.bridge.x, z: D.districts.M02.mentors[0].z, face: 'up', speed: 1 }, zoom: 1.5, flags: hostFlags[i] };
+        const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts);
+        f.state = { hero: { x: D.districts.M02.entry.x, z: D.districts.M02.mentors[0].z, face: 'up', speed: 1 }, zoom: 1.5, flags: hostFlags[i] };
         if (!pumpWorld(f, 3)) return 'flags #' + i + ' lanzó: ' + f.threw[0];
         if (hostFlags[i] && typeof hostFlags[i] === 'object') f.state.flags = Object.assign(hostFlags[i], { restored });
         if (!pumpWorld(f, 3)) return 'flags #' + i + ' (restored ' + restored + ') lanzó: ' + f.threw[0];
@@ -370,7 +370,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
   });
   await attack('state() devuelve null/undefined/sin hero/hero primitivo: el bucle sigue vivo sin lanzar', async () => {
     for (const s of [null, undefined, {}, { hero: null }, { hero: 5 }, { hero: 'abc' }, { hero: [] }, { zoom: 1 }]) {
-      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts); f.state = s;
+      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts); f.state = s;
       if (!pumpWorld(f, 4)) return 'lanzó con state=' + JSON.stringify(s) + ': ' + f.threw[0];
       if (f.pend.size !== 1) return 'sin state válido el bucle murió (rAF pend=' + f.pend.size + ') con ' + JSON.stringify(s);
       api.dispose();
@@ -378,14 +378,14 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
   });
   await attack('opts.state lanza una vez: el bucle debe sobrevivir o al menos no dejar rAF colgado/estado corrupto', async () => {
     const f = worldFakes(); SP.init(f.doc); let n = 0; f.opts.state = () => { if (n++ === 2) throw new Error('boom'); return f.state; };
-    const api = await W2.create(f.canvas, D, f.opts); const ok1 = pumpWorld(f, 6);
+    const api = await W2.create(f.canvas, D, 'M02', f.opts); const ok1 = pumpWorld(f, 6);
     if (!ok1 && f.pend.size === 0) return 'tras una excepción en el cuadro (state() lanzó) el mundo queda congelado: sin rAF pendiente hasta que algo llame a resize/setPaused (falta try/catch en loop)';
     api.dispose();
   });
   await attack('resize extremo: 1×1, 100000×1, 1×100000, 0, NaN, negativos y 1e9: canvas del mapa ≤ 4 Mpx y canvas principal dentro de límites de navegador', async () => {
     const sizes = [[1, 1], [100000, 1], [1, 100000], [0, 0], [0, 5], [5, 0], [NaN, NaN], [-5, -5], [1e9, 1e9], [Infinity, 10], [390, 844], [0.4, 0.4]];
     for (const [w, h] of sizes) {
-      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts);
+      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts);
       f.canvas.clientWidth = w; f.canvas.clientHeight = h; api.resize(); if (!pumpWorld(f, 3)) return 'resize ' + w + '×' + h + ' lanzó: ' + f.threw[0];
       if (mapPx(f) > 4e6) return 'canvas del mapa ' + mapPx(f) + ' px';
       const cw = f.canvas.width, ch = f.canvas.height;
@@ -394,7 +394,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     }
   });
   await attack('dispose en mitad de encounter: la promesa resuelve, el timer se limpia y no se agenda nada más', async () => {
-    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts);
+    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts);
     let res = 0; const p = api.encounter('bit').then(() => { res++; }); api.encounter('kernel').then(() => { res++; }); pumpWorld(f, 3);
     api.dispose(); await p; await tick(2);
     const r1 = f.rafCalls; api.encounter('bit').then(() => { res++; }); api.dissolve('bit'); api.resize(); api.setPaused('a', true); api.setPaused('a', false); await tick(2);
@@ -404,24 +404,24 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     if (f.rafCalls !== r1) return 'el timer del encounter agendó cuadros tras dispose';
   });
   await attack('dispose en mitad de dissolve y con cuadros pendientes: cb stale no dibuja ni agenda', async () => {
-    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts); api.dissolve('bit'); pumpWorld(f, 3);
+    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts); api.dissolve('bit'); pumpWorld(f, 3);
     const stale = [...f.pend.values()][0]; api.dispose(); const d0 = f.draws.length, r0 = f.rafCalls;
     if (stale) stale(99999);
     if (f.draws.length !== d0 || f.rafCalls !== r0) return 'cb stale tras dispose dibujó/agendó';
   });
   await attack('onLost durante encounter + dispose reentrante desde onLost no lanza ni deja el listener', async () => {
     const f = worldFakes(); SP.init(f.doc); let api; f.opts.onLost = () => { api.dispose(); api.dispose(); };
-    api = await W2.create(f.canvas, D, f.opts); const p = api.encounter('bit'); f.listeners.contextlost && f.listeners.contextlost({}); await p;
+    api = await W2.create(f.canvas, D, 'M02', f.opts); const p = api.encounter('bit'); f.listeners.contextlost && f.listeners.contextlost({}); await p;
     if (f.listeners.contextlost) return 'listener contextlost sigue';
   });
   await attack('dispose reentrante: opts.tick llama a dispose dentro del cuadro y el cuadro no sigue dibujando', async () => {
-    const f = worldFakes(); SP.init(f.doc); let api; f.opts.tick = () => { api.dispose(); }; api = await W2.create(f.canvas, D, f.opts);
+    const f = worldFakes(); SP.init(f.doc); let api; f.opts.tick = () => { api.dispose(); }; api = await W2.create(f.canvas, D, 'M02', f.opts);
     const d0 = f.draws.length; if (!pumpWorld(f, 2)) return 'lanzó ' + f.threw[0];
     if (f.draws.length !== d0 || f.pend.size) return 'dibujó o agendó tras dispose desde tick';
   });
   await attack('ids hostiles en encounter/dissolve (__proto__, constructor, toString) no rompen la cámara ni las partículas', async () => {
     for (const id of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf', '', undefined, null, 5, {}]) {
-      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts); pumpWorld(f, 2);
+      const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts); pumpWorld(f, 2);
       api.dissolve(id); api.encounter(id); f.draws.length = 0; f.rects.length = 0;
       if (!pumpWorld(f, 3)) return 'id=' + String(id) + ' lanzó: ' + f.threw[0];
       const nanDraw = f.draws.some((d) => d.a.some((v) => typeof v === 'number' && !fin(v))) || f.rects.some((r) => ![r.x, r.y, r.w, r.h].every(fin));
@@ -430,7 +430,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     }
   });
   await attack('timestamps rAF hostiles (NaN, retroceso, Infinity) no corrompen el reloj ni agotan las partículas', async () => {
-    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts);
+    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts);
     for (const ts of [100, 116, NaN, 150, 140, Infinity, 200, 216, -5, 300, 316, 332]) { api.dissolve('bit'); if (!f.pend.size) break; try { f.run(ts); } catch (e) { return 'lanzó con ts=' + ts + ': ' + msgOf(e); } }
     const s0 = api.stats(); f.opts.reducedMotion = true; api.resize();   // se apaga el ambiente (chispas de muros y retos) para contar solo las de disolución
     // si el reloj quedó NaN, las partículas ya no mueren: tras 200 cuadros normales deben haber muerto todas
@@ -440,7 +440,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     api.dispose();
   });
   await attack('dissolve ×5000 + cuadros: nunca >200 partículas ni contador negativo; pool se recupera', async () => {
-    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts); let mx = 0, mn = 0, ts = 0;
+    const f = worldFakes(); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts); let mx = 0, mn = 0, ts = 0;
     for (let i = 0; i < 5000; i++) { api.dissolve(D.districts.M02.creatures[i % 6].id); if (f.pend.size) { ts += 16 + (i % 40); f.run(ts); } const p = api.stats().part; mx = Math.max(mx, p); mn = Math.min(mn, p); }
     for (let i = 0; i < 100 && f.pend.size; i++) { ts += 50; f.run(ts); }
     if (mx > 200 || mn < 0) return 'part max=' + mx + ' min=' + mn;
@@ -448,14 +448,14 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     api.dispose();
   });
   await attack('create dos veces con el mismo canvas y dispose cruzado: sin fuga de listeners ni mapas > 4 Mpx', async () => {
-    const f = worldFakes(); SP.init(f.doc); const a = await W2.create(f.canvas, D, f.opts); const b = await W2.create(f.canvas, D, f.opts);
+    const f = worldFakes(); SP.init(f.doc); const a = await W2.create(f.canvas, D, 'M02', f.opts); const b = await W2.create(f.canvas, D, 'M02', f.opts);
     a.dispose(); const had = !!f.listeners.contextlost; b.dispose();
     if (mapPx(f) > 4e6 && f.maps.some((m) => m.width * m.height > 4e6)) return 'mapa > 4 Mpx';
     if (f.listeners.contextlost) return 'listener contextlost fugado tras dispose de ambos (had=' + had + ')';
   });
   await attack('pixelRatio hostil (NaN, Infinity, 0, negativo, string, 1e9) se limita a [1,1.5]', async () => {
     for (const pr of [NaN, Infinity, -Infinity, 0, -3, '2', 1e9, 0.01, null]) {
-      const f = worldFakes({ opts: { pixelRatio: pr } }); SP.init(f.doc); const api = await W2.create(f.canvas, D, f.opts);
+      const f = worldFakes({ opts: { pixelRatio: pr } }); SP.init(f.doc); const api = await W2.create(f.canvas, D, 'M02', f.opts);
       if (f.canvas.width > 585 + 1 || f.canvas.height > 1266 + 1 || f.canvas.width < 390 - 1) return 'pixelRatio=' + pr + ' → canvas ' + f.canvas.width + '×' + f.canvas.height;
       api.dispose();
     }
@@ -467,7 +467,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     restored: fc.boolean(), ops: fc.array(fc.constantFrom('dis', 'enc', 'res', 'pause', 'resume', 'frame', 'frame', 'frame'), { maxLength: 25 }), reduced: fc.boolean()
   }), (c) => {
     const f = worldFakes({ opts: { reducedMotion: c.reduced } }); SP.init(f.doc); let api; let err = null;
-    return W2.create(f.canvas, D, f.opts).then((a) => {
+    return W2.create(f.canvas, D, 'M02', f.opts).then((a) => {
       api = a; f.state = { hero: c.hero, zoom: c.zoom, flags: { restored: c.restored, lit: 3, stars: {}, repairs: {}, beatenToday: {}, apprenticesVisible: {} } };
       f.canvas.clientWidth = c.cw; f.canvas.clientHeight = c.ch; let ts = 1000;
       for (const op of c.ops) {
@@ -483,9 +483,9 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
 
   // ---------------------------------------------------------------- 3. movimiento
   console.log('[3] movimiento a 14 m/s');
-  const r = D.radius, B = D.bounds, FUZZ_STEPS = Math.round(400000 * SCALE);
+  const r = D.radius, B = D.districts.M02.bounds, FUZZ_STEPS = Math.round(400000 * SCALE);
   const rng = L.rng(SEED);
-  const boxesBy = { false: CM.boxesFor(D, false), true: CM.boxesFor(D, true) };
+  const boxesBy = { false: CM.boxesFor(D, 'M02'), true: CM.boxesFor(D, 'M02') };   // M02 ya no tiene puente: las cajas no dependen de la restauración
   const clearOf = (x, z, boxes, m) => boxes.every((b) => { const cx = Math.min(b.maxX, Math.max(b.minX, x)), cz = Math.min(b.maxZ, Math.max(b.minZ, z)); return Math.hypot(x - cx, z - cz) >= r + (m || 0); });
   const DTS = [0.05, 0.05, 0.05, 0.016, 0.033, 1e-9, 0, -0, 0.05000001, 0.1, 1, 1e6, 1e308, Infinity, -Infinity, NaN, -1, 5e-324, 0.0001, 0.049999];
   const dtOf = () => { const u = rng(); return u < 0.55 ? 0.05 * rng() : u < 0.8 ? 0.05 : DTS[rng.int(0, DTS.length - 1)]; };
@@ -519,52 +519,46 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
   if (viol) note('FUZZ', 'CityMove.step', JSON.stringify(viol, (k, v) => (typeof v === 'number' && !isFinite(v)) ? String(v) : v));
   else console.log('  ok  CityMove.step: ' + steps + ' pasos, héroe nunca sale de bounds ni entra en cajas (' + (Date.now() - t0m) + ' ms)');
 
-  await attack('muros de 2 m (plaza), puente cerrado, torre y sede: empujar 3 s a 14 m/s desde cada lado y 8 direcciones no atraviesa', () => {
-    const targets = [];
-    D.plaza.roads.forEach((rd, k) => targets.push({ n: 'muro ' + k, b: { minX: rd.wall.x - rd.wall.w / 2, maxX: rd.wall.x + rd.wall.w / 2, minZ: rd.wall.z - rd.wall.d / 2, maxZ: rd.wall.z + rd.wall.d / 2 } }));
-    const br = D.districts.M02.bridge, tw = D.districts.M02.tower, hq = D.plaza.hq;
-    targets.push({ n: 'puente', b: { minX: br.x - br.w / 2, maxX: br.x + br.w / 2, minZ: br.z - br.d / 2, maxZ: br.z + br.d / 2 } });
-    targets.push({ n: 'torre', b: { minX: tw.x - tw.w / 2, maxX: tw.x + tw.w / 2, minZ: tw.z - tw.d / 2, maxZ: tw.z + tw.d / 2 } });
-    targets.push({ n: 'sede', b: { minX: hq.x - hq.w / 2, maxX: hq.x + hq.w / 2, minZ: hq.z - hq.d / 2, maxZ: hq.z + hq.d / 2 } });
-    const boxes = boxesBy.false;
-    for (const t of targets) for (let k = 0; k < 16; k++) for (const dt of [0.05, 0.0166, 0.0333, 0.049999]) {
-      const a = k * Math.PI / 8, cxm = (t.b.minX + t.b.maxX) / 2, czm = (t.b.minZ + t.b.maxZ) / 2;
-      // arranca a 3 m del centro en dirección a, apunta al centro con pequeño sesgo (también a 14 m/s con inercia)
-      let x = cxm + Math.cos(a) * ((t.b.maxX - t.b.minX) / 2 + 3), z = czm + Math.sin(a) * ((t.b.maxZ - t.b.minZ) / 2 + 3);
-      x = Math.min(Math.max(x, B.minX + r), B.maxX - r); z = Math.min(Math.max(z, B.minZ + r), B.maxZ - r);
-      if (!clearOf(x, z, boxes, 1e-6)) continue;
-      let s = { x, z, yaw: 0, vx: 0, vz: 0, speed: 0 };
-      for (let i = 0; i < 400; i++) {
-        const dx = cxm - s.x, dz = czm - s.z, m = Math.hypot(dx, dz) || 1;
-        s = CM.step(s, { mx: dx / m, mz: dz / m, run: true }, dt, boxes, { canRun: true, radius: r, safe: s });
-        if (!clearOf(s.x, s.z, boxes, -1e-6)) return t.n + ' atravesado/invadido: ángulo ' + k + ' dt=' + dt + ' pos=' + s.x + ',' + s.z;
+  await attack('muros de 2 m (portales sin distrito), torres y sede: empujar 3 s a 14 m/s desde cada lado y 8 direcciones no atraviesa', () => {
+    const targets = [], bx = (o) => ({ minX: o.x - o.w / 2, maxX: o.x + o.w / 2, minZ: o.z - o.d / 2, maxZ: o.z + o.d / 2 });
+    D.plaza.portals.filter((q) => !D.districts[q.dist]).forEach((q) => targets.push({ n: 'muro ' + q.dist, sc: 'plaza', b: bx(q) }));
+    targets.push({ n: 'sede', sc: 'plaza', b: bx(D.plaza.hq) });
+    Object.keys(D.districts).forEach((k) => targets.push({ n: 'torre ' + k, sc: k, b: bx(D.districts[k].tower) }));
+    for (const t of targets) {
+      const boxes = CM.boxesFor(D, t.sc), SB = CM.scene(D, t.sc).bounds;
+      for (let k = 0; k < 16; k++) for (const dt of [0.05, 0.0166, 0.0333, 0.049999]) {
+        const a = k * Math.PI / 8, cxm = (t.b.minX + t.b.maxX) / 2, czm = (t.b.minZ + t.b.maxZ) / 2;
+        // arranca a 3 m del centro en dirección a, apunta al centro con pequeño sesgo (también a 14 m/s con inercia)
+        let x = cxm + Math.cos(a) * ((t.b.maxX - t.b.minX) / 2 + 3), z = czm + Math.sin(a) * ((t.b.maxZ - t.b.minZ) / 2 + 3);
+        x = Math.min(Math.max(x, SB.minX + r), SB.maxX - r); z = Math.min(Math.max(z, SB.minZ + r), SB.maxZ - r);
+        if (!clearOf(x, z, boxes, 1e-6)) continue;
+        let s = { x, z, yaw: 0, vx: 0, vz: 0, speed: 0 };
+        for (let i = 0; i < 400; i++) {
+          const dx = cxm - s.x, dz = czm - s.z, m = Math.hypot(dx, dz) || 1;
+          s = CM.step(s, { mx: dx / m, mz: dz / m, run: true }, dt, boxes, { canRun: true, radius: r, safe: s });
+          if (!clearOf(s.x, s.z, boxes, -1e-6)) return t.n + ' atravesado/invadido: ángulo ' + k + ' dt=' + dt + ' pos=' + s.x + ',' + s.z;
+        }
       }
     }
   });
-  await attack('puente cerrado: correr 8 s hacia el norte desde la plaza y desde la calle sur del puente no llega al otro lado', () => {
-    const br = D.districts.M02.bridge, boxes = boxesBy.false;
-    let s = { x: br.x, z: br.z + br.d / 2 + 6, yaw: 0, vx: 0, vz: 0, speed: 0 };
-    for (let i = 0; i < 800; i++) s = CM.step(s, { mx: 0, mz: -1, run: true }, 0.05, boxes, { canRun: true, radius: r, safe: s });
-    return s.z < br.z + br.d / 2 - 1e-6 ? 'entró al puente cerrado: z=' + s.z : null;
+  await attack('portal abierto: correr 8 s desde la plaza contra un portal de un distrito que existe no queda atascado ni sale del mundo', () => {
+    const boxes = CM.boxesFor(D, 'plaza'), SB = D.plaza.bounds, p = D.plaza.portals.find((q) => D.districts[q.dist]);
+    let s = { x: p.back.x, z: p.back.z, yaw: 0, vx: 0, vz: 0, speed: 0 };
+    for (let i = 0; i < 160; i++) { const dx = p.x - s.x, dz = p.z - s.z, m = Math.hypot(dx, dz) || 1; s = CM.step(s, { mx: dx / m, mz: dz / m, run: true }, 0.05, boxes, { canRun: true, radius: r, safe: s }); if (s.x < SB.minX || s.x > SB.maxX || s.z < SB.minZ || s.z > SB.maxZ) return 'salió del mundo: ' + s.x + ',' + s.z; }
+    return CM.portalAt(D, 'plaza', s.x, s.z) === p.dist ? null : 'no llegó a la boca del portal ' + p.dist + ' (pos=' + s.x + ',' + s.z + ')';
   });
-  await attack('puente abierto (restored): se puede cruzar pero no salirse por los muros laterales', () => {
-    const br = D.districts.M02.bridge, boxes = boxesBy.true;
-    let s = { x: br.x, z: br.z + br.d / 2 + 6, yaw: 0, vx: 0, vz: 0, speed: 0 }, passed = false;
-    for (let i = 0; i < 400; i++) { s = CM.step(s, { mx: 0.4 * Math.sin(i / 7), mz: -1, run: true }, 0.05, boxes, { canRun: true, radius: r, safe: s }); if (!clearOf(s.x, s.z, boxes, -1e-6)) return 'invade caja en el puente'; if (s.z < br.z - br.d / 2) passed = true; }
-    return passed ? null : 'con el puente restaurado no se puede cruzar (z final=' + s.z + ')';
-  });
-  await attack('puente cerrado → héroe dentro de la caja al restaurar/volver a cerrar: boxesFor(false) con héroe ya dentro (guardado inválido) no lo deja atravesar la torre', () => {
+  await attack('héroe dentro de la caja de la torre (guardado inválido) no sale atravesándola', () => {
     const tw = D.districts.M02.tower, boxes = boxesBy.false;
     let s = { x: tw.x, z: tw.z, yaw: 0, vx: 0, vz: 0, speed: 0 };   // aparece dentro de la torre
     for (let i = 0; i < 200; i++) s = CM.step(s, { mx: 0, mz: 1, run: true }, 0.05, boxes, { canRun: true, radius: r, safe: s });
     return clearOf(s.x, s.z, boxes, -1e-6) ? null : 'un héroe que arranca dentro de una caja sale caminando a través de ella y puede acabar fuera/dentro (pos=' + s.x + ',' + s.z + ')';
   });
-  await attack('CityStory.normalizeCity: at dentro de una caja (torre, muro, puente cerrado) o NaN/string nunca queda dentro de una caja', () => {
-    const tw = D.districts.M02.tower, br = D.districts.M02.bridge, wl = D.plaza.roads[0].wall;
-    for (const at of [{ x: tw.x, z: tw.z }, { x: wl.x, z: wl.z }, { x: br.x, z: br.z }, { x: 1e308, z: -1e308 }, { x: '5', z: '5' }, { x: NaN, z: 1 }, { x: -70, z: 40 }, { x: 0, z: 40, yaw: Infinity }, { x: D.bounds.minX, z: D.bounds.minZ, yaw: 'a' }]) {
-      const C = CS.normalizeCity({ at }, D, false, '2026-11-12');
-      const bx = boxesBy[!!C.restored.M02];
-      if (!fin(C.at.x) || !fin(C.at.z) || !fin(C.at.yaw) || !clearOf(C.at.x, C.at.z, bx, -1e-6)) return 'at=' + JSON.stringify(at) + ' → ' + JSON.stringify(C.at);
+  await attack('CityStory.normalizeCity: at dentro de una caja (torre, muro, boca de portal) o NaN/string nunca queda dentro de una caja ni de un portal', () => {
+    const tw = D.districts.M02.tower, wl = D.plaza.portals.find((q) => !D.districts[q.dist]), pm = D.plaza.portals.find((q) => D.districts[q.dist]);
+    for (const at of [{ x: tw.x, z: tw.z }, { x: wl.x, z: wl.z }, { x: pm.x, z: pm.z }, { x: 1e308, z: -1e308 }, { x: '5', z: '5' }, { x: NaN, z: 1 }, { x: -70, z: 40 }, { x: 0, z: 40, yaw: Infinity }, { x: D.districts.M02.bounds.minX, z: D.districts.M02.bounds.minZ, yaw: 'a' }]) {
+      const C = CS.normalizeCity({ at }, D, () => false, '2026-11-12');
+      const bx = CM.boxesFor(D, C.scene);
+      if (!fin(C.at.x) || !fin(C.at.z) || !fin(C.at.yaw) || !clearOf(C.at.x, C.at.z, bx, -1e-6) || CM.portalAt(D, C.scene, C.at.x, C.at.z) !== null) return 'at=' + JSON.stringify(at) + ' → ' + C.scene + ' ' + JSON.stringify(C.at);
     }
   });
   prop('CityMove.faceOf: siempre una de 4 caras y coherente con el eje dominante (empate → vertical) para cualquier yaw', fc.oneof(fc.double({ noNaN: false }), fc.constantFrom(0, -0, Math.PI, -Math.PI, Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, 1e308, -1e308, 2 * Math.PI, 5e-324), fc.double({ min: -50, max: 50 })), (yaw) => {
@@ -627,7 +621,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
       let items, cfg, expectTotal = 0;
       try {
         if (kind === 'battle' || kind === 'tie') {
-          cfg = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: vid, name: vid }, city: { kind: 'battle', id: vid } };
+          cfg = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: vid, name: vid }, city: { kind: 'battle', id: vid, mid: 'M02' } };
           items = RH.battleItems({ mod: 'M02', topics: VIL[vid], n: kind === 'tie' ? 3 : 8 });
           if (kind === 'tie') { items.pool = []; items = items.slice(0, 3); items.pool = []; }
           expectTotal = items.length + (items.pool ? items.pool.length : 0);
@@ -636,7 +630,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
           cfg = { kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'home' } }; items = qs;
         } else if (kind === 'teach') {
           const qs = w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((x) => x.type === 'error');
-          cfg = { kind: 'error', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01' } }; items = [qs[rnd.int(0, qs.length - 1)]];
+          cfg = { kind: 'error', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01', mid: 'M02' } }; items = [qs[rnd.int(0, qs.length - 1)]];
         } else {
           const qs = w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((x) => x.type === 'mcq');
           cfg = { kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'home' } }; items = rnd.pick([qs.slice(0, 3), qs.slice(0, 12)]);
@@ -709,7 +703,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
   await attack('batalla con jefe aprobado a mitad (Valentía/Liderazgo ganadas durante la ronda): max no cambia a mitad', () => {
     const e = boot(JSON.stringify(baseSave({ xp: 1000, boss: { M01: { best: 3, passed: true } } })), { rnd: 5 }); const w = e.w, d = e.d, RH = w.__CITY_ROUND__;
     const s = saved(w);
-    RH.startRound({ kind: 'battle', title: 'B', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: 'bit' }, city: { kind: 'battle', id: 'bit' } }, RH.battleItems({ mod: 'M02', topics: VIL.bit, n: 8 }));
+    RH.startRound({ kind: 'battle', title: 'B', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: 'bit' }, city: { kind: 'battle', id: 'bit', mid: 'M02' } }, RH.battleItems({ mod: 'M02', topics: VIL.bit, n: 8 }));
     const m0 = enMax(d); answerOne(w, d, false, { bool: () => false, pick: (a) => a[0] }); const m1 = enMax(d); w.close();
     return (m0 !== 3 || m1 !== 3) ? 'max ' + m0 + '→' + m1 + ' (valentia previa=' + !!(s && s.virtues && s.virtues.valentia) + ')' : null;
   });
@@ -717,7 +711,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     const e = boot(JSON.stringify(baseSave()), { rnd: 9 }); const w = e.w, d = e.d, RH = w.__CITY_ROUND__;
     const qs = RH.battleItems({ mod: 'M02', topics: VIL.bit, n: 8 });
     RH.startRound({ kind: 'battle', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: '<img src=x onerror=alert(1)>' } }, []);   // vacío: ignorado
-    RH.startRound({ kind: 'battle', mid: 'M02', back: { name: 'home' }, villain: { id: 'bit', name: '<img src=x onerror=alert(1)>' }, city: { kind: 'battle', id: '__proto__' } }, qs);
+    RH.startRound({ kind: 'battle', mid: 'M02', back: { name: 'home' }, villain: { id: 'bit', name: '<img src=x onerror=alert(1)>' }, city: { kind: 'battle', id: '__proto__', mid: 'M02' } }, qs);
     const inj = d.querySelector('img[src="x"]');
     for (let i = 0; i < 12 && !gtitle(d); i++) { answerOne(w, d, true, { bool: () => false, pick: (a) => a[0] }); const nb = d.querySelector('#nextbtn'); if (nb) L.click(w, nb); }
     const polluted = w.eval('({}).bit !== undefined || Object.prototype.hasOwnProperty.call(Object.prototype, "bit")');
@@ -751,7 +745,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     if (s.hero.name.length > 20) return label + ': nombre de ' + s.hero.name.length + ' > 20';
     const pol = w.eval('["polluted","polluted2","polluted3","polluted4","name","at","restored","x","beaten"].filter(function(k){return ({})[k]!==undefined || Object.prototype.hasOwnProperty.call(Object.prototype,k)})');
     if (pol.length) return label + ': contaminación de prototipo ' + pol.join();
-    const c = s.city, B = D.bounds;
+    const c = s.city, B = (c && c.scene === 'plaza') ? D.plaza.bounds : (D.districts[c && c.scene] || D.districts.M02).bounds;
     if (!c || typeof c !== 'object') return label + ': city ausente';
     if (!(fin(c.at && c.at.x) && fin(c.at.z) && fin(c.at.yaw)) || c.at.x < B.minX + r - 1e-6 || c.at.x > B.maxX - r + 1e-6 || c.at.z < B.minZ + r - 1e-6 || c.at.z > B.maxZ - r + 1e-6) return label + ': city.at inválido ' + JSON.stringify(c.at);
     const bx = boxesBy[c.restored && c.restored.M02 === true];
@@ -759,7 +753,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     if (c.restored && c.restored.M02 && !(s.boss && s.boss.M02 && s.boss.M02.passed === true)) return label + ': restored.M02 sin jefe aprobado (se confió en el guardado)';
     for (const k of ['beaten', 'repairs', 'taught', 'restored', 'powers']) if (!c[k] || typeof c[k] !== 'object' || Array.isArray(c[k]) || Object.getPrototypeOf(c[k]) !== w.Object.prototype && Object.getPrototypeOf(c[k]) !== Object.prototype) return label + ': city.' + k + ' no es objeto plano';
     for (const k in c.beaten) if (!/^\d{4}-\d{2}-\d{2}$/.test(c.beaten[k]) || !D.districts.M02.creatures.some((x) => x.id === k)) return label + ': beaten sucio ' + k + '=' + c.beaten[k];
-    for (const k of ['run', 'prologue', 'bridgeSeen']) if (typeof c[k] !== 'boolean') return label + ': city.' + k + ' no booleano';
+    for (const k of ['run', 'prologue']) if (typeof c[k] !== 'boolean') return label + ': city.' + k + ' no booleano';
     if (e.errors.length) return label + ': error de consola ' + e.errors[0];
     if (d.querySelector('img[src="x"]') || d.querySelector('script:not([src]):not([type])') && /alert\(1\)/.test(d.body.innerHTML.replace(/&lt;[^]*?&gt;/g, ''))) return label + ': HTML inyectado desde el nombre';
     return null;

@@ -38,7 +38,7 @@ function boot(raw, opts = {}) {
       w.__CITY_TEST__ = true;
       w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
       w.__TRIP_IMPORT__ = () => Promise.resolve({ THREE_FAKE: true });
-      w.__CITY_WORLD__ = { create(canvas, D, o) { w.__fakeOpts = o; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
+      w.__CITY_WORLD__ = { create(canvas, D, sceneId, o) { w.__fakeOpts = o; w.__fakeScene = sceneId; return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       w.requestAnimationFrame = () => 1; w.cancelAnimationFrame = () => {};
@@ -53,14 +53,15 @@ const SLOTS = ['skin', 'suit', 'head', 'eyes', 'emblem', 'cape', 'hand'];
 /* fuerza un save() del motor: reparación de 2 preguntas, respondo la primera */
 function forceSave(w, d) {
   const R = w.__CITY_ROUND__;
-  R.startRound({ kind: 'repair', title: 'R', mid: 'M02', back: { name: 'home' }, city: { kind: 'repair', id: 'r09' } }, R.repairItems('M02', 'T15'));
+  R.startRound({ kind: 'repair', title: 'R', mid: 'M02', back: { name: 'home' }, city: { kind: 'repair', id: 'r09', mid: 'M02' } }, R.repairItems('M02', 'T15'));
   const o = d.querySelector('.opt:not([disabled])'); if (o) L.click(w, o);
   const rn = d.querySelector('[data-act="regenno"]'); if (rn) L.click(w, rn);
 }
 
 (async () => {
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const D = (await import(path.join(ROOT, 'city', 'districts.mjs'))).city;
-  const B = D.bounds, RAD = D.radius;
+  const B = D.districts.M02.bounds, RAD = D.radius;   // los ataques de movimiento corren dentro de M02; los de la plaza usan sus propios límites
   try {
     // ================= A) inventario de lectores =================
     {
@@ -150,21 +151,26 @@ function forceSave(w, d) {
 
     // ================= C) guardados hostiles en city =================
     const today = (w) => { const x = new w.Date(), p = (n) => String(n).padStart(2, '0'); return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()); };
-    const validAt = (at, restored) => !!at && CityMove.isNum(at.x) && CityMove.isNum(at.z) && CityMove.isNum(at.yaw) &&
-      at.x >= B.minX + RAD - 1e-9 && at.x <= B.maxX - RAD + 1e-9 && at.z >= B.minZ + RAD - 1e-9 && at.z <= B.maxZ - RAD + 1e-9 &&
-      !CityMove.boxesFor(D, restored).some((b) => { const cx = Math.min(b.maxX, Math.max(b.minX, at.x)), cz = Math.min(b.maxZ, Math.max(b.minZ, at.z)); return (at.x - cx) ** 2 + (at.z - cz) ** 2 < (RAD - 1e-6) ** 2; });
+    const validAt = (at, sceneId) => { const sc = CityMove.scene(D, sceneId); if (!sc || !at || !CityMove.isNum(at.x) || !CityMove.isNum(at.z) || !CityMove.isNum(at.yaw)) return false;
+      const Bs = sc.bounds;
+      return at.x >= Bs.minX + RAD - 1e-9 && at.x <= Bs.maxX - RAD + 1e-9 && at.z >= Bs.minZ + RAD - 1e-9 && at.z <= Bs.maxZ - RAD + 1e-9 &&
+        CityMove.portalAt(D, sceneId, at.x, at.z) === null &&
+        !CityMove.boxesFor(D, sceneId).some((b) => { const cx = Math.min(b.maxX, Math.max(b.minX, at.x)), cz = Math.min(b.maxZ, Math.max(b.minZ, at.z)); return (at.x - cx) ** 2 + (at.z - cz) ** 2 < (RAD - 1e-6) ** 2; }); };
     const M = D.districts.M02, idsOf = (l) => l.map((x) => x.id);
     const cityOk = (c, tdy, bossPassed) => {
       const bad = [];
       if (!c || typeof c !== 'object') return ['city ausente'];
-      Object.keys(c.beaten || {}).forEach((k) => { if (!idsOf(M.creatures).includes(k)) bad.push('beaten id basura ' + k); else if (!/^\d{4}-\d{2}-\d{2}$/.test(c.beaten[k]) || c.beaten[k] > tdy) bad.push('beaten fecha ' + c.beaten[k]); });
-      Object.keys(c.repairs || {}).forEach((k) => { if (!idsOf(M.repairs).includes(k) || c.repairs[k] !== true) bad.push('repairs ' + k + '=' + c.repairs[k]); });
-      Object.keys(c.taught || {}).forEach((k) => { if (!idsOf(M.apprentices).includes(k) || c.taught[k] !== true) bad.push('taught ' + k + '=' + c.taught[k]); });
-      const cond = !!bossPassed && Object.keys(c.taught || {}).length >= M.need;
+      const dm = c.d && c.d.M02; if (!dm) return ['d.M02 ausente'];
+      Object.keys(dm.beaten || {}).forEach((k) => { if (!idsOf(M.creatures).includes(k)) bad.push('beaten id basura ' + k); else if (!/^\d{4}-\d{2}-\d{2}$/.test(dm.beaten[k]) || dm.beaten[k] > tdy) bad.push('beaten fecha ' + dm.beaten[k]); });
+      Object.keys(dm.repairs || {}).forEach((k) => { if (!idsOf(M.repairs).includes(k) || dm.repairs[k] !== true) bad.push('repairs ' + k + '=' + dm.repairs[k]); });
+      Object.keys(dm.taught || {}).forEach((k) => { if (!idsOf(M.apprentices).includes(k) || dm.taught[k] !== true) bad.push('taught ' + k + '=' + dm.taught[k]); });
+      const cond = !!bossPassed && Object.keys(dm.taught || {}).length >= M.need;
       if (!!(c.restored && c.restored.M02) !== cond) bad.push('restored falsificado');
       if (!!(c.powers && c.powers.planos) !== cond) bad.push('powers falsificado');
-      ['prologue', 'run', 'bridgeSeen'].forEach((k) => { if (typeof c[k] !== 'boolean') bad.push(k + ' no booleano'); });
-      if (!validAt(c.at, cond)) bad.push('at inválido ' + JSON.stringify(c.at));
+      ['prologue', 'run'].forEach((k) => { if (typeof c[k] !== 'boolean') bad.push(k + ' no booleano'); });
+      if ('bridgeSeen' in c) bad.push('bridgeSeen sigue en el guardado');
+      if (!(c.scene === 'plaza' || own(D.districts, c.scene))) bad.push('scene inválida ' + String(c.scene));
+      else if (!validAt(c.at, c.scene)) bad.push('at inválido ' + JSON.stringify(c.at) + ' en ' + c.scene);
       return bad;
     };
     const cityCases = [
@@ -172,8 +178,8 @@ function forceSave(w, d) {
       ['at enormes', { at: { x: 1e308, z: -1e308, yaw: 1e308 } }],
       // ATAQUE: at como cadenas numéricas, arrays, null
       ['at cadenas', { at: { x: '5', z: '5', yaw: '1' } }], ['at array', { at: [0, 8, 0] }], ['at null', { at: null }],
-      // ATAQUE: at dentro de un edificio / dentro de la torre / sobre el puente cerrado
-      ['at en la torre', { at: { x: M.tower.x, z: M.tower.z, yaw: 0 } }], ['at en el puente cerrado', { at: { x: M.bridge.x, z: M.bridge.z, yaw: 0 } }],
+      // ATAQUE: at dentro de un edificio / dentro de la torre / en la boca de un portal
+      ['at en la torre', { at: { x: M.tower.x, z: M.tower.z, yaw: 0 } }], ['at en el portal de M02', { at: { x: D.plaza.portals.find((q) => q.dist === 'M02').x, z: D.plaza.portals.find((q) => q.dist === 'M02').z, yaw: 0 } }],
       ['at en la sede', { at: { x: D.plaza.hq.x, z: D.plaza.hq.z, yaw: 0 } }],
       // ATAQUE: yaw -0, subnormal, negativo enorme
       ['at yaw raros', { at: { x: 0, z: 8, yaw: -1e-320 } }], ['at yaw -1e300', { at: { x: 0, z: 8, yaw: -1e300 } }],
@@ -201,7 +207,7 @@ function forceSave(w, d) {
         hs.push(st && st.hero);
         // ATAQUE: dt hostiles en el bucle de la vista
         for (const dt of [NaN, -5, Infinity, 1e9, 0, 16, -0, 1e-300]) { try { o.tick(dt); st = o.state(); hs.push(st && st.hero); } catch (x) { bad.push('tick(' + dt + ') lanzó ' + x.message); } }
-        const validHero = (h) => !!h && validAt({ x: h.x, z: h.z, yaw: 0 }, false) && ['up', 'down', 'left', 'right'].includes(h.face) && CityMove.isNum(h.speed);
+        const validHero = (h) => !!h && validAt({ x: h.x, z: h.z, yaw: 0 }, w.__fakeScene) && ['up', 'down', 'left', 'right'].includes(h.face) && CityMove.isNum(h.speed);
         if (hs.some((h) => !validHero(h))) bad.push('héroe inválido en la vista ' + JSON.stringify(hs.find((h) => !validHero(h))));
       }
       forceSave(w, d);
@@ -268,7 +274,7 @@ function forceSave(w, d) {
         const seed = SEED + k * 7919 + vlabel.length;
         const r = L.rng(seed);
         const vil = r.pick(VIL);
-        w.__CITY_ROUND__.startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'home' }, villain: { id: vil.id, name: vil.name }, city: { kind: 'battle', id: vil.id } },
+        w.__CITY_ROUND__.startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'home' }, villain: { id: vil.id, name: vil.name }, city: { kind: 'battle', id: vil.id, mid: 'M02' } },
           w.__CITY_ROUND__.battleItems({ mod: 'M02', topics: vil.topics, n: 8 }));
         battleRuns++;
         let prev = hudOf(d), last = prev, n = 0, guard = 0, bad = '';
@@ -314,7 +320,7 @@ function forceSave(w, d) {
     {
       const e = boot(JSON.stringify(base())); const { w, d } = e;
       const it = w.__CITY_ROUND__.battleItems({ mod: 'M02', topics: ['T01'], n: 2 }); it.pool = [];
-      w.__CITY_ROUND__.startRound({ kind: 'battle', title: 'B', mid: 'M02', back: { name: 'home' }, villain: { id: 'bit', name: 'Bit' }, city: { kind: 'battle', id: 'bit' } }, it);
+      w.__CITY_ROUND__.startRound({ kind: 'battle', title: 'B', mid: 'M02', back: { name: 'home' }, villain: { id: 'bit', name: 'Bit' }, city: { kind: 'battle', id: 'bit', mid: 'M02' } }, it);
       for (let i = 0; i < 2; i++) { const q = L.findQ(w, d); L.click(w, L.optBtn(d, L.correctText(q))); L.click(w, d.querySelector('#nextbtn')); }
       const h = hudOf(d);
       // con el pool agotado y vida y energía: "Empate" (no victoria ni derrota)
@@ -330,7 +336,7 @@ function forceSave(w, d) {
 
     // ================= E) movimiento relativo a pantalla (camYaw = 0) =================
     {
-      const boxesF = CityMove.boxesFor(D, false), boxesT = CityMove.boxesFor(D, true);
+      const boxesF = CityMove.boxesFor(D, 'M02'), boxesT = boxesF;   // M02 ya no tiene puente: las cajas no dependen de la restauración
       const inside = (x, z, boxes) => boxes.some((b) => { const cx = Math.min(b.maxX, Math.max(b.minX, x)), cz = Math.min(b.maxZ, Math.max(b.minZ, z)); return (x - cx) ** 2 + (z - cz) ** 2 < (RAD - 1e-6) ** 2; });
       const inBounds = (x, z) => x >= B.minX + RAD - 1e-6 && x <= B.maxX - RAD + 1e-6 && z >= B.minZ + RAD - 1e-6 && z <= B.maxZ - RAD + 1e-6;
       const hostileNum = [NaN, Infinity, -Infinity, 1e308, -1e308, -0, 5, -5, 1e-320, undefined, null, '1', [1], {}, true];
@@ -384,13 +390,14 @@ function forceSave(w, d) {
 
       // E4 ATAQUE: velocidad máxima de carrera hacia una pared delgada (muros de la plaza, d = 2) en todos los ángulos: sin túnel
       let tunnel = null;
-      for (const rd of D.plaza.roads) {
-        const wl = rd.wall;
+      const boxesP = CityMove.boxesFor(D, 'plaza'), PB = D.plaza.bounds, inBP = (x, z) => x >= PB.minX + RAD - 1e-6 && x <= PB.maxX - RAD + 1e-6 && z >= PB.minZ + RAD - 1e-6 && z <= PB.maxZ - RAD + 1e-6;
+      for (const rd of D.plaza.portals.filter((q) => !D.districts[q.dist])) {
+        const wl = rd;
         for (let a = 0; a < 360 && !tunnel; a += 3) {
           const ang = a * Math.PI / 180, sx = wl.x - Math.cos(ang) * 4, sz = wl.z - Math.sin(ang) * 4;
-          if (!inBounds(sx, sz) || inside(sx, sz, boxesF)) continue;
+          if (!inBP(sx, sz) || inside(sx, sz, boxesP)) continue;
           let s = { x: sx, z: sz, yaw: 0, vx: Math.cos(ang) * 7, vz: Math.sin(ang) * 7, speed: 7 };
-          for (let i = 0; i < 80; i++) { s = CityMove.step(s, { mx: Math.cos(ang), mz: Math.sin(ang), run: true }, 0.05, boxesF, { canRun: true, radius: RAD, safe: s }); if (inside(s.x, s.z, boxesF)) { tunnel = rd.dist + ' ang ' + a + ' ' + JSON.stringify(s); break; } }
+          for (let i = 0; i < 80; i++) { s = CityMove.step(s, { mx: Math.cos(ang), mz: Math.sin(ang), run: true }, 0.05, boxesP, { canRun: true, radius: RAD, safe: s }); if (inside(s.x, s.z, boxesP)) { tunnel = rd.dist + ' ang ' + a + ' ' + JSON.stringify(s); break; } }
         }
       }
       ok('E4 carrera contra los muros delgados de la plaza en 120 ángulos: sin túnel', !tunnel, tunnel);
