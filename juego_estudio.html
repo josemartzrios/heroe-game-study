@@ -2835,6 +2835,85 @@ var CityInput = (function () {
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
 
+/* CityRoute: máquina de estados de la ruta del paquete de un distrito. Sin DOM: se puede probar con require.
+   deps = { stations, questionsByTopic, prep, rnd?, from?, onStation, onAsk, onResult, onLayer, onSummary }; from = estación en la que se retoma (entero 0..n-1; otro valor → 0). */
+var CityRoute = (function () {
+  function create(deps) {
+    var stations = deps.stations, byTopic = deps.questionsByTopic, rnd = deps.rnd || Math.random;
+    var from = (typeof deps.from === 'number' && isFinite(deps.from) && Math.floor(deps.from) === deps.from && deps.from >= 0 && deps.from < stations.length) ? deps.from : 0;
+    var s = { phase: 'idle', station: from, decision: 0, attempt: 0, item: null, lastOk: null, consec: 0, xp: 0, fails: [] };
+    var used = {}, perStation = [], i;
+    for (i = 0; i < stations.length; i++) perStation.push({ ok: 0, total: 0 });
+
+    function idx(n) { return Math.min(n - 1, Math.floor(rnd() * n)); }   // rnd() = 1 no se sale del arreglo
+    function pick(topic, avoidId) {
+      var all = byTopic[topic] || [];
+      if (!all.length) {   // tema sin preguntas: otro tema de la estación y, si no, cualquiera del banco
+        var alt = stations[s.station].topics.concat(Object.keys(byTopic)), k;
+        for (k = 0; k < alt.length && !all.length; k++) all = byTopic[alt[k]] || [];
+      }
+      if (!all.length) return null;
+      var fresh = all.filter(function (q) { return !used[q.id] && q.id !== avoidId; });
+      var pool = fresh.length ? fresh : all.filter(function (q) { return q.id !== avoidId; });
+      if (!pool.length) pool = all;
+      return pool[idx(pool.length)];
+    }
+    function present(topic, avoidId) {
+      var q = pick(topic, avoidId);
+      if (!q) { s.item = null; s.lastOk = true; s.phase = 'result'; next(); return; }   // sin preguntas: la decisión se omite
+      used[q.id] = true;
+      s.item = deps.prep(q);
+      s.phase = 'ask';
+      deps.onAsk(s.item);
+    }
+    function nextTopic() {
+      var t = stations[s.station].topics;
+      return t[idx(t.length)];
+    }
+    function start() {
+      if (s.phase !== 'idle') return;
+      s.phase = 'arrive';
+      deps.onStation(s.station);
+    }
+    function ask() {
+      if (s.phase !== 'arrive') return;
+      present(nextTopic(), null);
+    }
+    function answer(k) {
+      if (s.phase !== 'ask') return;
+      var q = s.item.q, ok = k === s.item.correct;
+      s.consec = ok ? s.consec + 1 : 0;
+      s.lastOk = ok;
+      if (!ok && !s.fails.some(function (f) { return f.id === q.id; })) s.fails.push(q);
+      var ps = perStation[s.station]; ps.total++; if (ok) ps.ok++;
+      s.phase = 'result';
+      var g = Number(deps.onResult({ q: q, ok: ok, consec: s.consec }));
+      s.xp += isFinite(g) ? g : 0;
+    }
+    function next() {
+      if (s.phase !== 'result') return;
+      if (!s.lastOk && s.attempt === 0) { s.attempt = 1; present(s.item.q.topic, s.item.q.id); return; }
+      s.attempt = 0; s.decision++;
+      if (s.decision < stations[s.station].ask) { present(nextTopic(), null); return; }
+      deps.onLayer(stations[s.station].layers);
+      s.decision = 0;
+      if (s.station === stations.length - 1) {
+        s.phase = 'summary';
+        deps.onSummary({ xp: s.xp, fails: s.fails.slice(), perStation: perStation.map(function (p) { return { ok: p.ok, total: p.total }; }) });
+        return;
+      }
+      s.station++; s.phase = 'arrive';
+      deps.onStation(s.station);
+    }
+    function state() {
+      return { phase: s.phase, station: s.station, decision: s.decision, attempt: s.attempt, item: s.item ? { q: s.item.q, labels: s.item.labels.slice(), correct: s.item.correct } : null, lastOk: s.lastOk, consec: s.consec, xp: s.xp, fails: s.fails.slice() };
+    }
+    return { start: start, ask: ask, answer: answer, next: next, state: state };
+  }
+  return { create: create };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = CityRoute;
+
   
   function fresh() {
     return {
@@ -4459,6 +4538,7 @@ function cityBase() {
   M.repairs.forEach(function (r) { out.push({ id: r.id, kind: 'repair', name: r.label, label: 'Reparar ' + r.label, x: r.x, z: r.z, topic: r.topic }); });
   M.apprentices.forEach(function (a) { out.push({ id: a.id, kind: 'apprentice', name: a.name, label: 'Enseñar a ' + a.name, x: a.x, z: a.z, topic: a.topic, mode: a.mode }); });
   d = CityMove.door(M.tower); out.push({ id: M.tower.id, kind: 'tower', name: 'Torre', label: 'Entrar a la torre', x: d.x, z: d.z });
+  if (M.route) M.route.pads.forEach(function (p, i) { out.push({ id: 'pad' + i, kind: 'pad', idx: i, name: 'Estación ' + (i + 1), label: 'Estación ' + (i + 1), sub: '', x: p.x, z: p.z, r: 2.5 }); });
   out.push({ id: 'exit', kind: 'exit', name: 'Plaza', label: 'Volver a la plaza', x: M.exit.x, z: M.exit.z, r: 4 });
   return out;
 }
@@ -4483,6 +4563,11 @@ function cityBuildItems() {
   var avail = cityApprenticeIds(), sc = CD.scene, dd = sc === 'plaza' ? null : cityD(sc);
   return CD.base.filter(function (o) {
     if (o.kind === 'portal') { o.sub = cityPortalSub(o.dist); return true; }
+    if (o.kind === 'pad') {   // solo el pad activo (o el primero, para repetir la ruta completa) es interactivo
+      var sts = CD.sc.route.stations, rd = cityRouteDone();
+      if (rd < sts.length) { if (o.idx !== rd) return false; o.label = 'Estación ' + (rd + 1) + ' de ' + sts.length; o.sub = sts[rd].name; return true; }
+      if (o.idx !== 0) return false; o.label = 'Recorrer otra vez'; o.sub = 'Ruta del paquete completa'; return true;
+    }
     if (o.kind === 'creature') return !beatenToday(sc, o.id);
     if (o.kind === 'repair') return !(dd && dd.repairs[o.id] === true);
     if (o.kind === 'apprentice') return !!avail[o.id];
@@ -4493,6 +4578,7 @@ function cityBuildItems() {
 function cityRefresh() {
   if (!CD) return;
   CD.flags = cityFlags(); CD.items = cityBuildItems(); CD.day = today(); CD.dayT = Date.now();
+  if (CD.world && CD.sc.route && typeof CD.world.setRoute === 'function') CD.world.setRoute(cityRouteDone());   // pads y cable de la ruta (la 1.ª vez sin animar)
   cityHud(true); cityUpdateNear(true);
   cityTipsCheck('tower'); cityTipsCheck('plaza');
 }
@@ -4565,7 +4651,7 @@ function cityHtml() {
   var run = levelOf(S.xp) >= 5 ? '<button class="btn sm" id="city-run" data-act="cx" data-c="run" aria-pressed="' + (S.city.run ? 'true' : 'false') + '">Correr</button>' : '';
   return '<canvas id="city-cv" aria-hidden="true"></canvas><div id="city-joy" aria-hidden="true"><i class="jbase"></i><i class="jknob"></i></div>' +
     '<div id="city-ui-main"><div class="city-hud"><button class="btn sm" id="city-pause" data-act="cx" data-c="pause">Pausa</button>' +
-    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run +
+    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span><span class="pill" id="city-layers" hidden></span>' + run +
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden><span class="act-main"></span><span class="act-sub" hidden></span></button></div>' +
@@ -4603,7 +4689,7 @@ function cityFallback(kind) {
 /* Estado de la vista para una escena: su objeto, sus cajas, el héroe en `at` y los cachés vacíos */
 function citySetScene(c, id, at) {
   c.scene = id; c.sc = CityMove.scene(CITY_DATA, id); c.boxes = CityMove.boxesFor(CITY_DATA, id);
-  c.base = null; c.items = null; c.flags = null; c.teach = null; c.nearId = null; c.obj = null; c.objTarget = null; c.lastAng = -1; c.joyKey = '';
+  c.base = null; c.items = null; c.flags = null; c.teach = null; c.route = null; c.nearId = null; c.obj = null; c.objTarget = null; c.lastAng = -1; c.joyKey = '';
   c.hero = { x: at.x, z: at.z, yaw: at.yaw, vx: 0, vz: 0, speed: 0 }; c.safe = { x: at.x, z: at.z, yaw: at.yaw }; c.savedAt = { x: at.x, z: at.z };
   c.face = CityMove.faceOf(at.yaw);
 }
@@ -4756,6 +4842,7 @@ function cityHud(force) {
   set('city-xp', nf(S.xp) + ' XP · Nv ' + info.lv);
   var rn = cityRestoredN();
   set('city-rest', CD.scene === 'plaza' ? 'Distritos ' + rn.done + ' de ' + rn.total : CD.sc.name + ' ' + CityStory.restoration(S.city, CITY_DATA, CD.scene, bossPassedOf(CD.scene)) + ' %');
+  cityRouteHud();
   cityObjUpdate(force);
 }
 function cityObjUpdate(force) {
@@ -4889,12 +4976,14 @@ function cityOpenSheet(html, focusSel, forId) {
 }
 function cityCloseSheet(quiet) {
   if (!CD) return;
+  var resume = cityRouteAbort();   // una estación a medias no cuenta: aviso para retomarla
   var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
   CD.sheet = false; CD.sheetFor = null;
   cityRootEl().classList.remove('sheet-open'); cityInert();
   if (CD.world && !quiet) CD.world.setPaused('sheet', false);
   if (quiet) return;
   cityRefresh(); cityAnnounce();
+  if (resume) { var lv = cId('city-live'); if (lv) lv.textContent = resume; }
   cityFlush();
   var a = cId('city-act'); cFocus(a && !a.hidden ? a : cId('city-pause'));
 }
@@ -5032,6 +5121,8 @@ function cityOpen(o) {
     cityTower(o);
   } else if (o.kind === 'portal') {
     cityPortal(o);
+  } else if (o.kind === 'pad') {
+    cityRoutePad(o);
   } else if (o.kind === 'exit') {
     cityEnter('plaza', cityArrival('plaza', CD.scene));
   } else if (o.kind === 'creature') {
@@ -5127,6 +5218,11 @@ function cityAct(c, b) {
   else if (c === 'pro-next') cityIntroOpen(parseInt(b.dataset.i, 10));
   else if (c === 'pro-skip' || c === 'pro-end') cityIntroDone();
   else if (c === 'tip-close') cityTipClose();
+  else if (c === 'route-ask') { if (CD && CD.route && CD.route.flow && CD.route.active) CD.route.flow.ask(); }
+  else if (c === 'ropt') cityRouteAnswer(parseInt(b.dataset.k, 10));
+  else if (c === 'route-next') { if (CD && CD.route && CD.route.flow && CD.route.active) CD.route.flow.next(); }
+  else if (c === 'route-replay') cityRouteReplay();
+  else if (c === 'route-reset') cityRouteReset();
   else if (c === 'kp') cityTeachPick(parseInt(b.dataset.i, 10));
   else if (c === 'teach-go') cityTeachGo();
   else if (c === 'retry-teach') { if (CD && CD.teach) cityTeachExplain(CD.teach.o, true); }
@@ -5266,6 +5362,134 @@ function cityTipsCheck(reason) {
   } else if (reason === 'plaza') {
     if (CD.scene === 'plaza' && cityRestoredN().done > 0) cityTip('portals');
   }
+}
+
+/* Ruta del paquete de un distrito en la vista (se inserta DENTRO de la IIFE del motor, después de intro.js): hojas de cada estación (punto clave,
+   pregunta, resultado), XP y guardado por respuesta, resumen de la visita, "Recorrer otra vez" y el HUD de capas. La lógica de estados es CityRoute
+   (city/route.js); el progreso se guarda en S.city.d[mid].route.done. Usa S, CD, cId, cFocus, cityD, cityOpenSheet, citySheetHtml, citySheetLabel,
+   cityCloseSheet, cityReleaseUi, mod, prep, touch, xpBase, xpWithPassive, recordAnswer, checkVirtues, save, startRound, shuffle, KIND_LABEL, esc y fmt. ES5.
+   Los textos de datos van a innerHTML solo con esc()/fmt(); #city-live y la pill de capas, con textContent. */
+var CITY_ROUTE_LAYERS = ['Datos', 'Puerto', 'IP', 'Trama'];
+
+function cityRouteStations() { return (CD && CD.sc && CD.sc.route) ? CD.sc.route.stations : null; }
+function cityRouteDone() { var d = (CD && CD.scene !== 'plaza') ? cityD(CD.scene) : null; return (d && d.route) ? d.route.done : 0; }
+/* Cambia el contenido de la hoja abierta (o la abre si no hay una) */
+function citySheetSet(html, focusSel) {
+  var sh = cId('city-sheet');
+  if (CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); sh.scrollTop = 0; cFocus(sh.querySelector(focusSel) || sh.querySelector('button')); }
+  else cityOpenSheet(html, focusSel, 'route');
+}
+/* HUD: capas del modelo alcanzadas (las de la última estación terminada); se deducen de done, así que sobreviven a recargar */
+function cityRouteHud() {
+  var el = cId('city-layers'); if (!el) return;
+  var sts = cityRouteStations(), done = sts ? cityRouteDone() : 0, n = (done > 0 && sts[done - 1]) ? sts[done - 1].layers : 0;
+  var txt = n ? 'Capas: ' + CITY_ROUTE_LAYERS.slice(0, n).join(' · ') : '';
+  if (el.textContent !== txt) el.textContent = txt;
+  el.hidden = !txt;
+}
+/* El pad que se tocó: el activo abre su estación; con la ruta completa, el primero ofrece repetirla; cualquier otro no hace nada */
+function cityRoutePad(o) {
+  var sts = cityRouteStations(); if (!sts) return;
+  var n = sts.length, done = cityRouteDone();
+  if (done >= n) {
+    if (o.idx !== 0) return;
+    cityOpenSheet(citySheetHtml('Ruta del paquete', 'Ruta completa', '<p>' + esc('Ya recorriste las ' + n + ' estaciones. ¿Quieres recorrerla otra vez?') + '</p>', '<button class="btn primary" data-act="cx" data-c="route-reset">Recorrer otra vez</button>'), '[data-c="route-reset"]', o.id);
+    return;
+  }
+  if (o.idx !== done) return;
+  var R = CD.route || (CD.route = { flow: null, active: false, starting: false, xp: 0, fails: [], per: [] });
+  if (!R.flow) R.flow = cityRouteMakeFlow(done);
+  R.active = true;
+  if (R.flow.state().phase === 'idle') { R.starting = true; R.flow.start(); R.starting = false; }   // start() → onStation(done) abre la hoja
+  else cityRouteOpen(done);
+}
+function cityRouteMakeFlow(from) {
+  return CityRoute.create({
+    stations: CD.sc.route.stations, questionsByTopic: mod(CD.scene).byTopic, prep: prep, rnd: Math.random, from: from,
+    onStation: cityRouteOnStation, onAsk: cityRouteAsk, onResult: cityRouteRecord, onLayer: cityRouteOnLayer, onSummary: cityRouteOnSummary
+  });
+}
+function cityRouteOnStation(i) {
+  var R = CD && CD.route; if (!R) return;
+  if (R.starting) { cityRouteOpen(i); return; }
+  cityCloseSheet();   // terminó una estación: el flujo espera en "arrive" a que se toque el pad siguiente
+  var lv = cId('city-live'); if (lv && R.msg) lv.textContent = R.msg;
+}
+function cityRouteOpen(i) {
+  var sts = cityRouteStations(), st = sts[i], kp = st.kp[0];
+  citySheetSet('<article class="qcard"><div class="chips"><span class="chip">' + esc('Estación ' + (i + 1) + ' de ' + sts.length + ' · ' + st.name) + '</span></div><h2 class="prompt">' + esc(st.name) + '</h2>' +
+    '<p>' + fmt(mod(CD.scene).tById[kp.topic].keyPoints[kp.index]) + '</p><div class="actions"><button class="btn primary" data-act="cx" data-c="route-ask">Ver pregunta</button><button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>', '[data-c="route-ask"]');
+}
+function cityRouteOpts(item, picked) {
+  return '<div class="opts" role="group" aria-label="Opciones de respuesta">' + item.labels.map(function (l, i) {
+    var cls = 'opt' + (picked === null ? '' : (i === item.correct ? ' ok' : (i === picked ? ' bad' : ' dim')));
+    return '<button class="' + cls + '" data-act="cx" data-c="ropt" data-k="' + i + '"' + (picked === null ? '' : ' disabled') + '><span class="key mono"><b class="kn">' + (i + 1) + '</b>' +
+      ((picked !== null && i === item.correct) ? '<i class="mark" aria-hidden="true">✓</i><i class="sronly">respuesta correcta</i>' : ((picked !== null && i === picked) ? '<i class="mark" aria-hidden="true">✗</i><i class="sronly">tu respuesta</i>' : '')) + '</span><span>' + fmt(l) + '</span></button>';
+  }).join('') + '</div>';
+}
+function cityRouteAsk(item) {
+  citySheetSet('<article class="qcard"><div class="chips"><span class="chip">' + esc(KIND_LABEL[item.q.type]) + '</span></div><h2 class="prompt">' + fmt(item.q.prompt) + '</h2>' + cityRouteOpts(item, null) +
+    '<div class="actions"><button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>', '.opt');
+}
+function cityRouteAnswer(k) {
+  var R = CD && CD.route; if (!R || !R.flow || !R.active || R.flow.state().phase !== 'ask') return;
+  R.flow.answer(k);
+  var s = R.flow.state(), item = s.item, q = item.q, good = s.lastOk;
+  citySheetSet('<article class="qcard"><div class="chips"><span class="chip">' + esc(KIND_LABEL[q.type]) + '</span></div><h2 class="prompt">' + fmt(q.prompt) + '</h2>' + cityRouteOpts(item, k) +
+    '<div class="fb ' + (good ? 'good' : 'bad') + '" role="status"><strong><span class="fbt">' + (good ? 'Correcto' : 'Paquete perdido: retransmitiendo') + '</span></strong>' +
+    (good ? '' : '<p>Respuesta correcta: <b>' + fmt(item.labels[item.correct]) + '</b></p>') + '<p>' + fmt(q.explanation) + '</p></div>' +
+    '<div class="actions"><button class="btn primary" data-act="cx" data-c="route-next">Continuar</button></div></article>', '[data-c="route-next"]');
+}
+/* XP y registro de cada respuesta (igual que el viaje anterior) y acumulado de la visita para el resumen */
+function cityRouteRecord(r) {
+  touch();
+  var base = r.ok ? xpBase(r.q, r.consec) : 0, gain = xpWithPassive(base);
+  recordAnswer(r.q, r.ok, false, gain);
+  checkVirtues(); save();
+  var R = CD && CD.route;
+  if (R && R.flow) {
+    var i = R.flow.state().station, p = R.per[i] || (R.per[i] = { ok: 0, total: 0 });
+    R.xp += gain; p.total++; if (r.ok) p.ok++;
+    else if (!R.fails.some(function (f) { return f.id === r.q.id; })) R.fails.push(r.q);
+  }
+  return gain;
+}
+/* Terminó una estación: se guarda el avance, se enciende el tramo y se anuncia (la hoja se cierra en onStation o se reemplaza por el resumen) */
+function cityRouteOnLayer() {
+  var R = CD.route, sts = cityRouteStations(), i = R.flow.state().station, d = cityD(CD.scene).route;
+  if (i + 1 > d.done) d.done = i + 1;
+  save();
+  R.active = false;
+  if (CD.world && typeof CD.world.setRoute === 'function') CD.world.setRoute(d.done);
+  R.msg = 'Estación ' + (i + 1) + ' completada.' + (sts[i + 1] ? ' Siguiente: ' + sts[i + 1].name + '.' : '') + (sts[i].layers ? ' Capas: ' + CITY_ROUTE_LAYERS.slice(0, sts[i].layers).join(' · ') + '.' : '');
+  cityRouteHud();
+}
+function cityRouteOnSummary() {
+  var R = CD.route, sts = cityRouteStations();
+  var rows = sts.map(function (st, i) { var p = R.per[i]; return p ? '<li>' + esc(st.name + ': ' + p.ok + ' de ' + p.total) + '</li>' : ''; }).join('');
+  citySheetSet('<article class="qcard"><div class="chips"><span class="chip">Resumen de la ruta</span></div><h2 class="prompt">Llegaste al servidor</h2><ul>' + rows + '</ul><p>' + esc('XP ganada: ') + '<b>' + R.xp + '</b></p>' +
+    '<div class="actions"><button class="btn primary" data-act="cx" data-c="sheetclose">Terminar</button>' + (R.fails.length ? '<button class="btn" data-act="cx" data-c="route-replay">Repasar lo que fallé</button>' : '') + '</div></article>', '[data-c="sheetclose"]');
+}
+/* Se cerró la hoja a mitad de una estación: no cuenta, se descarta el flujo y se retoma desde done. Devuelve el aviso (o '' si no había nada a medias). */
+function cityRouteAbort() {
+  var R = CD && CD.route;
+  if (!R || !R.active) return '';
+  R.active = false; R.flow = null;
+  return 'Retomarás en la estación ' + (cityRouteDone() + 1) + '.';
+}
+function cityRouteReplay() {
+  var R = CD && CD.route; if (!R || !R.fails.length) return;
+  var fails = shuffle(R.fails.slice());
+  cityReleaseUi();
+  startRound({ kind: 'replay', title: 'Repaso de fallos', mid: CD.scene, back: { name: 'city' } }, fails);
+}
+/* Recorrer otra vez: done vuelve a 0; XP, historial y criaturas vencidas no se tocan */
+function cityRouteReset() {
+  var d = CD && CD.scene !== 'plaza' ? cityD(CD.scene) : null;
+  if (!d || !d.route || d.route.done < (cityRouteStations() || []).length) return;
+  d.route.done = 0; CD.route = null; save();
+  if (CD.world && typeof CD.world.setRoute === 'function') CD.world.setRoute(0);
+  cityCloseSheet();
 }
 
   

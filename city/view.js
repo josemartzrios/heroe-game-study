@@ -52,6 +52,7 @@ function cityBase() {
   M.repairs.forEach(function (r) { out.push({ id: r.id, kind: 'repair', name: r.label, label: 'Reparar ' + r.label, x: r.x, z: r.z, topic: r.topic }); });
   M.apprentices.forEach(function (a) { out.push({ id: a.id, kind: 'apprentice', name: a.name, label: 'Enseñar a ' + a.name, x: a.x, z: a.z, topic: a.topic, mode: a.mode }); });
   d = CityMove.door(M.tower); out.push({ id: M.tower.id, kind: 'tower', name: 'Torre', label: 'Entrar a la torre', x: d.x, z: d.z });
+  if (M.route) M.route.pads.forEach(function (p, i) { out.push({ id: 'pad' + i, kind: 'pad', idx: i, name: 'Estación ' + (i + 1), label: 'Estación ' + (i + 1), sub: '', x: p.x, z: p.z, r: 2.5 }); });
   out.push({ id: 'exit', kind: 'exit', name: 'Plaza', label: 'Volver a la plaza', x: M.exit.x, z: M.exit.z, r: 4 });
   return out;
 }
@@ -76,6 +77,11 @@ function cityBuildItems() {
   var avail = cityApprenticeIds(), sc = CD.scene, dd = sc === 'plaza' ? null : cityD(sc);
   return CD.base.filter(function (o) {
     if (o.kind === 'portal') { o.sub = cityPortalSub(o.dist); return true; }
+    if (o.kind === 'pad') {   // solo el pad activo (o el primero, para repetir la ruta completa) es interactivo
+      var sts = CD.sc.route.stations, rd = cityRouteDone();
+      if (rd < sts.length) { if (o.idx !== rd) return false; o.label = 'Estación ' + (rd + 1) + ' de ' + sts.length; o.sub = sts[rd].name; return true; }
+      if (o.idx !== 0) return false; o.label = 'Recorrer otra vez'; o.sub = 'Ruta del paquete completa'; return true;
+    }
     if (o.kind === 'creature') return !beatenToday(sc, o.id);
     if (o.kind === 'repair') return !(dd && dd.repairs[o.id] === true);
     if (o.kind === 'apprentice') return !!avail[o.id];
@@ -86,6 +92,7 @@ function cityBuildItems() {
 function cityRefresh() {
   if (!CD) return;
   CD.flags = cityFlags(); CD.items = cityBuildItems(); CD.day = today(); CD.dayT = Date.now();
+  if (CD.world && CD.sc.route && typeof CD.world.setRoute === 'function') CD.world.setRoute(cityRouteDone());   // pads y cable de la ruta (la 1.ª vez sin animar)
   cityHud(true); cityUpdateNear(true);
   cityTipsCheck('tower'); cityTipsCheck('plaza');
 }
@@ -158,7 +165,7 @@ function cityHtml() {
   var run = levelOf(S.xp) >= 5 ? '<button class="btn sm" id="city-run" data-act="cx" data-c="run" aria-pressed="' + (S.city.run ? 'true' : 'false') + '">Correr</button>' : '';
   return '<canvas id="city-cv" aria-hidden="true"></canvas><div id="city-joy" aria-hidden="true"><i class="jbase"></i><i class="jknob"></i></div>' +
     '<div id="city-ui-main"><div class="city-hud"><button class="btn sm" id="city-pause" data-act="cx" data-c="pause">Pausa</button>' +
-    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run +
+    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span><span class="pill" id="city-layers" hidden></span>' + run +
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden><span class="act-main"></span><span class="act-sub" hidden></span></button></div>' +
@@ -196,7 +203,7 @@ function cityFallback(kind) {
 /* Estado de la vista para una escena: su objeto, sus cajas, el héroe en `at` y los cachés vacíos */
 function citySetScene(c, id, at) {
   c.scene = id; c.sc = CityMove.scene(CITY_DATA, id); c.boxes = CityMove.boxesFor(CITY_DATA, id);
-  c.base = null; c.items = null; c.flags = null; c.teach = null; c.nearId = null; c.obj = null; c.objTarget = null; c.lastAng = -1; c.joyKey = '';
+  c.base = null; c.items = null; c.flags = null; c.teach = null; c.route = null; c.nearId = null; c.obj = null; c.objTarget = null; c.lastAng = -1; c.joyKey = '';
   c.hero = { x: at.x, z: at.z, yaw: at.yaw, vx: 0, vz: 0, speed: 0 }; c.safe = { x: at.x, z: at.z, yaw: at.yaw }; c.savedAt = { x: at.x, z: at.z };
   c.face = CityMove.faceOf(at.yaw);
 }
@@ -349,6 +356,7 @@ function cityHud(force) {
   set('city-xp', nf(S.xp) + ' XP · Nv ' + info.lv);
   var rn = cityRestoredN();
   set('city-rest', CD.scene === 'plaza' ? 'Distritos ' + rn.done + ' de ' + rn.total : CD.sc.name + ' ' + CityStory.restoration(S.city, CITY_DATA, CD.scene, bossPassedOf(CD.scene)) + ' %');
+  cityRouteHud();
   cityObjUpdate(force);
 }
 function cityObjUpdate(force) {
@@ -482,12 +490,14 @@ function cityOpenSheet(html, focusSel, forId) {
 }
 function cityCloseSheet(quiet) {
   if (!CD) return;
+  var resume = cityRouteAbort();   // una estación a medias no cuenta: aviso para retomarla
   var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
   CD.sheet = false; CD.sheetFor = null;
   cityRootEl().classList.remove('sheet-open'); cityInert();
   if (CD.world && !quiet) CD.world.setPaused('sheet', false);
   if (quiet) return;
   cityRefresh(); cityAnnounce();
+  if (resume) { var lv = cId('city-live'); if (lv) lv.textContent = resume; }
   cityFlush();
   var a = cId('city-act'); cFocus(a && !a.hidden ? a : cId('city-pause'));
 }
@@ -625,6 +635,8 @@ function cityOpen(o) {
     cityTower(o);
   } else if (o.kind === 'portal') {
     cityPortal(o);
+  } else if (o.kind === 'pad') {
+    cityRoutePad(o);
   } else if (o.kind === 'exit') {
     cityEnter('plaza', cityArrival('plaza', CD.scene));
   } else if (o.kind === 'creature') {
@@ -720,6 +732,11 @@ function cityAct(c, b) {
   else if (c === 'pro-next') cityIntroOpen(parseInt(b.dataset.i, 10));
   else if (c === 'pro-skip' || c === 'pro-end') cityIntroDone();
   else if (c === 'tip-close') cityTipClose();
+  else if (c === 'route-ask') { if (CD && CD.route && CD.route.flow && CD.route.active) CD.route.flow.ask(); }
+  else if (c === 'ropt') cityRouteAnswer(parseInt(b.dataset.k, 10));
+  else if (c === 'route-next') { if (CD && CD.route && CD.route.flow && CD.route.active) CD.route.flow.next(); }
+  else if (c === 'route-replay') cityRouteReplay();
+  else if (c === 'route-reset') cityRouteReset();
   else if (c === 'kp') cityTeachPick(parseInt(b.dataset.i, 10));
   else if (c === 'teach-go') cityTeachGo();
   else if (c === 'retry-teach') { if (CD && CD.teach) cityTeachExplain(CD.teach.o, true); }

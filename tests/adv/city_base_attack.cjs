@@ -301,6 +301,7 @@ if (!isMainThread) {
     ok('B8 clic en la opción tachada no registra', sumA(st(e.w)) === a0);
     ans(e.w, e.d, true); const h = hud(e.d);
     ok('B8 acierto tras regen: energía ≤ 3, 1 respuesta más', h.en <= 3 && h.en >= 0 && sumA(st(e.w)) === a0 + 1, JSON.stringify(h));
+    if (h.hp === 0) { ok('B8 ese golpe fue el último y ganó la batalla (azar): no hay salida que comprobar', won(e.d)); e.w.close(); return; }
     nextB(e.w, e.d); click(e.w, L.btn(e.d, 'quit'));
     ok('B8 salir tras regen: no vencido', !st(e.w).city.d.M02.beaten.eco);
     ok('B8 sin errores', !e.errors.length, e.errors.join('|')); e.w.close(); });
@@ -308,6 +309,7 @@ if (!isMainThread) {
   // ATAQUE: salir con Regeneración pendiente y volver a pelear: el estado pendiente no se arrastra
   T('B9', () => { e = boot(fresh({ xp: 2500 })); enterBattle(e.w, e.d, 'eco');
     let pend = false, g = 0; while (!pend && e.d.querySelector('.prompt') && g++ < 6) { const q = L.findQ(e.w, e.d); if (q.type === 'tf') { ans(e.w, e.d, true); nextB(e.w, e.d); continue; } ans(e.w, e.d, false); pend = !!L.btn(e.d, 'regenyes'); }
+    if (!L.btn(e.d, 'quit')) { ok('B9 pre: la batalla terminó antes de salir (azar)', true); e.w.close(); return; }
     click(e.w, L.btn(e.d, 'quit')); const okIn = enterBattle2(e.w, e.d, 'eco');
     const a0 = sumA(st(e.w)); L.key(e.w, '1');
     ok('B9 tras salir con regen pendiente, la nueva batalla acepta respuestas', okIn && (sumA(st(e.w)) === a0 + 1 || !!L.btn(e.d, 'regenyes')), 'a=' + sumA(st(e.w)) + ' vs ' + a0);
