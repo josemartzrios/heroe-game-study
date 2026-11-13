@@ -1,7 +1,7 @@
 /* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, dirección del héroe, cercanos y distribución de edificios.
    Sin DOM. Vista desde arriba: el movimiento es relativo a la pantalla (mz = -1 va a -z, arriba) y yaw 0 mira hacia -z. */
 var CityMove = (function () {
-  var WALK = 7, RUN = 11, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
+  var WALK = 10, RUN = 14, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
 
   function isNum(v) { return typeof v === 'number' && isFinite(v); }
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }

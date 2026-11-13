@@ -115,7 +115,7 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
     }
     ok('step S1: ' + cases + ' casos con cajas separadas — sin NaN, penetración ni túnel', bNan === 0 && bPen === 0 && bTun === 0, `nan=${bNan} pen=${bPen} túnel=${bTun}`); }
 
-  ok('velocidades: caminar ≥ 6 m/s (≈ 48 px/s a zoom 1) y correr > caminar, ambas ≤ 12', CM.WALK >= 6 && CM.RUN > CM.WALK && CM.RUN <= 12, CM.WALK + ' / ' + CM.RUN);
+  ok('velocidades: caminar ≥ 9 m/s (≈ 72 px/s a zoom 1), correr > caminar y ≤ 15 m/s (a 50 ms por paso no cruza un muro de 0.05 m más el radio)', CM.WALK >= 9 && CM.RUN > CM.WALK && CM.RUN <= 15, CM.WALK + ' / ' + CM.RUN);
   // ---- cámara 2D: sin brazo de cámara y con faceOf ----
   ok('cameraArm ya no existe', CM.cameraArm === undefined);
   { const f = CM.faceOf, PI = Math.PI;
