@@ -1,5 +1,5 @@
 // Datos de "Ciudad Núcleo" (solo datos): plaza, distrito del Taller Comunal (M02), rangos y villanos de M01 guardados.
-// Las posiciones salen de calles del distrito (nunca dentro de una manzana de edificios) con separación >= 6 m.
+// Las posiciones salen de calles del distrito (nunca dentro de una manzana de edificios) con separación >= 7 m.
 
 // ---- calles del distrito M02 ----
 const BLOCK_X = [-42, -14, 14, 42], BLOCK_Z = [-66, -94, -122, -150];       // centros de manzana (20 x 20)
@@ -55,6 +55,7 @@ export const city = {
     r: 30, hq: { x: 0, z: -14, w: 14, d: 10, h: 9 },
     director: { id: 'iris', name: 'Iris', x: -6, z: -4 }, mirror: { id: 'espejo', name: 'Espejo', x: 6, z: -4 }, roads
   },
+  streets: { x: STREET_X, z: STREET_Z },
   districts: {
     M02: {
       name: 'Taller Comunal', seed: 7, rect: { minX: -60, maxX: 60, minZ: -185, maxZ: -50 },

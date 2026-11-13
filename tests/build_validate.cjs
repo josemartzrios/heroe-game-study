@@ -110,6 +110,10 @@ for (const id of ['avatarSvg', 'PARTS', 'fixLook', 'setLook', 'mergeBoxes', 'cam
 { const i = html0.indexOf('function cityStart('), j = html0.indexOf('function citySuspend(');
   const r = validate(html0.slice(0, i) + 'function cityStart() { loadThree(); }\n' + html0.slice(j));
   ok('v-guard: llamar a loadThree dentro de la ciudad falla', r.status === 1 && /loadThree/.test(r.out), r.out.slice(-160)); }
+for (const g of ['__TRIP_IMPORT__', '__TRIP_SCENE__']) {
+  const r = validate(html0 + '<script>var x = window.' + g + '; x && x();</script>');
+  ok('v-guard ganchos del viaje: leer ' + g + ' sin exigir __CITY_TEST__ === true falla', r.status === 1 && r.out.indexOf(g) >= 0, r.out.slice(-160));
+}
 { const h = fs.readFileSync(path.join(root, '_headers'), 'utf8');
   ok('_headers: img-src \'none\' y blob: se conserva en script-src (lo usa el viaje)', /img-src 'none'/.test(h) && /script-src[^;]*blob:/.test(h), h.slice(0, 200)); }
 

@@ -86,6 +86,22 @@ function setup(over = {}) {
   t.ptr('pointercancel', t.root, 200, 300, 2); t.ptr('pointermove', t.root, 400, 300, 3); ok('z pointercancel de un dedo del pellizco: el otro no hace nada', t.inp.consumeZoom().factor === 1); t.inp.dispose(); }
 { const t = setup(); t.ptr('pointerdown', t.d.getElementById('hud'), 250, 300, 1); t.ptr('pointerdown', t.root, 300, 300, 2); t.ptr('pointermove', t.root, 400, 300, 2); t.ptr('pointermove', t.root, 150, 300, 1);
   ok('z un pellizco que empieza sobre un botón no hace nada', t.inp.consumeZoom().factor === 1); t.inp.dispose(); }
+// (b) blur / pestaña oculta: nada se queda pegado
+{ const t = setup(); t.key('keydown', 'w'); t.key('keydown', 'Shift', { shiftKey: true });
+  ok('b teclas pulsadas caminan', t.inp.intent().mag === 1);
+  t.w.dispatchEvent(new t.w.Event('blur'));
+  ok('b window blur suelta todas las teclas (el héroe no sigue caminando solo)', t.inp.intent().mag === 0 && t.inp.intent().run === false);
+  t.ptr('pointerdown', t.root, 100, 500, 1); t.ptr('pointermove', t.root, 156, 500, 1); ok('b palanca activa', t.inp.joy().on === true);
+  t.w.dispatchEvent(new t.w.Event('blur')); ok('b window blur suelta la palanca', t.inp.joy().on === false && t.inp.intent().mag === 0);
+  t.ptr('pointerdown', t.root, 250, 300, 5); t.ptr('pointerdown', t.root, 350, 300, 6); t.ptr('pointermove', t.root, 200, 300, 5); t.inp.consumeZoom();
+  Object.defineProperty(t.d, 'hidden', { configurable: true, get: () => true }); t.d.dispatchEvent(new t.w.Event('visibilitychange'));
+  t.ptr('pointermove', t.root, 150, 300, 5); t.ptr('pointermove', t.root, 390, 300, 6);
+  ok('b con la pestaña oculta el pellizco se cancela (los movimientos siguientes no cambian el zoom)', t.inp.consumeZoom().factor === 1);
+  t.inp.dispose(); }
+{ const t = setup(); t.ptr('pointerdown', t.root, 250, 300, 5); t.ptr('pointerdown', t.root, 350, 300, 6);
+  const ev = new t.w.Event('pointermove', { bubbles: true }); Object.defineProperty(ev, 'pointerId', { value: 5 }); Object.defineProperty(ev, 'clientX', { value: NaN }); Object.defineProperty(ev, 'clientY', { value: 300 });
+  t.root.dispatchEvent(ev); const z = t.inp.consumeZoom();
+  ok('b un clientX NaN en el pellizco no produce un factor NaN (queda en [0.5, 2])', Number.isFinite(z.factor) && z.factor >= 0.5 && z.factor <= 2, JSON.stringify(z)); t.inp.dispose(); }
 // (r) rueda
 { const t = setup(); t.clock.t = 1000; const ev = t.wheel(-100);
   ok('r rueda hacia arriba → steps 1 y preventDefault', t.inp.consumeZoom().steps === 1 && ev.defaultPrevented === true);

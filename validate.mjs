@@ -38,6 +38,10 @@ if (process.argv[2]) { const oldLen = (await import('fs')).readFileSync(process.
     const re = new RegExp('window\\.' + g + '\\s*=(?!=)', 'g'); let m;
     while ((m = re.exec(eng))) if (!/__CITY_TEST__ === true/.test(eng.slice(Math.max(0, m.index - 300), m.index))) bad('Gancho de prueba sin proteger (' + g + '): debe asignarse solo con window.__CITY_TEST__ === true');
   }
+  for (const g of ['__TRIP_IMPORT__', '__TRIP_SCENE__']) {   // los ganchos del viaje solo se leen junto a la comprobación __CITY_TEST__ === true
+    const re = new RegExp('window\\.' + g, 'g'); let m;
+    while ((m = re.exec(eng))) if (!/__CITY_TEST__ === true/.test(eng.slice(m.index, m.index + 200))) bad('Gancho del viaje sin proteger (' + g + '): debe leerse solo con window.__CITY_TEST__ === true');
+  }
   const ci = eng.indexOf('function cityStart('), cj = eng.indexOf('function citySuspend(');
   if (ci >= 0 && cj > ci && /loadThree/.test(eng.slice(ci, cj))) bad('La ciudad no debe llamar a loadThree');
 }

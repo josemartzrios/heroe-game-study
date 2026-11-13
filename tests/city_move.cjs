@@ -40,7 +40,7 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
     for (const b of L1) {
       const blk = M2.blocks.find(([cx, cz]) => Math.abs(b.x - cx) <= 10 && Math.abs(b.z - cz) <= 10);
       if (!blk || b.x - b.w / 2 < blk[0] - 10 + 0.4 || b.x + b.w / 2 > blk[0] + 10 - 0.4 || b.z - b.d / 2 < blk[1] - 10 + 0.4 || b.z + b.d / 2 > blk[1] + 10 - 0.4) outside++;
-      if (b.w < 5 || b.w > 9 || b.d < 5 || b.d > 9 || b.h < 4 || b.h > 14 || !(b.color >= 0 && b.color <= 5)) badSize++;
+      if (b.w < 5 || b.w > 9 || b.d < 5 || b.d > 9 || b.h < 4 || b.h > 14) badSize++;
     }
     ok('layoutBuildings: cada edificio queda dentro de su manzana y con tamaños del spec', outside === 0 && badSize === 0, `fuera=${outside} tamaño=${badSize}`); }
 
@@ -118,6 +118,8 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
   ok('velocidades: caminar ≥ 9 m/s (≈ 72 px/s a zoom 1), correr > caminar y ≤ 15 m/s (a 50 ms por paso no cruza un muro de 0.05 m más el radio)', CM.WALK >= 9 && CM.RUN > CM.WALK && CM.RUN <= 15, CM.WALK + ' / ' + CM.RUN);
   // ---- cámara 2D: sin brazo de cámara y con faceOf ----
   ok('cameraArm ya no existe', CM.cameraArm === undefined);
+  ok('nearest se retiró (la vista busca el lugar más cercano por su cuenta)', CM.nearest === undefined);
+  ok('layoutBuildings devuelve el índice de manzana y ya no un color sin uso', CM.layoutBuildings(D.districts.M02).every((b) => Number.isInteger(b.block) && b.block >= 0 && b.block < 16 && !('color' in b)));
   { const f = CM.faceOf, PI = Math.PI;
     ok('faceOf: yaw 0 → up, π → down, π/2 → left, -π/2 → right', f(0) === 'up' && f(PI) === 'down' && f(PI / 2) === 'left' && f(-PI / 2) === 'right');
     ok('faceOf: en el empate a 45° gana el eje vertical', f(PI / 4) === 'up' && f(-PI / 4) === 'up' && f(3 * PI / 4) === 'down' && f(-3 * PI / 4) === 'down');
@@ -128,7 +130,6 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
 
   // ---- nearest / within ----
   { const items = [{ id: 'a', x: 3, z: 0 }, { id: 'b', x: 1, z: 0 }, { id: 'c', x: 0, z: 10 }];
-    ok('nearest devuelve el más cercano dentro de maxDist', CM.nearest({ x: 0, z: 0 }, items, 2.2).id === 'b' && CM.nearest({ x: 0, z: 0 }, items, 0.5) === null);
     ok('within ordena por distancia y filtra', JSON.stringify(CM.within({ x: 0, z: 0 }, items, 5).map((i) => i.id)) === '["b","a"]'); }
 
   results.forEach((r) => console.log(r.join(' | ')));

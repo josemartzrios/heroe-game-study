@@ -9,7 +9,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   const M = D.districts.M02;
 
   function fakes(over = {}) {
-    const f = { pend: new Map(), nextId: 1, maxPend: 0, rafCalls: 0, listeners: {}, bad: [], draws: [], rects: [], order: [], maps: [], created: 0, ctxNull: !!over.ctxNull };
+    const f = { pend: new Map(), nextId: 1, maxPend: 0, rafCalls: 0, listeners: {}, bad: [], draws: [], rects: [], order: [], maps: [], created: 0, ctxNull: !!over.ctxNull, nullAfter: over.nullAfter };
     f.raf = (cb) => { f.rafCalls++; const id = f.nextId++; f.pend.set(id, cb); f.maxPend = Math.max(f.maxPend, f.pend.size); return id; };
     f.caf = (id) => { f.pend.delete(id); };
     f.run = (ts) => { const [id, cb] = [...f.pend][0]; f.pend.delete(id); cb(ts); };
@@ -22,7 +22,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
       },
       set(t, k, v) { if (k === 'shadowBlur' || k === 'filter' || (k === 'globalCompositeOperation' && v !== 'source-over')) f.bad.push(k + '=' + v); t[k] = v; return true; },
     });
-    const mkCanvas = (isMap) => { const cv = { width: 0, height: 0, getContext() { return f.ctxNull ? null : (cv.__c || (cv.__c = mkCtx(cv))); } }; if (isMap) f.maps.push(cv); return cv; };
+    const mkCanvas = (isMap) => { let w = 0; const cv = { height: 0, wsets: 0, getContext() { if (isMap && f.nullAfter !== undefined && f.maps.length > f.nullAfter) return null; return f.ctxNull ? null : (cv.__c || (cv.__c = mkCtx(cv))); } }; Object.defineProperty(cv, 'width', { get() { return w; }, set(v) { w = v; cv.wsets++; } }); if (isMap) f.maps.push(cv); return cv; };
     f.doc = { createElement: () => { f.created++; return mkCanvas(true); } };
     f.canvas = Object.assign(mkCanvas(false), { clientWidth: 390, clientHeight: 844, parentNode: null,
       addEventListener(t, fn) { f.listeners[t] = fn; }, removeEventListener(t) { delete f.listeners[t]; } });
@@ -40,7 +40,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const api = await W.create(f.canvas, D, f.opts);
     ok('(a) el mapa mide 140×8 por 235×8 px, ≤ 4 Mpx, y se prerenderiza una vez por create', f.maps.some((m) => m.width === 1120 && m.height === 1880 && m.width * m.height <= 4e6));
     ok('(b) create resuelve con el contrato y deja 1 rAF', ['resize', 'setPaused', 'dispose', 'encounter', 'dissolve'].every((k) => typeof api[k] === 'function') && f.pend.size === 1 && api.setLook === undefined);
-    f.run(100); f.run(116);
+    f.order.length = 0; f.run(100); f.run(116);
     ok('(b2) un cuadro llama tick, luego state, luego dibuja', f.order.slice(0, 2).join() === 'tick,state' && mapDraws(f).length > 0, f.order.join());
     ok('(b3) nunca más de 1 rAF pendiente', f.maxPend === 1);
     api.setPaused('sheet', true); if (f.pend.size) f.run(200);
@@ -91,6 +91,43 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const r1 = f.rafCalls; api.setPaused('a', true); api.setPaused('a', false); api.resize(); api.dissolve('bit');
     ok('(j3) tras dispose nada agenda cuadros', f.rafCalls === r1 && f.pend.size === 0);
   }
+  // ---- revisión final: robustez ----
+  { const f = fakes(); SP.init(f.doc); const api = await W.create(f.canvas, D, f.opts);
+    ok('(r1) el primer create ajusta el canvas una sola vez y un resize del mismo tamaño no lo reasigna (no borra ni realoca)', f.canvas.wsets === 1 && (api.resize(), api.resize(), f.canvas.wsets === 1), String(f.canvas.wsets));
+    f.canvas.clientWidth = 100000; f.canvas.clientHeight = 1; api.resize();
+    ok('(r2) un canvas enorme se limita a 8192 px por lado', f.canvas.width <= 8192 && f.canvas.height <= 8192 && f.canvas.width >= 1, f.canvas.width + '×' + f.canvas.height);
+    f.canvas.clientWidth = 390; f.canvas.clientHeight = 844; api.resize();
+    let boomed = false; const st0 = f.state; f.opts.state = () => { if (!boomed) { boomed = true; throw new Error('boom'); } return st0; };
+    f.run(100);
+    ok('(r3) si state() lanza una vez el bucle sigue vivo y reagenda el siguiente cuadro', f.pend.size === 1);
+    f.run(116); ok('(r3b) y el siguiente cuadro dibuja con normalidad', mapDraws(f).length > 0);
+    api.dispose(); ok('(r4) dispose deja también el canvas principal en 0×0 (libera su memoria)', f.canvas.width === 0 && f.canvas.height === 0); }
+  { const f = fakes(); SP.init(f.doc); let lost = 0; f.opts.onLost = () => { lost++; };
+    const api = await W.create(f.canvas, D, f.opts); f.opts.state = () => { throw new Error('siempre'); };
+    for (let i = 0; i < 5 && f.pend.size; i++) f.run(100 + i * 16);
+    ok('(r5) si el dibujo falla 3 veces seguidas avisa por onLost y deja de agendar', lost === 1 && f.pend.size === 0, lost + ' ' + f.pend.size); api.dispose(); }
+  { const f = fakes(); SP.init(f.doc); const api = await W.create(f.canvas, D, f.opts); f.run(100);
+    f.state.hero.x = Object.create(null);
+    f.run(116); f.run(132);
+    ok('(r6) un héroe con valores inservibles no congela el mundo', f.pend.size === 1); f.state.hero.x = 0; api.dispose(); }
+  { const f = fakes(); SP.init(f.doc); const api = await W.create(f.canvas, D, f.opts); f.run(100);
+    const x0 = M.creatures[0].area.x; f.state.hero.x = x0; f.state.hero.z = M.creatures[0].area.z;
+    const bad = []; const orig = f.canvas.getContext(); void orig;
+    api.encounter('__proto__'); api.dissolve('constructor'); api.encounter('toString'); f.run(116); f.run(900); f.run(1000);
+    ok('(r7) ids como __proto__, constructor o toString no hacen nada (sin NaN en el dibujo)', mapDraws(f).every((d) => d.a.every((v) => typeof v !== 'number' || Number.isFinite(v))) && api.stats().part === 0);
+    api.dispose(); }
+  { const f = fakes(); SP.init(f.doc); const api = await W.create(f.canvas, D, f.opts); f.run(100);
+    api.dissolve('bit'); f.run(116); f.run(NaN); f.run(Infinity);
+    for (let i = 0; i < 60; i++) f.run(1000 + i * 16);
+    ok('(r8) un timestamp NaN o Infinity de rAF no deja partículas inmortales (solo quedan las de ambiente, ≤ 12; el fallo dejaba 168)', api.stats().part <= 12, String(api.stats().part)); api.dispose(); }
+  { const f = fakes(); SP.init(f.doc); f.state.flags.restored = true; const api = await W.create(f.canvas, D, f.opts); f.run(100); f.run(116);
+    ok('(r9) si el distrito ya está restaurado al entrar, el mapa se prerenderiza una sola vez (no dos)', f.maps[0].wsets === 1, String(f.maps[0].wsets)); api.dispose(); }
+  { const f = fakes(); SP.init(f.doc); const api = await W.create(f.canvas, D, f.opts); f.run(100);
+    f.state.flags = Object.assign({}, f.state.flags, { restored: true }); f.run(116);
+    ok('(r9b) al restaurar en vivo el mapa se repinta una vez más (2 en total)', f.maps[0].wsets === 2, String(f.maps[0].wsets)); api.dispose(); }
+  { const f = fakes({ nullAfter: 1 }); SP.init(f.doc);
+    const r = await W.create(f.canvas, D, f.opts).then(() => 'ok', (e) => e.message);
+    ok('(r10) si un atlas de sprites no puede crearse, create rechaza "sin-2d" (no se descubre en el primer cuadro)', r === 'sin-2d', r); }
   { const f = fakes({ ctxNull: true }); SP.init(f.doc);
     const r = await W.create(f.canvas, D, f.opts).then(() => 'ok', (e) => e.message);
     ok('(k) getContext nulo → create rechaza "sin-2d"', r === 'sin-2d', r); }

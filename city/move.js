@@ -15,13 +15,14 @@ var CityMove = (function () {
   /* 2 o 3 edificios por manzana (20×20), con w y d entre 5 y 9, h entre 4 y 14, dentro de la manzana. Determinista. */
   function layoutBuildings(dist) {
     var rnd = mulberry32(dist.seed), out = [];
-    dist.blocks.forEach(function (c) {
+    dist.blocks.forEach(function (c, bi) {
       var n = rnd() < 0.5 ? 2 : 3, lo = -9.5, hi = 9.5;
       var slots = n === 2 ? [[lo, -0.25, lo, hi], [0.25, hi, lo, hi]] : [[lo, -0.25, lo, hi], [0.25, hi, lo, -0.25], [0.25, hi, 0.25, hi]];
       slots.forEach(function (s) {
         var sw = s[1] - s[0], sd = s[3] - s[2];
         var w = Math.min(sw, 5 + rnd() * 4), d = Math.min(sd, 5 + rnd() * 4);
-        out.push({ x: c[0] + s[0] + w / 2 + rnd() * (sw - w), z: c[1] + s[2] + d / 2 + rnd() * (sd - d), w: w, d: d, h: 4 + rnd() * 10, color: Math.floor(rnd() * 6) });
+        out.push({ x: c[0] + s[0] + w / 2 + rnd() * (sw - w), z: c[1] + s[2] + d / 2 + rnd() * (sd - d), w: w, d: d, h: 4 + rnd() * 10, block: bi });
+        rnd();   // se conserva la consumición de azar del layout determinista
       });
     });
     return out;
@@ -108,15 +109,14 @@ var CityMove = (function () {
     return s > 0 ? 'left' : 'right';
   }
 
-  /* items: [{ id, x, z, … }]. within devuelve copias con dist, ordenadas; nearest, la más cercana o null. */
+  /* items: [{ id, x, z, … }]. within devuelve copias con dist, ordenadas. */
   function within(pos, items, r) {
     var out = [];
     items.forEach(function (it) { var d = Math.hypot(it.x - pos.x, it.z - pos.z); if (d <= r) { var c = {}; for (var k in it) c[k] = it[k]; c.dist = d; out.push(c); } });
     out.sort(function (a, b) { return a.dist - b.dist; });
     return out;
   }
-  function nearest(pos, items, maxDist) { var w = within(pos, items, maxDist); return w.length ? w[0] : null; }
 
-  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, nearest: nearest, within: within };
+  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, within: within };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityMove;

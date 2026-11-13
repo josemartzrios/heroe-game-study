@@ -52,12 +52,11 @@ var CityStory = (function () {
     return C;
   }
 
-  /* 0 a 100: la mitad por enseñar a los 8 aprendices y la otra mitad por el jefe */
+  /* 0 a 100: la mitad por enseñar a 8 de los 12 aprendices y la otra mitad por el jefe */
   function restoration(C, D, bossPassed) {
     var need = D.districts.M02.need, t = Math.min(taughtCount(C, D), need);
     return Math.round(100 * (0.5 * t / need + 0.5 * (bossPassed ? 1 : 0)));
   }
-  function isRestored(C, D, bossPassed) { return condition(C, D, bossPassed); }
   /* Idempotente: pone o quita restored.M02 y powers.planos según la condición. changed solo si M02 pasó de no restaurado a restaurado. */
   function applyRestore(C, D, bossPassed) {
     var ok = condition(C, D, bossPassed), was = !!(C.restored && C.restored.M02 === true);
@@ -96,13 +95,13 @@ var CityStory = (function () {
     }
     var rp = M.repairs.filter(function (x) { return !(C.repairs && C.repairs[x.id] === true); })[0];
     if (rp) return { kind: 'repair', id: rp.id, label: 'Repara el ' + rp.label };
-    var ap = M.apprentices.filter(function (x) { return !(C.taught && C.taught[x.id] === true) && ctx.stars(x.topic) >= 1; })[0];
+    var ap = apprenticesAvailable(C, D, ctx.stars)[0];
     if (ap) return { kind: 'apprentice', id: ap.id, label: 'Enseña a ' + ap.name };
     var cb = M.creatures.filter(function (x) { return !ctx.beatenToday(x.id); })[0];
     if (cb) return { kind: 'creature', id: cb.id, label: 'Enfrenta a ' + cb.name };
     return { kind: 'none', id: null, label: '' };
   }
 
-  return { normalizeCity: normalizeCity, taughtCount: taughtCount, restoration: restoration, isRestored: isRestored, applyRestore: applyRestore, rankOf: rankOf, apprenticesAvailable: apprenticesAvailable, nextObjective: nextObjective };
+  return { normalizeCity: normalizeCity, taughtCount: taughtCount, restoration: restoration, applyRestore: applyRestore, rankOf: rankOf, apprenticesAvailable: apprenticesAvailable, nextObjective: nextObjective };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityStory;

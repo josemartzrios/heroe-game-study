@@ -36,10 +36,12 @@ for (const sel of ['.pill', '.chip', 'body.game .chip', 'body.game .opt']) {
   const r = rules(sel), fg = hexes(r.color)[0] || want['--ink'], bgc = hexes(r.background)[0] || surf;
   ok(sel + ': contraste de texto ≥ 4.5', ratio(fg, bgc) >= 4.5, fg + ' sobre ' + bgc + ' = ' + ratio(fg, bgc).toFixed(2));
 }
+{ const r = rules('.btn.primary'), col = hexes(r.color)[0], stops = hexes(r.background);
+  ok('.btn.primary: contraste ≥ 5.5 en todo el degradado (margen sobre AA)', stops.every((s) => ratio(col, s) >= 5.5), stops.map((s) => s + '=' + ratio(col, s).toFixed(2)).join(' ')); }
 ok('bordes de controles (--line) ≥ 3:1 contra el fondo', ratio(resolve('var(--line)'), bg) >= 3, ratio(resolve('var(--line)'), bg).toFixed(2));
 
 // controles de 44 px
-for (const sel of ['.btn', '.btn.sm', '.linkbtn', '.opt', '.herobtn']) { const r = rules(sel); ok(sel + ': min-height ≥ 44 px', px(r['min-height']) >= 44, r['min-height']); }
+for (const sel of ['.btn', '.btn.sm', '.linkbtn', '.opt', '.herobtn', '.pw']) { const r = rules(sel); ok(sel + ': min-height ≥ 44 px', px(r['min-height']) >= 44, r['min-height']); }
 ok('.herobtn: min-width ≥ 44 px', px(rules('.herobtn')['min-width']) >= 44);
 
 // letra pixel: solo títulos y textos fijos, ≥ 14 px; las chips, nombres y el objetivo usan la letra de lectura

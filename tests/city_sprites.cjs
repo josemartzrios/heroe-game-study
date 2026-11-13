@@ -49,6 +49,13 @@ const D = null;
   const nul = { width: 28, height: 28, getContext() { return null; } };
   ok('paintIcons con getContext nulo no lanza', (() => { try { S.paintIcons({ querySelectorAll() { return [nul]; } }); S.paintIcons(null); return true; } catch (e) { return false; } })());
 }
+{ const env = fakeEnv(); env.doc.createElement = () => ({ width: 0, height: 0, getContext() { return null; } }); S.init(env.doc);
+  let thrown = null; try { S.frame('hero', '', 'up', 0); } catch (e) { thrown = e; }
+  ok('sin contexto 2D frame() lanza "sin-2d" y no deja un atlas roto en caché', !!thrown && thrown.message === 'sin-2d', String(thrown));
+  const ok2 = fakeEnv(); S.init(ok2.doc);
+  ok('tras inicializar con un documento sano ya funciona (no quedó nada en caché)', S.frame('hero', '', 'up', 0).w === 14);
+  const c1 = { width: 28, height: 28, getContext() { return { clearRect() {}, drawImage() {} }; } }, thrower = fakeEnv(); thrower.doc.createElement = () => ({ width: 0, height: 0, getContext() { return null; } }); S.init(thrower.doc);
+  ok('paintIcons con atlas imposible no lanza (las pantallas siguen funcionando)', (() => { try { S.paintIcons({ querySelectorAll() { return [c1]; } }); return true; } catch (e) { return false; } })()); }
 results.forEach((r) => { if (r[0] === 'FAIL') console.log(r.join(' | ')); });
 const fails = results.filter((r) => r[0] === 'FAIL').length;
 console.log(fails ? fails + ' FALLOS' : 'CITY_SPRITES OK (' + results.length + ')'); process.exit(fails ? 1 : 0);

@@ -8,7 +8,7 @@ var CityWorld2D = (function () {
   var SP = (typeof CitySprites !== 'undefined') ? CitySprites : require('./sprites2d.js');
   var CMv = (typeof CityMove !== 'undefined') ? CityMove : require('./move.js');
   var PX = 8, BG = '#0d1230', FOG = 'rgba(176,108,255,0.08)', STAR_COL = ['#6b7280', '#cd7f32', '#cfd6e6', '#ffd23f'];
-  var STREET_X = [-28, 0, 28], STREET_Z = [-80, -108, -136], NEON = ['#5ce1ff', '#ff4fd8', '#7dff8a', '#ffd76a'];
+  var NEON = ['#5ce1ff', '#ff4fd8', '#7dff8a', '#ffd76a'];
   var NPART = 200;
 
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
@@ -36,14 +36,15 @@ var CityWorld2D = (function () {
     g.strokeStyle = '#5ce1ff'; g.lineWidth = 3; g.beginPath(); g.arc(X(0), Z(0), P.r * PX, 0, Math.PI * 2); g.stroke();
     g.strokeStyle = '#ff4fd8'; g.lineWidth = 1; g.beginPath(); g.arc(X(0), Z(0), (P.r - 1) * PX, 0, Math.PI * 2); g.stroke();
     var road = '#232a52', line = '#5ce1ff';
-    rect(road, -3, -54, 3, -29);
-    P.roads.forEach(function (rd) { var an = rd.angle * Math.PI / 180; for (r = 30; r < 38; r += 0.5) rect(road, Math.cos(an) * r - 2, Math.sin(an) * r - 2, Math.cos(an) * r + 2, Math.sin(an) * r + 2); });
-    STREET_Z.forEach(function (z) { rect(road, -62, z - 3, 62, z + 3); rect(line, -62, z - 0.06, 62, z + 0.06); });
-    STREET_X.forEach(function (x) { rect(road, x - 3, -185, x + 3, -50); rect(line, x - 0.06, -185, x + 0.06, -50); });
+    var R0 = M.rect;
+    rect(road, -3, R0.maxZ - 4, 3, -P.r + 1);   // calle de la plaza al distrito
+    P.roads.forEach(function (rd) { var an = rd.angle * Math.PI / 180; for (r = P.r; r < Math.hypot(rd.wall.x, rd.wall.z); r += 0.5) rect(road, Math.cos(an) * r - 2, Math.sin(an) * r - 2, Math.cos(an) * r + 2, Math.sin(an) * r + 2); });
+    D.streets.z.forEach(function (z) { rect(road, R0.minX - 2, z - 3, R0.maxX + 2, z + 3); rect(line, R0.minX - 2, z - 0.06, R0.maxX + 2, z + 0.06); });
+    D.streets.x.forEach(function (x) { rect(road, x - 3, R0.minZ, x + 3, R0.maxZ); rect(line, x - 0.06, R0.minZ, x + 0.06, R0.maxZ); });
     // edificios: sombra, cuerpo, borde neón por manzana y ventanas deterministas
     var lit = restored ? '#fff0a0' : '#ffd76a';
     CMv.layoutBuildings(M).forEach(function (b, n) {
-      var neon = NEON[Math.floor(n / 3) % 4], x0 = b.x - b.w / 2, z0 = b.z - b.d / 2, x1 = b.x + b.w / 2, z1 = b.z + b.d / 2;
+      var neon = NEON[b.block % 4], x0 = b.x - b.w / 2, z0 = b.z - b.d / 2, x1 = b.x + b.w / 2, z1 = b.z + b.d / 2;
       rect('rgba(0,0,0,0.30)', x0 + b.h * 0.12, z0 + b.h * 0.12, x1 + b.h * 0.12, z1 + b.h * 0.12);
       rect('#2a2f5e', x0, z0, x1, z1); rect(neon, x0, z0, x1, z0 + 0.35); rect('#1f2450', x0, z1 - 0.5, x1, z1);
       var hh = hash('w' + n), wx, wz;
@@ -67,11 +68,14 @@ var CityWorld2D = (function () {
     var M = D.districts.M02, P = D.plaza, B = D.bounds;
     var doc = opts.doc || (typeof document !== 'undefined' ? document : null);
     if (opts.doc) SP.init(opts.doc);
-    var ctx = null, map = null, restoredMap = null;
+    var ctx = null, map = null, restored0 = false;
     try {
       ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('sin-2d');
-      map = buildMap(D, doc, false);
+      var s0 = opts.state ? opts.state() : null;   // si el distrito ya está restaurado el mapa se prerenderiza una sola vez, ya restaurado
+      restored0 = !!(s0 && s0.flags && s0.flags.restored);
+      map = buildMap(D, doc, restored0);
+      ['hero', 'person', 'creature', 'thing'].forEach(function (k) { SP.frame(k, '', 'down', 0); });   // un atlas imposible rechaza aquí, no en el primer cuadro
     } catch (e) { return Promise.reject(new Error('sin-2d')); }
     var raf = opts.raf || function (cb) { return requestAnimationFrame(cb); };
     var caf = opts.caf || function (id) { cancelAnimationFrame(id); };
@@ -89,11 +93,11 @@ var CityWorld2D = (function () {
     M.mentors.forEach(function (m) { npcs.push({ id: m.id, kind: 'person', x: m.x, z: m.z, star: true }); });
     M.creatures.forEach(function (c) { npcs.push({ id: c.id, kind: 'creature', x: c.area.x, z: c.area.z }); });
     M.apprentices.forEach(function (a) { npcs.push({ id: a.id, kind: 'person', x: a.x, z: a.z, ask: true }); });
-    var byId = {}; npcs.forEach(function (n) { byId[n.id] = n; });
+    var byId = Object.create(null); npcs.forEach(function (n) { byId[n.id] = n; });
     var lamps = []; for (i = 0; i < 8; i++) lamps.push({ x: Math.cos(i * Math.PI / 4) * 20, z: Math.sin(i * Math.PI / 4) * 20 });
     var walls = P.roads.map(function (r) { return r.wall; });
     var fogBlobs = []; for (i = 0; i < 14; i++) fogBlobs.push({ x: M.rect.minX + (hash('f' + i) % 1000) / 1000 * (M.rect.maxX - M.rect.minX), z: M.rect.minZ + (hash('g' + i) % 1000) / 1000 * (M.rect.maxZ - M.rect.minZ), r: 7 + (i % 4) * 2 });
-    var lastRestored = false;
+    var lastRestored = restored0, errs = 0;
 
     var fpsEl = null, fpsAcc = 0;
     if (/fps=1/.test(search) && canvas.parentNode && typeof document !== 'undefined') {
@@ -109,9 +113,10 @@ var CityWorld2D = (function () {
       var w = canvas.clientWidth, h = canvas.clientHeight;
       if (!force && (!w || !h)) return;
       w = w || 1; h = h || 1;
-      canvas.width = Math.round(w * pr); canvas.height = Math.round(h * pr);
-      W_ = canvas.width; H_ = canvas.height; portrait = h > w;
-      ctx.imageSmoothingEnabled = false;
+      var cw = Math.min(8192, Math.max(1, Math.round(w * pr))), ch = Math.min(8192, Math.max(1, Math.round(h * pr)));   // tope: más de 8192 px deja el canvas en blanco
+      portrait = h > w;
+      if (cw !== canvas.width || ch !== canvas.height) { canvas.width = cw; canvas.height = ch; ctx.imageSmoothingEnabled = false; }   // asignar width borra y realoca: solo si cambió
+      W_ = cw; H_ = ch;
     }
     fit(true);
 
@@ -141,7 +146,7 @@ var CityWorld2D = (function () {
       ctx.drawImage(r.img, r.sx, r.sy, r.w, r.h, Math.round(SXp(x) - dw / 2), Math.round(SZp(z) - dh * 0.9 - (lift || 0)), dw, dh);
     }
 
-    function draw(s, dt) {
+    function draw(s) {
       var t0 = typeof performance !== 'undefined' ? performance.now() : 0;
       var h = s.hero, f = s.flags || {}, zoom = clamp(typeof s.zoom === 'number' && isFinite(s.zoom) ? s.zoom : 1, 1, 1.75);
       ppm = Math.round(PX * zoom * pr * 4) / 4; sprS = Math.round(2 * zoom * pr * 4) / 4;
@@ -150,7 +155,7 @@ var CityWorld2D = (function () {
       if (!!f.restored !== lastRestored) { lastRestored = !!f.restored; try { buildMap(D, doc, lastRestored, map); } catch (e) {} }
       ctx.fillStyle = BG; ctx.fillRect(0, 0, W_, H_);
       // rectángulo visible del mapa
-      var k = ppm / PX, wx0 = cx - sx / ppm, wz0 = cz - sy / ppm, wx1 = cx + (W_ - sx) / ppm, wz1 = cz + (H_ - sy) / ppm;
+      var wx0 = cx - sx / ppm, wz0 = cz - sy / ppm, wx1 = cx + (W_ - sx) / ppm, wz1 = cz + (H_ - sy) / ppm;
       var vx0 = Math.max(wx0, B.minX), vz0 = Math.max(wz0, B.minZ), vx1 = Math.min(wx1, B.maxX), vz1 = Math.min(wz1, B.maxZ);
       if (vx1 > vx0 && vz1 > vz0) ctx.drawImage(map, (vx0 - B.minX) * PX, (vz0 - B.minZ) * PX, (vx1 - vx0) * PX, (vz1 - vz0) * PX, Math.round(SXp(vx0)), Math.round(SZp(vz0)), Math.round((vx1 - vx0) * ppm), Math.round((vz1 - vz0) * ppm));
       var n = 0, m = 16 * sprS, j, o, fr, sc;
@@ -192,24 +197,32 @@ var CityWorld2D = (function () {
       var running = pauser.running();
       if (!running && !wantFrame) return;
       wantFrame = false;
-      var dt = running ? pauser.tick(ts) : 0, t1 = typeof performance !== 'undefined' ? performance.now() : 0;
-      time += dt;
-      if (opts.tick) opts.tick(dt);
+      try {
+        var dt = running ? pauser.tick(ts) : 0, t1 = typeof performance !== 'undefined' ? performance.now() : 0;
+        if (!(dt >= 0 && dt <= 50)) dt = 0;   // timestamp de rAF inválido (NaN, Infinity): ese cuadro no avanza el tiempo
+        time += dt;
+        if (opts.tick) opts.tick(dt);
+        if (disposed) return;
+        st.tick = (typeof performance !== 'undefined' ? performance.now() : 0) - t1;
+        var s = opts.state ? opts.state() : null;
+        if (s && s.hero) {
+          if (enc) { enc.t += dt; var kk = Math.min(1, enc.t / 600); camOffX = (enc.x - s.hero.x) * 0.5 * kk; camOffZ = (enc.z - s.hero.z) * 0.5 * kk; if (kk >= 1) finishEnc(); }
+          updateParts(dt, running, s.hero.x, s.hero.z, s.flags || {});
+          draw(s);
+        }
+        if (dt) { times.push(dt); if (times.length > 120) times.shift(); }
+        frames++;
+        if (fpsEl && frames % 30 === 0 && times.length > 10) {
+          var srt = times.slice().sort(function (a, b) { return a - b; }), tot = 0, q; for (q = 0; q < times.length; q++) tot += times[q];
+          st.p95 = srt[Math.floor(srt.length * 0.95)];
+          fpsEl.textContent = Math.round(1000 * times.length / tot) + ' fps · p95 ' + st.p95.toFixed(1) + ' ms · tick ' + st.tick.toFixed(1) + ' · dibujo ' + st.draw.toFixed(1) + ' · npc ' + st.npc + ' · part ' + st.part;
+        }
+        errs = 0;
+      } catch (e) {
+        errs++;
+        if (errs >= 3) { if (opts.onLost) opts.onLost(); return; }   // un cuadro malo se salta; tres seguidos = la vista se da por perdida
+      }
       if (disposed) return;
-      st.tick = (typeof performance !== 'undefined' ? performance.now() : 0) - t1;
-      var s = opts.state ? opts.state() : null;
-      if (s && s.hero) {
-        if (enc) { enc.t += dt; var kk = Math.min(1, enc.t / 600); camOffX = (enc.x - s.hero.x) * 0.5 * kk; camOffZ = (enc.z - s.hero.z) * 0.5 * kk; if (kk >= 1) finishEnc(); }
-        updateParts(dt, running, s.hero.x, s.hero.z, s.flags || {});
-        draw(s, dt);
-      }
-      if (dt) { times.push(dt); if (times.length > 120) times.shift(); }
-      frames++;
-      if (fpsEl && frames % 30 === 0 && times.length > 10) {
-        var srt = times.slice().sort(function (a, b) { return a - b; }), tot = 0, q; for (q = 0; q < times.length; q++) tot += times[q];
-        st.p95 = srt[Math.floor(srt.length * 0.95)];
-        fpsEl.textContent = Math.round(1000 * times.length / tot) + ' fps · p95 ' + st.p95.toFixed(1) + ' ms · tick ' + st.tick.toFixed(1) + ' · dibujo ' + st.draw.toFixed(1) + ' · npc ' + st.npc + ' · part ' + st.part;
-      }
       if (pauser.running() || wantFrame) requestFrame();
     }
     function frameNow() { wantFrame = true; requestFrame(); }
@@ -246,7 +259,8 @@ var CityWorld2D = (function () {
       if (pending !== null) { caf(pending); pending = null; }
       finishEnc();
       canvas.removeEventListener('contextlost', onLostEv);
-      map.width = 0; map.height = 0;
+      map.width = 0; map.height = 0; map = null;
+      canvas.width = 0; canvas.height = 0;   // libera la memoria del canvas (en iOS cuenta para el total)
       if (fpsEl && fpsEl.parentNode) fpsEl.parentNode.removeChild(fpsEl);
     }
     var api = { resize: resize, setPaused: setPaused, dispose: dispose, encounter: encounter, dissolve: dissolve, stats: function () { return { npc: st.npc, part: nLive, tick: st.tick, draw: st.draw, p95: st.p95 }; } };

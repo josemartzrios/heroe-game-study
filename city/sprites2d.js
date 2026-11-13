@@ -4,7 +4,7 @@ var CitySprites = (function () {
   var CELL = 14, FACES = ['up', 'down', 'left', 'right'];
   var PERSON = ['iris']; (function () { var i; for (i = 1; i <= 23; i++) PERSON.push('m' + (i < 10 ? '0' : '') + i); for (i = 1; i <= 12; i++) PERSON.push('a' + (i < 10 ? '0' : '') + i); })();
   var CREATURE = ['bit', 'silicio', 'kernel', 'eco', 'huerfano', 'alucina'];
-  var THING = ['repair', 'repaired', 'lamp', 'lampOn', 'star', 'ask'];
+  var THING = ['repair', 'repaired', 'lamp', 'lampOn', 'ask'];
   var KINDS = { hero: [''], person: PERSON, creature: CREATURE, thing: THING };
   var SUIT = ['#3d7ad8', '#e0533a', '#3aa36b', '#9b5fd8', '#f2c14e', '#6bb6d6'], SKIN = ['#f1c9a5', '#d9a273', '#a86f46', '#7b4a2d'];
   var doc = null, atlas = {};
@@ -47,7 +47,6 @@ var CitySprites = (function () {
     else if (id === 'repaired') { px(g, '#4a4f6e', ox + 3, oy + 5, 8, 7); px(g, '#7dff8a', ox + 4, oy + 6, 6, 3); px(g, '#7dff8a', ox + 6, oy + 2, 2, 2); }
     else if (id === 'lamp') { px(g, '#4a4f6e', ox + 6, oy + 4, 2, 9); px(g, '#3a3f55', ox + 4, oy + 1, 6, 4); }
     else if (id === 'lampOn') { px(g, '#4a4f6e', ox + 6, oy + 4, 2, 9); px(g, '#ffe066', ox + 4, oy + 1, 6, 4); px(g, '#fff6b0', ox + 6, oy + 2, 2, 2); }
-    else if (id === 'star') { px(g, '#ffffff', ox + 6, oy + 2, 2, 10); px(g, '#ffffff', ox + 2, oy + 6, 10, 2); px(g, '#ffffff', ox + 4, oy + 4, 6, 6); }
     else { px(g, '#ffd76a', ox + 5, oy + 1, 4, 2); px(g, '#ffd76a', ox + 8, oy + 3, 2, 3); px(g, '#ffd76a', ox + 6, oy + 6, 2, 2); px(g, '#ffd76a', ox + 6, oy + 10, 2, 2); }
   }
 
@@ -58,6 +57,7 @@ var CitySprites = (function () {
     else { cols = list.length; rows = 1; }
     cv = doc.createElement('canvas'); cv.width = cols * CELL; cv.height = rows * CELL;
     g = cv.getContext('2d');
+    if (!g) throw new Error('sin-2d');
     for (v = 0; v < list.length; v++) {
       if (kind === 'hero') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) hero(g, (f * 2 + s) * CELL, 0, f, s);
       else if (kind === 'person') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) personV(g, (f * 2 + s) * CELL, v * CELL, f, s, list[v]);
@@ -87,10 +87,12 @@ var CitySprites = (function () {
       cv = list[i]; g = null;
       try { g = cv.getContext('2d'); } catch (e) {}
       if (!g) continue;
-      r = frame('hero', '', 'down', 0);
-      g.imageSmoothingEnabled = false;
-      g.clearRect(0, 0, cv.width, cv.height);
-      g.drawImage(r.img, r.sx, r.sy, r.w, r.h, 0, 0, cv.width, cv.height);
+      try {
+        r = frame('hero', '', 'down', 0);
+        g.imageSmoothingEnabled = false;
+        g.clearRect(0, 0, cv.width, cv.height);
+        g.drawImage(r.img, r.sx, r.sy, r.w, r.h, 0, 0, cv.width, cv.height);
+      } catch (e) { /* sin 2D los iconos quedan vacíos: el nombre y el nivel siguen en texto */ }
     }
   }
 

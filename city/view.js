@@ -36,13 +36,19 @@ function cityBase() {
 }
 /* Lugares disponibles ahora: se recalcula solo en cityRefresh (cambian los flags o el día), nunca por cuadro */
 function cityItems() { return (CD && CD.items) || []; }
+/* Ids de los aprendices que se ofrecen ahora (regla única: CityStory.apprenticesAvailable) */
+function cityApprenticeIds() {
+  var m = mod('M02'), out = {};
+  CityStory.apprenticesAvailable(S.city, CITY_DATA, function (t) { return starsOf(m, t); }).forEach(function (a) { out[a.id] = 1; });
+  return out;
+}
 function cityBuildItems() {
   if (!CD.base) CD.base = cityBase();
-  var m = mod('M02');
+  var avail = cityApprenticeIds();
   return CD.base.filter(function (o) {
     if (o.kind === 'creature') return !beatenToday(o.id);
     if (o.kind === 'repair') return S.city.repairs[o.id] !== true;
-    if (o.kind === 'apprentice') return S.city.taught[o.id] !== true && starsOf(m, o.topic) >= 1;
+    if (o.kind === 'apprentice') return !!avail[o.id];
     return true;
   });
 }
@@ -82,7 +88,7 @@ function cityFlags() {
   var m = mod('M02'), M = CITY_DATA.districts.M02, f = { beatenToday: {}, repairs: {}, apprenticesVisible: {}, stars: {}, restored: !!(S.city.restored && S.city.restored.M02 === true), lit: Math.min(8, CityStory.taughtCount(S.city, CITY_DATA)) };
   M.creatures.forEach(function (c) { if (beatenToday(c.id)) f.beatenToday[c.id] = 1; });
   M.repairs.forEach(function (r) { if (S.city.repairs[r.id] === true) f.repairs[r.id] = 1; });
-  M.apprentices.forEach(function (a) { if (S.city.taught[a.id] !== true && starsOf(m, a.topic) >= 1) f.apprenticesVisible[a.id] = 1; });
+  f.apprenticesVisible = cityApprenticeIds();
   M.mentors.forEach(function (x) { f.stars[x.id] = starsOf(m, x.topic); });
   return f;
 }
@@ -119,7 +125,7 @@ function cityHtml() {
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden></button></div>' +
-    '<div id="city-sheet" hidden></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
+    '<div id="city-sheet" hidden role="dialog" aria-modal="true"></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
     '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div>' +
     '<div id="city-safe" style="position:fixed;left:0;bottom:0;padding-left:env(safe-area-inset-left);padding-bottom:env(safe-area-inset-bottom);visibility:hidden"></div>';
 }
@@ -162,13 +168,13 @@ function cityStart() {
     face: CityMove.faceOf(at.yaw), zoom: CITY_ZMIN, boxes: CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true)),
     st: { hero: { x: at.x, z: at.z, face: 'up', speed: 0 }, zoom: CITY_ZMIN, flags: null },
     paused: false, sheet: false, rotate: false, suspended: false, lost: false, lastObjId: null, lastZone: null, nearId: null,
-    saveT: 0, objT: 0, obj: null, objTarget: null, sheetFor: null, day: '', dayT: 0, lastD: -1, lastAng: -1
+    saveT: 0, objT: 0, obj: null, objTarget: null, sheetFor: null, day: '', dayT: 0, lastAng: -1
   };
   c.loadTimer = setTimeout(function () {   // el aviso solo se muestra si el mundo tarda más de 250 ms
     c.loadTimer = null;
     if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', CITY_LOAD_HTML); }
   }, CITY_LOAD_MS);
-  var fail = function () { if (gen === cityGen) cityFallback('nogl'); };
+  var fail = function () { if (gen === cityGen) cityFallback('init'); };
   var F = cityWorldFactory();
   if (!F) { fail(); return; }
   var rm = false;
@@ -178,7 +184,7 @@ function cityStart() {
     made = F.create(cv, CITY_DATA, { reducedMotion: rm, tick: cityTick, state: cityState, onLost: function () { if (CD !== c) return; if (c.suspended) c.lost = true; else cityFallback('lost'); } });
   } catch (e2) { fail(); return; }
   Promise.resolve(made).then(function (world) {
-    if (gen !== cityGen || V.name !== 'city') { try { world.dispose(); } catch (e) {} return; }
+    if (gen !== cityGen || V.name !== 'city') { try { world.dispose(); } catch (e) {} if (gen === cityGen) cityTeardown(); return; }
     if (c.loadTimer) { clearTimeout(c.loadTimer); c.loadTimer = null; }
     CD.world = world;
     CD.input = cityMakeInput();
@@ -200,11 +206,10 @@ function cityResume() {
   CD.suspended = false;
   cityRootEl().hidden = false;
   CD.input = cityMakeInput();
-  cityClosePause(true);
-  if (CD.sheet) cityCloseSheet(true);
+  cityReleaseUi();
   CD.boxes = CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true));
   if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (S.city.beaten[pb] === today() && CD.world) CD.world.dissolve(pb); }
-  if (CD.world) { CD.world.resize(); CD.world.setPaused('suspended', false); }
+  if (CD.world) { CD.world.setPaused('suspended', false); CD.world.resize(); }   // primero se quita la pausa: con 'suspended' activo resize no hace nada
   cityRefresh(); cityRotateCheck(); cityAnnounce();
   if (cityRestorePending) { cityRestorePending = false; cityCelebrate(''); }
 }
@@ -220,7 +225,8 @@ function cityRotateCheck() {
 }
 function cityInert() {
   var u = cId('city-ui-main'); if (!u || !CD) return;
-  if (CD.paused || CD.rotate) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  if (CD.paused || CD.rotate || CD.sheet) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  [cId('city-sheet'), cId('city-pausebox')].forEach(function (el) { if (el) { if (CD.rotate) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } });
 }
 
 /* ---------- HUD ---------- */
@@ -235,7 +241,7 @@ function cityHud(force) {
 }
 function cityObjUpdate(force) {
   if (!CD) return;
-  if (force || !CD.obj) { CD.obj = cityObjective(); CD.objTarget = cityObjTarget(CD.obj); CD.lastD = -1; CD.lastAng = -1; }
+  if (force || !CD.obj) { CD.obj = cityObjective(); CD.objTarget = cityObjTarget(CD.obj); CD.lastAng = -1; }
   var o = CD.obj, t = CD.objTarget, el = cId('city-obj'), ar = cId('city-arrow'), txt = '';
   if (o && o.label) {
     if (t) {
@@ -282,6 +288,15 @@ function cityZoomBy(factor, steps) {
   var z = CD.zoom * (typeof factor === 'number' && isFinite(factor) && factor > 0 ? factor : 1);
   if (typeof steps === 'number' && isFinite(steps) && steps !== 0) z = Math.round((z + 0.25 * steps) / 0.25) * 0.25;
   CD.zoom = (typeof z === 'number' && isFinite(z)) ? Math.max(CITY_ZMIN, Math.min(CITY_ZMAX, z)) : CITY_ZMIN;
+  cityZoomUi();
+}
+/* Texto del nivel de zoom en la pausa y límites de los botones */
+function cityZoomUi() {
+  if (!CD) return;
+  var tx = cId('city-zoom'), zi = cityRootEl().querySelector('[data-c="zoomin"]'), zo = cityRootEl().querySelector('[data-c="zoomout"]');
+  if (tx) tx.textContent = 'Zoom ' + Math.round(CD.zoom * 100) + ' %';
+  if (zi) zi.disabled = CD.zoom >= CITY_ZMAX - 1e-9;
+  if (zo) zo.disabled = CD.zoom <= CITY_ZMIN + 1e-9;
 }
 function cityTick(dt) {
   var c = CD;
@@ -321,12 +336,18 @@ function cityJoyDraw(c) {
 }
 
 /* ---------- hojas ---------- */
+/* La hoja es un diálogo modal etiquetado por su título (el h2 de la tarjeta) */
+function citySheetLabel(sh) {
+  var h = sh.querySelector('.prompt');
+  if (h) { h.id = 'city-sheet-title'; sh.setAttribute('aria-labelledby', 'city-sheet-title'); } else sh.removeAttribute('aria-labelledby');
+}
 function cityOpenSheet(html, focusSel, forId) {
   if (!CD) return;
   var sh = cId('city-sheet'); if (!sh) return;
   citySave();
-  sh.innerHTML = html; sh.hidden = false;
+  sh.innerHTML = html; sh.hidden = false; citySheetLabel(sh);
   CD.sheet = true; CD.sheetFor = forId || null;
+  cityRootEl().classList.add('sheet-open'); cityInert();
   if (CD.world) CD.world.setPaused('sheet', true);
   var f = focusSel ? sh.querySelector(focusSel) : null;
   cFocus(f || sh.querySelector('button'));
@@ -335,6 +356,7 @@ function cityCloseSheet(quiet) {
   if (!CD) return;
   var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
   CD.sheet = false; CD.sheetFor = null;
+  cityRootEl().classList.remove('sheet-open'); cityInert();
   if (CD.world && !quiet) CD.world.setPaused('sheet', false);
   if (quiet) return;
   cityRefresh(); cityAnnounce();
@@ -355,10 +377,19 @@ function cityLesson(o) {
     '<p class="meta">' + esc('Para la primera estrella hacen falta al menos 6 respuestas') + '</p>';
   cityOpenSheet(citySheetHtml(o.name + ' · ' + t.id, t.title, body, '<button class="btn primary" data-act="cx" data-c="practice" data-id="' + esc(o.id) + '">Practicar</button>'), '[data-c="practice"]', o.id);
 }
+/* Cierra hoja y pausa y libera TODAS sus razones de pausa del mundo (si no, al volver de una ronda la ciudad no dibuja) */
+function cityReleaseUi() {
+  if (!CD) return;
+  var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; sh.removeAttribute('aria-labelledby'); }
+  var pb = cId('city-pausebox'); if (pb) { pb.hidden = true; pb.innerHTML = ''; }
+  CD.sheet = false; CD.sheetFor = null; CD.paused = false;
+  var r = cityRootEl(); if (r) r.classList.remove('sheet-open');
+  cityInert();
+  if (CD.world) { CD.world.setPaused('sheet', false); CD.world.setPaused('pause', false); }
+}
 function cityPractice(id) {
   var o = cityItem(id); if (!CD || !o) return;
-  var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
-  CD.sheet = false; CD.sheetFor = null;
+  cityReleaseUi();
   startRound({ kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'city' }, city: { kind: 'practice', id: id } }, itemsFor('quiz', mod('M02'), o.topic));
 }
 /* Prólogo: tres paneles; terminar o saltar lo marca como visto */
@@ -373,7 +404,7 @@ function cityPrologue(i) {
   var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Prólogo ' + (i + 1) + ' de 3') + '</span></div><h2 class="prompt">' + esc(p[0]) + '</h2><p>' + esc(p[1]) + '</p>' +
     '<div class="actions">' + act + (last ? '<button class="btn primary" data-act="cx" data-c="pro-end">Cerrar</button>' : '') + '</div></article>';
   var sh = cId('city-sheet');
-  if (CD && CD.sheet && sh) { sh.innerHTML = html; cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', 'iris');
+  if (CD && CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', 'iris');
 }
 function cityPrologueDone() { if (!S.city.prologue) { S.city.prologue = true; save(); } cityCloseSheet(); }
 
@@ -397,7 +428,7 @@ function cityTeachExplain(o, fresh) {
   var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Enseñar a ' + o.name + ' · ' + tp.id) + '</span></div><h2 class="prompt">' + esc('¿Me explicas ' + tp.title + '?') + '</h2>' +
     '<p class="meta" id="city-count" aria-live="polite">' + n + ' de 3</p><ul class="vlist">' + rows + '</ul><div class="actions">' + act + '<button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>';
   var sh = cId('city-sheet');
-  if (CD.sheet && sh) { sh.innerHTML = html; cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', o.id);
+  if (CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', o.id);
 }
 function cityTeachPick(i) {
   var T = CD && CD.teach; if (!T || T.checked || !T.items[i]) return;
@@ -414,7 +445,7 @@ function cityTeachGo() {
   var rs = CityStory.applyRestore(S.city, CITY_DATA, cityBossPassed());
   checkVirtues(); save();
   CD.teach = null;
-  if (rs.changed) { cityRestorePending = false; cityCelebrate('¡Gracias, ' + T.o.name + ' lo entendió!'); }
+  if (rs.changed) { cityRestorePending = false; cityRefresh(); cityCelebrate('¡Gracias, ' + T.o.name + ' lo entendió!'); }
   else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(T.o.name + ' lo entendió gracias a ti. +' + gainXp + ' XP.') + '</p>'), '[data-c="sheetclose"]', T.o.id);
 }
 function cityTeachCorrect(o) {
@@ -429,8 +460,7 @@ function cityCelebrate(pre) {
 function cityTower(o) {
   var m = mod('M02');
   if (bossUnlocked(m)) {
-    var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
-    CD.sheet = false;
+    cityReleaseUi();
     startRound({ kind: 'boss', title: 'Jefe final', mid: 'M02', back: { name: 'city' }, city: { kind: 'boss', id: 'torre' } }, itemsFor('boss', m));
     return;
   }
@@ -458,7 +488,7 @@ function cityEncounter(o) {
   var p; try { p = c.world.encounter(o.id); } catch (e) { p = null; }
   Promise.resolve(p).then(go, go);
 }
-/* Punto de extensión: cada tarea posterior reemplaza la rama de su tipo (mentor, criatura, reparación, aprendiz, torre, puente). */
+/* Abre el lugar según su tipo (todos los tipos de cityBase tienen su rama) */
 function cityOpen(o) {
   if (!CD || !o) return;
   if (o.kind === 'director' && !S.city.prologue) {
@@ -480,8 +510,6 @@ function cityOpen(o) {
     cityEncounter(o);
   } else if (o.kind === 'repair') {
     startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: o.id } }, repairItems('M02', o.topic));
-  } else {
-    cityOpenSheet(citySheetHtml('Lugar', o.name, '<p>' + esc(o.label) + '</p>'), '[data-c="sheetclose"]', o.id);
   }
 }
 
@@ -491,15 +519,16 @@ function cityPauseMain() {
   var pb = cId('city-pausebox'); if (!pb) return;
   pb.innerHTML = '<div class="banner"><h2 class="h2">Pausa</h2><div class="actions col">' +
     CITY_PAUSE_OPTS.map(function (p) { return '<button class="btn" data-act="cx" data-c="p-' + p[0] + '">' + esc(p[1]) + '</button>'; }).join('') +
-    '<div class="actions"><button class="btn" data-act="cx" data-c="zoomout">Alejar</button><button class="btn" data-act="cx" data-c="zoomin">Acercar</button></div>' +
+    '<p class="meta" id="city-zoom" aria-live="polite"></p><div class="actions"><button class="btn" data-act="cx" data-c="zoomout">Alejar</button><button class="btn" data-act="cx" data-c="zoomin">Acercar</button></div>' +
     '<button class="btn primary" data-act="cx" data-c="pauseclose">Cerrar</button></div></div>';
+  cityZoomUi();
 }
 function cityOpenPause() {
   if (!CD || CD.paused) return;
   citySave();
   CD.paused = true; cityPauseMain();
   var pb = cId('city-pausebox'); pb.hidden = false;
-  cityInert();
+  cityInert(); cityZoomUi();
   if (CD.world) CD.world.setPaused('pause', true);
   cFocus(pb.querySelector('button'));
 }
@@ -535,7 +564,7 @@ function cityPauseAct(a) {
   } else if (a === 'review') {
     var q = queue();
     if (!q.length) { cityPauseList('Repaso', [], 'No tienes preguntas pendientes de repaso.'); return; }
-    cityClosePause(true);
+    cityReleaseUi();
     startRound({ kind: 'review', title: 'Repaso', back: { name: 'city' } }, sample(q, 10));
   } else if (a === 'hero') { citySave(); go('hero'); }
   else if (a === 'home') { citySave(); go('home'); }
@@ -575,7 +604,7 @@ if (window.__CITY_TEST__ === true) {
     teleport: function (x, z) {
       if (!CD) return;
       CD.hero = { x: x, z: z, yaw: CD.hero.yaw, vx: 0, vz: 0, speed: 0 }; CD.safe = { x: x, z: z, yaw: CD.hero.yaw };
-      CD.savedAt = { x: CD.savedAt.x, z: CD.savedAt.z }; cityObjUpdate(false); cityUpdateNear(true); cityAnnounce();
+      cityObjUpdate(false); cityUpdateNear(true); cityAnnounce();
     },
     objective: function () { return cityObjective(); }
   };

@@ -16,7 +16,7 @@ var CityInput = (function () {
 
     function typing() { var t = doc.activeElement && doc.activeElement.tagName; return t === 'INPUT' || t === 'TEXTAREA'; }
     function onDown(e) {
-      if (dead || fingers[e.pointerId] || !isFree(e.target)) return;
+      if (dead || fingers[e.pointerId] || !isFree(e.target) || !isFinite(e.clientX) || !isFinite(e.clientY)) return;
       var r = root.getBoundingClientRect(), s = safe(), lx = e.clientX - r.left, ly = e.clientY - r.top;
       if (lx < (s.left || 0) + EDGE || (r.height - ly) < (s.bottom || 0) + EDGE) return;       // margen de los gestos del sistema: no hace nada
       var joy = lx < r.width * JOY_X && ly > r.height * JOY_Y;   // palanca flotante: nace bajo el dedo en el 45 % izquierdo, bajo la barra superior
@@ -28,12 +28,13 @@ var CityInput = (function () {
       if (root.setPointerCapture) { try { root.setPointerCapture(e.pointerId); } catch (x) {} }
     }
     function onMove(e) {
-      var f = fingers[e.pointerId]; if (dead || !f) return;
+      var f = fingers[e.pointerId]; if (dead || !f || !isFinite(e.clientX) || !isFinite(e.clientY)) return;
       if (f.kind === 'joy') { f.dx = e.clientX - f.ox; f.dy = e.clientY - f.oy; }
       else if (f.kind === 'free') {
         f.x = e.clientX; f.y = e.clientY;
         if (pinch && (String(e.pointerId) === pinch.a || String(e.pointerId) === pinch.b)) {
           var nd = Math.max(1, dist(fingers[pinch.a], fingers[pinch.b])), k = Math.max(0.5, Math.min(2, nd / pinch.d));
+          if (!isFinite(k) || !isFinite(nd)) return;
           zoomF *= k; pinch.d = nd;
         }
       }
@@ -65,10 +66,14 @@ var CityInput = (function () {
       }
     }
     function onKeyUp(e) { delete down[String(e.key).toLowerCase()]; }
+    /* si la ventana pierde el foco o la pestaña se oculta no llegan los keyup/pointerup: se suelta todo para que el héroe no camine solo */
+    function releaseAll() { down = {}; fingers = {}; pinch = null; }
+    function onVisibility() { if (doc.hidden) releaseAll(); }
     root.addEventListener('pointerdown', onDown); root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerup', onUp); root.addEventListener('pointercancel', onUp); root.addEventListener('wheel', onWheel, { passive: false });
     win.addEventListener('pointerup', onUp); win.addEventListener('pointercancel', onUp);
     win.addEventListener('keydown', onKeyDown); win.addEventListener('keyup', onKeyUp);
+    win.addEventListener('blur', releaseAll); doc.addEventListener('visibilitychange', onVisibility);
 
     function intent() {
       var mx = 0, mz = 0, run = false, id, f;
@@ -105,6 +110,7 @@ var CityInput = (function () {
       root.removeEventListener('pointerup', onUp); root.removeEventListener('pointercancel', onUp); root.removeEventListener('wheel', onWheel);
       win.removeEventListener('pointerup', onUp); win.removeEventListener('pointercancel', onUp);
       win.removeEventListener('keydown', onKeyDown); win.removeEventListener('keyup', onKeyUp);
+      win.removeEventListener('blur', releaseAll); doc.removeEventListener('visibilitychange', onVisibility);
     }
     return { intent: intent, joy: joy, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
   }
