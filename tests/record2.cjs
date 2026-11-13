@@ -28,7 +28,7 @@ function boot(opts = {}) {
       w.cancelAnimationFrame = () => {};
       // Ciudad 3D con mundo falso (las batallas empiezan desde la ciudad).
       w.__CITY_TEST__ = true;
-      w.__CITY_WORLD__ = { create(canvas, D, o) { return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
+      w.__CITY_WORLD__ = { create(canvas, D, sceneId, o) { return Promise.resolve({ resize() {}, setPaused() {}, dissolve() {}, encounter() { return Promise.resolve(); }, dispose() {} }); } };
     },
   });
   return { dom, w: dom.window, d: dom.window.document, errors };
@@ -254,6 +254,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
 
   // I6. Batalla (R.battle) ganada: R F R R R => villano a 0 tras 4 aciertos, termina antes de 6
   const VT = ['M02:T01', 'M02:T02', 'M02:T03'];
+  const M2START = { scene: 'M02', at: { x: 0, z: -52, yaw: Math.PI } };   // las batallas de M02 empiezan dentro del distrito
   const BIT = { x: 0, z: 0 };
   { const M = (await import('../city/districts.mjs')).city.districts.M02.creatures.find((c) => c.id === 'bit').area; BIT.x = M.x; BIT.z = M.z; }
   const enterBattle = async (w, d) => {
@@ -263,7 +264,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
     click(w, d.querySelector('#city-act'));
     for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0));
   };
-  ({ w, d, errors } = boot({ seed: fresh() }));
+  ({ w, d, errors } = boot({ seed: fresh({ city: M2START }) }));
   await enterBattle(w, d);
   ok('I6 pre: batalla iniciada (HUD de energía)', !!d.querySelector('.hearts'));
   prev = load(w) ? load(w).xp : 0; xp0 = prev; consec = 0;
@@ -290,7 +291,7 @@ const histLen = (s, keys) => keys.reduce((n, k) => n + (s.topics[k] || []).lengt
   w.close();
 
   // I7. Batalla perdida: 3 fallos => energía 0, derrota; todo registrado y XP 0
-  ({ w, d, errors } = boot({ seed: fresh({ xp: 50 }) }));
+  ({ w, d, errors } = boot({ seed: fresh({ xp: 50, city: M2START }) }));
   await enterBattle(w, d);
   let n7 = 0;
   while (d.querySelector('.prompt') && n7 < 10) { answerOne(w, d, 'wrong'); nextQ(w, d); n7++; }

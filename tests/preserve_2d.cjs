@@ -248,7 +248,7 @@ function baseList(log) { let c = 0; return log.map((l) => { if (!l.ok) { c = 0; 
     // ================= Rondas que vuelven a la ciudad =================
     { const e = boot(fresh({ city: { prologue: true } }));
       const R = e.w.__CITY_ROUND__;
-      R.startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09' } }, R.repairItems('M02', 'T15'));
+      R.startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09', mid: 'M02' } }, R.repairItems('M02', 'T15'));
       answer(e, true); answer(e, true);
       const b = [...e.d.querySelectorAll('[data-act="back"]')].find((x) => /Volver a la ciudad/.test(x.textContent));
       ok('Ronda con back city: resultados ofrecen "Volver a la ciudad"', !!b);
@@ -271,7 +271,7 @@ function baseList(log) { let c = 0; return log.map((l) => { if (!l.ok) { c = 0; 
     { const e = boot(fresh({ city: { prologue: true, run: true, bridgeSeen: true, beaten: { bit: YEST }, repairs: { r01: true }, taught: { a01: true } } }));
       trigger(e); const s = saved(e.w), c = s.city;
       ok('Guardado conserva clave estudio_isw_v1 y v: 1', s.v === 1);
-      ok('S.city válido se conserva (prologue, run, bridgeSeen, beaten, repairs, taught)', c.prologue === true && c.run === true && c.bridgeSeen === true && c.beaten.bit === YEST && c.repairs.r01 === true && c.taught.a01 === true, JSON.stringify(c));
+      ok('S.city válido se conserva (prologue, run, beaten, repairs y taught pasan a d.M02 con su espejo plano; bridgeSeen se descarta)', c.prologue === true && c.run === true && !('bridgeSeen' in c) && c.d.M02.beaten.bit === YEST && c.d.M02.repairs.r01 === true && c.d.M02.taught.a01 === true && c.beaten.bit === YEST && c.taught.a01 === true, JSON.stringify(c));
       ok('S.city sin jefe ni 8 enseñados: no restaurado', !c.restored.M02 && !c.powers.planos);
       e.w.close(); }
     { const e = boot(fresh({ city: { beaten: { bit: TOMORROW, nada: YEST, x: 1 }, repairs: { r01: 'si', zz: true }, taught: { a01: 1, a99: true }, restored: { M02: true }, powers: { planos: true }, prologue: 'true' } }));

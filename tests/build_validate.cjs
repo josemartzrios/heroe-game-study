@@ -85,6 +85,14 @@ const S0 = '"id":"S0","name":"Prólogo: la red","topics":["T01"],"ask":1,"layers
 { const r = vCity('"name":"Nodo Enlace"', '"name":"Hulk Enlace"');
   ok('v10b palabra prohibida en el nombre de un distrito: falla con R6', r.status === 1 && /R6: M08: palabra prohibida/.test(r.out), 'status=' + r.status + ' ' + r.out.slice(-200)); }
 
+// el código de la vista no puede nombrar un distrito concreto
+for (const f of ['view', 'world2d', 'sprites2d', 'input']) {
+  const r = validate(html0, (d) => edit(d, 'city/' + f + '.js', (t) => t + "\nvar _x = 'M02';\n"));
+  ok('v13 city/' + f + '.js con el literal \'M02\': falla con "nombra un distrito concreto"', r.status === 1 && new RegExp('city/' + f + '\\.js nombra un distrito concreto').test(r.out), 'status=' + r.status + ' ' + r.out.slice(-160));
+}
+{ const r = validate(html0, (d) => edit(d, 'city/view.js', (t) => t + "\n/* el módulo M02 */ var _y = 'distrito';\n"));
+  ok('v13b un comentario sin comillas con M02 no es un literal y no falla', r.status === 0, 'status=' + r.status + ' ' + r.out.slice(-160)); }
+
 { const i = html0.indexOf(OPEN) + OPEN.length;
   const r = validate(html0.slice(0, i) + 'Batman' + html0.slice(i));
   ok('v11 palabra prohibida dentro del vendor no se reporta como palabra prohibida (solo hash)', r.status === 1 && !/Palabra prohibida/.test(r.out) && /vendor: hash distinto/.test(r.out), r.out.slice(-200)); }

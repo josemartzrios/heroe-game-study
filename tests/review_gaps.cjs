@@ -29,7 +29,7 @@ function boot(opts = {}) {
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
       w.HTMLCanvasElement.prototype.getContext = function () { return fake(this); };
       w.__CITY_WORLD__ = {
-        create(canvas, D, o) {
+        create(canvas, D, sceneId, o) {
           st.creates++; st.lastOpts = o;
           return Promise.resolve({
             resize: () => st.calls.push(['resize']),
@@ -57,7 +57,9 @@ function findQ(w, d) {
 const correctText = (q) => (q.type === 'tf' ? (q.answer ? 'Verdadero' : 'Falso') : q.options[q.answer]);
 function answerRight(w, d) { const q = findQ(w, d); click(w, [...d.querySelectorAll('.opt')].find((x) => norm(x.querySelector('span:last-child').textContent) === norm(correctText(q)))); const n = d.querySelector('#nextbtn'); if (n) click(w, n); }
 
-const base = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' }, city: { prologue: true } }, o);
+const M2AT = { x: 0, z: -52, yaw: Math.PI };   // entrada de M02: las pruebas de lugares del Taller arrancan ahí; las de la plaza piden scene 'plaza'
+const withScene = (s) => { const c = Object.assign({}, s.city || {}); if (!('scene' in c) && !('at' in c)) { c.scene = 'M02'; c.at = Object.assign({}, M2AT); } s.city = c; return s; };
+const base = (o = {}) => withScene(Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' }, city: { prologue: true } }, o));
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const $ = (e, s) => e.d.querySelector(s);
 const root = (e) => $(e, '#city-root');
@@ -71,7 +73,7 @@ const hero = (e) => e.st.lastOpts.state().hero;
 const zoom = (e) => e.st.lastOpts.state().zoom;
 const enter = async (e) => { click(e.w, $(e, '[data-act="city"]')); await tick(); };
 const R = (e) => e.w.__CITY_ROUND__;
-const startRepair = (e) => R(e).startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09' } }, R(e).repairItems('M02', 'T15'));
+const startRepair = (e) => R(e).startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09', mid: 'M02' } }, R(e).repairItems('M02', 'T15'));
 const back = async (e) => { for (let g = 0; g < 40 && $(e, '.prompt'); g++) answerRight(e.w, e.d); click(e.w, $(e, '[data-act="back"]')); await tick(); };
 const six = (ids) => { const o = {}; ids.forEach((t) => { o['M02:' + t] = [1, 1, 1, 1, 1, 1]; }); return o; };
 const todayStr = (ms = 0) => { const x = new Date(Date.now() + ms), p = (n) => (n < 10 ? '0' : '') + n; return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()); };
@@ -182,8 +184,8 @@ const finite = (h) => ['x', 'z', 'speed'].every((k) => Number.isFinite(h[k]));
     for (const [name, at] of [['muy fuera del mundo', { x: 1e9, z: -1e9, yaw: 0 }], ['con cadenas', { x: '5', z: 'a', yaw: null }], ['NaN/Infinity en el guardado (null)', { x: null, z: null, yaw: null }]]) {
       e = boot({ seed: base({ city: { prologue: true, at } }) }); await enter(e);
       key(e, 'w'); for (let i = 0; i < 20; i++) tickW(e); keyUp(e, 'w');
-      const h = hero(e), B = D.bounds;
-      ok('4e guardado "' + name + '": el héroe queda finito y dentro de los límites', finite(h) && h.x >= B.minX - 1 && h.x <= B.maxX + 1 && h.z >= B.minZ - 1 && h.z <= B.maxZ + 1, JSON.stringify(h));
+      const h = hero(e), Bs = [D.plaza.bounds].concat(Object.keys(D.districts).map((k) => D.districts[k].bounds));   // la escena que resolvió el guardado: la plaza o un distrito
+      ok('4e guardado "' + name + '": el héroe queda finito y dentro de los límites de alguna escena', finite(h) && Bs.some((B) => h.x >= B.minX - 1 && h.x <= B.maxX + 1 && h.z >= B.minZ - 1 && h.z <= B.maxZ + 1), JSON.stringify(h));
       e.w.close();
     }
 
@@ -290,7 +292,7 @@ const finite = (h) => ['x', 'z', 'speed'].every((k) => Number.isFinite(h[k]));
       e.w.close(); }
 
     // ---- 9. Revisión final: hoja como diálogo, reanudación en orden, botón de acción y zoom con feedback
-    { e = boot({ seed: base({ city: { prologue: true } }) }); await enter(e);
+    { e = boot({ seed: base({ city: { prologue: true, scene: 'plaza' } }) }); await enter(e);
       api(e).teleport(-6, -2.5); click(e.w, $(e, '#city-act'));
       const sh = $(e, '#city-sheet'), lab = sh.getAttribute('aria-labelledby');
       ok('9a la hoja es un diálogo modal etiquetado por su título', sh.getAttribute('role') === 'dialog' && sh.getAttribute('aria-modal') === 'true' && !!lab && !!e.d.getElementById(lab) && e.d.getElementById(lab).textContent.length > 0, String(lab));

@@ -317,6 +317,12 @@ body.city-on{overflow:hidden}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
 #city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
+#city-err{position:absolute; left:0; right:0; top:0; z-index:3; display:flex; justify-content:center; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left))}
+#city-err[hidden]{display:none}
+#city-err .banner{width:100%; max-width:560px; background:var(--surface)}
+#city-veil{position:absolute; inset:0; z-index:5; background:#000; opacity:0; pointer-events:none; transition:opacity .25s}
+#city-act .act-sub{display:block; font-size:12px; font-weight:400}
+#city-act .act-sub[hidden]{display:none}
 #city-pausebox{position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
 #city-pausebox[hidden]{display:none}
 #city-pausebox .banner{width:100%; background:var(--surface)}
@@ -2369,8 +2375,8 @@ const MODULES = [
   function anyBossPassed() { return Object.keys(S.boss).some(function (k) { return S.boss[k].passed; }); }
 
   /* ---------- progreso (localStorage con respaldo en memoria) ---------- */
-  var CITY_DATA = {"ranks":[[0,"Becario"],[1,"Junior"],[3,"Semi-senior"],[6,"Senior"],[8,"Arquitecto"],[11,"Tech Lead"]],"bounds":{"minX":-70,"maxX":70,"minZ":-195,"maxZ":40},"radius":0.4,"spawn":{"x":0,"z":8,"yaw":0},"plaza":{"r":30,"hq":{"x":0,"z":-14,"w":14,"d":10,"h":9},"director":{"id":"iris","name":"Iris","x":-6,"z":-4},"mirror":{"id":"espejo","name":"Espejo","x":6,"z":-4},"roads":[{"dist":"M04","angle":-57,"wall":{"x":20.7,"z":-31.87,"w":6,"d":2,"h":4}},{"dist":"M03","angle":-24,"wall":{"x":34.71,"z":-15.46,"w":6,"d":2,"h":4}},{"dist":"M08","angle":9,"wall":{"x":37.53,"z":5.94,"w":6,"d":2,"h":4}},{"dist":"M06","angle":42,"wall":{"x":28.24,"z":25.43,"w":6,"d":2,"h":4}},{"dist":"M07","angle":75,"wall":{"x":9.84,"z":36.71,"w":6,"d":2,"h":4}},{"dist":"M05","angle":108,"wall":{"x":-11.74,"z":36.14,"w":6,"d":2,"h":4}},{"dist":"M01","angle":141,"wall":{"x":-29.53,"z":23.91,"w":6,"d":2,"h":4}},{"dist":"M11","angle":174,"wall":{"x":-37.79,"z":3.97,"w":6,"d":2,"h":4}},{"dist":"M10","angle":207,"wall":{"x":-33.86,"z":-17.25,"w":6,"d":2,"h":4}},{"dist":"M09","angle":240,"wall":{"x":-19,"z":-32.91,"w":6,"d":2,"h":4}}]},"streets":{"x":[-28,0,28],"z":[-80,-108,-136]},"districts":{"M02":{"name":"Taller Comunal","seed":7,"rect":{"minX":-60,"maxX":60,"minZ":-185,"maxZ":-50},"blocks":[[-42,-66],[-42,-94],[-42,-122],[-42,-150],[-14,-66],[-14,-94],[-14,-122],[-14,-150],[14,-66],[14,-94],[14,-122],[14,-150],[42,-66],[42,-94],[42,-122],[42,-150]],"mentors":[{"id":"m01","topic":"T01","name":"Ana","x":-52,"z":-80},{"id":"m02","topic":"T02","name":"Bruno","x":-44,"z":-80},{"id":"m03","topic":"T03","name":"Carla","x":-36,"z":-80},{"id":"m04","topic":"T04","name":"Diego","x":-28,"z":-80},{"id":"m05","topic":"T05","name":"Elena","x":-20,"z":-80},{"id":"m06","topic":"T06","name":"Fermín","x":-12,"z":-80},{"id":"m07","topic":"T07","name":"Gala","x":-4,"z":-80},{"id":"m08","topic":"T08","name":"Héctor","x":4,"z":-80},{"id":"m09","topic":"T09","name":"Inés","x":12,"z":-80},{"id":"m10","topic":"T10","name":"Joaquín","x":20,"z":-80},{"id":"m11","topic":"T11","name":"Karla","x":28,"z":-80},{"id":"m12","topic":"T12","name":"Luis","x":36,"z":-80},{"id":"m13","topic":"T13","name":"Marta","x":44,"z":-80},{"id":"m14","topic":"T14","name":"Nico","x":52,"z":-80},{"id":"m15","topic":"T15","name":"Olga","x":-52,"z":-108},{"id":"m16","topic":"T16","name":"Pablo","x":-44,"z":-108},{"id":"m17","topic":"T17","name":"Quino","x":-36,"z":-108},{"id":"m18","topic":"T18","name":"Rosa","x":-28,"z":-108},{"id":"m19","topic":"T19","name":"Sergio","x":-20,"z":-108},{"id":"m20","topic":"T20","name":"Tere","x":-12,"z":-108},{"id":"m21","topic":"T21","name":"Ulises","x":-4,"z":-108},{"id":"m22","topic":"T22","name":"Vera","x":4,"z":-108},{"id":"m23","topic":"T23","name":"Wilfredo","x":12,"z":-108}],"creatures":[{"id":"bit","name":"Bit Errante","topics":["T01","T02","T03"],"area":{"x":20,"z":-108,"r":6}},{"id":"silicio","name":"Cuello de Silicio","topics":["T04","T05","T10"],"area":{"x":28,"z":-108,"r":6}},{"id":"kernel","name":"Kernel en Pánico","topics":["T06","T07","T08","T09"],"area":{"x":36,"z":-108,"r":6}},{"id":"eco","name":"Eco Roto","topics":["T12","T13","T14","T15","T16"],"area":{"x":44,"z":-108,"r":6}},{"id":"huerfano","name":"Dato Huérfano","topics":["T11","T17","T18","T19","T20"],"area":{"x":52,"z":-108,"r":6}},{"id":"alucina","name":"Alucinación","topics":["T21","T22","T23"],"area":{"x":-52,"z":-136,"r":6}}],"repairs":[{"id":"r01","topic":"T01","label":"semáforo","x":-44,"z":-136},{"id":"r02","topic":"T02","label":"puerta de arranque","x":-36,"z":-136},{"id":"r03","topic":"T05","label":"grúa trabada","x":-28,"z":-136},{"id":"r04","topic":"T06","label":"terminal con humo","x":-20,"z":-136},{"id":"r05","topic":"T09","label":"candado roto","x":-12,"z":-136},{"id":"r06","topic":"T10","label":"farol apagado","x":-4,"z":-136},{"id":"r07","topic":"T13","label":"buzón sin dirección","x":4,"z":-136},{"id":"r08","topic":"T14","label":"letrero borrado","x":12,"z":-136},{"id":"r09","topic":"T15","label":"ventanilla de peticiones","x":20,"z":-136},{"id":"r10","topic":"T16","label":"cerradura sin llave","x":28,"z":-136}],"apprentices":[{"id":"a01","topic":"T05","name":"Abril","mode":"explain","x":36,"z":-136},{"id":"a02","topic":"T06","name":"Beto","mode":"correct","x":44,"z":-136},{"id":"a03","topic":"T07","name":"Cleo","mode":"explain","x":52,"z":-136},{"id":"a04","topic":"T08","name":"Dani","mode":"correct","x":-28,"z":-58},{"id":"a05","topic":"T09","name":"Emi","mode":"explain","x":-28,"z":-66},{"id":"a06","topic":"T10","name":"Fabi","mode":"explain","x":-28,"z":-90},{"id":"a07","topic":"T12","name":"Gael","mode":"explain","x":-28,"z":-98},{"id":"a08","topic":"T13","name":"Hugo","mode":"correct","x":-28,"z":-122},{"id":"a09","topic":"T14","name":"Ivana","mode":"explain","x":-28,"z":-146},{"id":"a10","topic":"T15","name":"Jano","mode":"correct","x":-28,"z":-154},{"id":"a11","topic":"T16","name":"Kiko","mode":"explain","x":-28,"z":-162},{"id":"a12","topic":"T20","name":"Lola","mode":"correct","x":-28,"z":-170}],"tower":{"id":"torre","x":0,"z":-162,"w":8,"d":8,"h":20},"bridge":{"id":"puente","x":0,"z":-178,"w":6,"d":10,"to":"M04"},"need":8}}};
-  /* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, dirección del héroe, cercanos y distribución de edificios.
+  var CITY_DATA = {"ranks":[[0,"Becario"],[1,"Junior"],[3,"Semi-senior"],[6,"Senior"],[8,"Arquitecto"],[11,"Tech Lead"]],"order":["M02","M08","M03","M01","M10","M04","M06","M07","M05","M09","M11"],"radius":0.4,"plaza":{"name":"Plaza","r":30,"bounds":{"minX":-50,"maxX":50,"minZ":-50,"maxZ":40},"entry":{"x":0,"z":8,"yaw":0},"hq":{"x":0,"z":-14,"w":14,"d":10,"h":9},"director":{"id":"iris","name":"Iris","x":-6,"z":-4},"mirror":{"id":"espejo","name":"Espejo","x":6,"z":-4},"portals":[{"dist":"M02","angle":-90,"x":0,"z":-38,"w":6,"d":2,"back":{"x":0,"z":-33,"yaw":3.1416}},{"dist":"M08","angle":9,"x":37.53,"z":5.94,"w":6,"d":2,"back":{"x":32.59,"z":5.16,"yaw":1.4137}},{"dist":"M03","angle":-24,"x":34.71,"z":-15.46,"w":6,"d":2,"back":{"x":30.15,"z":-13.42,"yaw":1.9897}},{"dist":"M01","angle":141,"x":-29.53,"z":23.91,"w":6,"d":2,"back":{"x":-25.65,"z":20.77,"yaw":5.3931}},{"dist":"M10","angle":207,"x":-33.86,"z":-17.25,"w":6,"d":2,"back":{"x":-29.4,"z":-14.98,"yaw":4.2412}},{"dist":"M04","angle":-57,"x":20.7,"z":-31.87,"w":6,"d":2,"back":{"x":17.97,"z":-27.68,"yaw":2.5656}},{"dist":"M06","angle":42,"x":28.24,"z":25.43,"w":6,"d":2,"back":{"x":24.52,"z":22.08,"yaw":0.8378}},{"dist":"M07","angle":75,"x":9.84,"z":36.71,"w":6,"d":2,"back":{"x":8.54,"z":31.88,"yaw":0.2618}},{"dist":"M05","angle":108,"x":-11.74,"z":36.14,"w":6,"d":2,"back":{"x":-10.2,"z":31.38,"yaw":5.969}},{"dist":"M09","angle":240,"x":-19,"z":-32.91,"w":6,"d":2,"back":{"x":-16.5,"z":-28.58,"yaw":3.6652}},{"dist":"M11","angle":174,"x":-37.79,"z":3.97,"w":6,"d":2,"back":{"x":-32.82,"z":3.45,"yaw":4.8171}}]},"districts":{"M02":{"id":"M02","name":"Taller Comunal","colors":{"a":"#5ce1ff","b":"#ff4fd8"},"style":"taller","seed":7,"bounds":{"minX":-60,"maxX":60,"minZ":-185,"maxZ":-44},"entry":{"x":0,"z":-52,"yaw":3.141592653589793},"exit":{"x":0,"z":-47,"w":6,"d":2},"streets":{"x":[-28,0,28],"z":[-80,-108,-136]},"blocks":[[-42,-66],[-42,-94],[-42,-122],[-42,-150],[-14,-66],[-14,-94],[-14,-122],[-14,-150],[14,-66],[14,-94],[14,-122],[14,-150],[42,-66],[42,-94],[42,-122],[42,-150]],"mentors":[{"id":"m01","topic":"T01","name":"Ana","x":-52,"z":-80},{"id":"m02","topic":"T02","name":"Bruno","x":-44,"z":-80},{"id":"m03","topic":"T03","name":"Carla","x":-36,"z":-80},{"id":"m04","topic":"T04","name":"Diego","x":-28,"z":-80},{"id":"m05","topic":"T05","name":"Elena","x":-20,"z":-80},{"id":"m06","topic":"T06","name":"Fermín","x":-12,"z":-80},{"id":"m07","topic":"T07","name":"Gala","x":-4,"z":-80},{"id":"m08","topic":"T08","name":"Héctor","x":4,"z":-80},{"id":"m09","topic":"T09","name":"Inés","x":12,"z":-80},{"id":"m10","topic":"T10","name":"Joaquín","x":20,"z":-80},{"id":"m11","topic":"T11","name":"Karla","x":28,"z":-80},{"id":"m12","topic":"T12","name":"Luis","x":36,"z":-80},{"id":"m13","topic":"T13","name":"Marta","x":44,"z":-80},{"id":"m14","topic":"T14","name":"Nico","x":52,"z":-80},{"id":"m15","topic":"T15","name":"Olga","x":-52,"z":-108},{"id":"m16","topic":"T16","name":"Pablo","x":-44,"z":-108},{"id":"m17","topic":"T17","name":"Quino","x":-36,"z":-108},{"id":"m18","topic":"T18","name":"Rosa","x":-28,"z":-108},{"id":"m19","topic":"T19","name":"Sergio","x":-20,"z":-108},{"id":"m20","topic":"T20","name":"Tere","x":-12,"z":-108},{"id":"m21","topic":"T21","name":"Ulises","x":-4,"z":-108},{"id":"m22","topic":"T22","name":"Vera","x":4,"z":-108},{"id":"m23","topic":"T23","name":"Wilfredo","x":12,"z":-108}],"creatures":[{"id":"bit","name":"Bit Errante","topics":["T01","T02","T03"],"area":{"x":20,"z":-108,"r":6}},{"id":"silicio","name":"Cuello de Silicio","topics":["T04","T05","T10"],"area":{"x":28,"z":-108,"r":6}},{"id":"kernel","name":"Kernel en Pánico","topics":["T06","T07","T08","T09"],"area":{"x":36,"z":-108,"r":6}},{"id":"eco","name":"Eco Roto","topics":["T12","T13","T14","T15","T16"],"area":{"x":44,"z":-108,"r":6}},{"id":"huerfano","name":"Dato Huérfano","topics":["T11","T17","T18","T19","T20"],"area":{"x":52,"z":-108,"r":6}},{"id":"alucina","name":"Alucinación","topics":["T21","T22","T23"],"area":{"x":-52,"z":-136,"r":6}}],"repairs":[{"id":"r01","topic":"T01","label":"el semáforo","x":-44,"z":-136},{"id":"r02","topic":"T02","label":"la puerta de arranque","x":-36,"z":-136},{"id":"r03","topic":"T05","label":"la grúa trabada","x":-28,"z":-136},{"id":"r04","topic":"T06","label":"la terminal con humo","x":-20,"z":-136},{"id":"r05","topic":"T09","label":"el candado roto","x":-12,"z":-136},{"id":"r06","topic":"T10","label":"el farol apagado","x":-4,"z":-136},{"id":"r07","topic":"T13","label":"el buzón sin dirección","x":4,"z":-136},{"id":"r08","topic":"T14","label":"el letrero borrado","x":12,"z":-136},{"id":"r09","topic":"T15","label":"la ventanilla de peticiones","x":20,"z":-136},{"id":"r10","topic":"T16","label":"la cerradura sin llave","x":28,"z":-136}],"apprentices":[{"id":"a01","topic":"T05","name":"Abril","mode":"explain","x":36,"z":-136},{"id":"a02","topic":"T06","name":"Beto","mode":"correct","x":44,"z":-136},{"id":"a03","topic":"T07","name":"Cleo","mode":"explain","x":52,"z":-136},{"id":"a04","topic":"T08","name":"Dani","mode":"correct","x":-28,"z":-58},{"id":"a05","topic":"T09","name":"Emi","mode":"explain","x":-28,"z":-66},{"id":"a06","topic":"T10","name":"Fabi","mode":"explain","x":-28,"z":-90},{"id":"a07","topic":"T12","name":"Gael","mode":"explain","x":-28,"z":-98},{"id":"a08","topic":"T13","name":"Hugo","mode":"correct","x":-28,"z":-122},{"id":"a09","topic":"T14","name":"Ivana","mode":"explain","x":-28,"z":-146},{"id":"a10","topic":"T15","name":"Jano","mode":"correct","x":-28,"z":-154},{"id":"a11","topic":"T16","name":"Kiko","mode":"explain","x":-28,"z":-162},{"id":"a12","topic":"T20","name":"Lola","mode":"correct","x":-28,"z":-170}],"tower":{"id":"torre","x":0,"z":-162,"w":8,"d":8,"h":20},"need":8,"celebrate":{"text":"El Taller Comunal vuelve a funcionar y ya no depende de una sola persona.","power":{"id":"planos","name":"Planos"}}},"M08":{"id":"M08","name":"Nodo Enlace","colors":{"a":"#3dff9a","b":"#5ce1ff"},"style":"red","seed":11,"bounds":{"minX":-60,"maxX":60,"minZ":-70,"maxZ":60},"entry":{"x":0,"z":52,"yaw":0},"exit":{"x":0,"z":57,"w":6,"d":2},"streets":{"x":[-28,0,28],"z":[16,-12,-40]},"blocks":[[-42,30],[-42,2],[-42,-26],[-42,-54],[-14,30],[-14,2],[-14,-26],[-14,-54],[14,30],[14,2],[14,-26],[14,-54],[42,30],[42,2],[42,-26],[42,-54]],"mentors":[{"id":"m01","topic":"T01","name":"Alma","x":-52,"z":16},{"id":"m02","topic":"T02","name":"Baltasar","x":-44,"z":16},{"id":"m03","topic":"T03","name":"Celia","x":-36,"z":16},{"id":"m04","topic":"T04","name":"Darío","x":-28,"z":16},{"id":"m05","topic":"T05","name":"Estela","x":12,"z":16},{"id":"m06","topic":"T06","name":"Fausto","x":20,"z":16},{"id":"m07","topic":"T07","name":"Greta","x":28,"z":16},{"id":"m08","topic":"T08","name":"Hernán","x":36,"z":16},{"id":"m09","topic":"T09","name":"Irene","x":44,"z":16},{"id":"m10","topic":"T10","name":"Julián","x":52,"z":16},{"id":"m11","topic":"T11","name":"Lía","x":-52,"z":-12},{"id":"m12","topic":"T12","name":"Mateo","x":-44,"z":-12},{"id":"m13","topic":"T13","name":"Noemí","x":-36,"z":-12},{"id":"m14","topic":"T14","name":"Óscar","x":-4,"z":-12},{"id":"m15","topic":"T15","name":"Paula","x":4,"z":-12}],"creatures":[{"id":"ruido","name":"Ruido Blanco","topics":["T01","T02","T03"],"area":{"x":12,"z":-12,"r":6}},{"id":"perdido","name":"Paquete Perdido","topics":["T04","T07","T14"],"area":{"x":20,"z":-12,"r":6}},{"id":"capas","name":"Capa Confusa","topics":["T05","T08","T09","T13"],"area":{"x":28,"z":-12,"r":6}},{"id":"handshake","name":"Handshake Roto","topics":["T06","T10","T12"],"area":{"x":36,"z":-12,"r":6}},{"id":"espia","name":"Espía del Canal","topics":["T11","T15"],"area":{"x":44,"z":-12,"r":6}}],"repairs":[{"id":"r01","topic":"T02","label":"el cable cortado","x":52,"z":-12},{"id":"r02","topic":"T03","label":"la antena sin sentido","x":-52,"z":-40},{"id":"r03","topic":"T04","label":"el router de casa sin salida","x":-44,"z":-40},{"id":"r04","topic":"T07","label":"la dirección IP duplicada","x":-36,"z":-40},{"id":"r05","topic":"T10","label":"la conexión a medias","x":-28,"z":-40},{"id":"r06","topic":"T11","label":"el candado HTTPS roto","x":-20,"z":-40},{"id":"r07","topic":"T12","label":"el puerto bloqueado","x":-12,"z":-40},{"id":"r08","topic":"T14","label":"el enlace saturado","x":12,"z":-40}],"apprentices":[{"id":"a01","topic":"T01","name":"Brisa","mode":"explain","x":20,"z":-40},{"id":"a02","topic":"T02","name":"Ciro","mode":"correct","x":28,"z":-40},{"id":"a03","topic":"T04","name":"Delia","mode":"explain","x":36,"z":-40},{"id":"a04","topic":"T05","name":"Eloy","mode":"explain","x":44,"z":-40},{"id":"a05","topic":"T07","name":"Flor","mode":"correct","x":52,"z":-40},{"id":"a06","topic":"T08","name":"Gus","mode":"explain","x":-28,"z":52},{"id":"a07","topic":"T10","name":"Iker","mode":"correct","x":-28,"z":44},{"id":"a08","topic":"T12","name":"Luna","mode":"explain","x":-28,"z":36},{"id":"a09","topic":"T13","name":"Teo","mode":"correct","x":-28,"z":28}],"tower":{"id":"torre","x":0,"z":-64,"w":8,"d":8,"h":20},"need":6,"celebrate":{"text":"Nodo Enlace vuelve a conectar la ciudad: los paquetes llegan a su destino."},"route":{"stations":[{"id":"S0","name":"Prólogo: la red","topics":["T01"],"ask":1,"layers":0,"kp":[{"topic":"T01","index":0,"expect":"computadoras autónomas conectadas"}]},{"id":"S1","name":"Aplicación (tu teléfono)","topics":["T05","T11"],"ask":2,"layers":1,"kp":[{"topic":"T11","index":0,"expect":"Protocolos de aplicación"}]},{"id":"S2","name":"Transporte","topics":["T09","T10","T12"],"ask":2,"layers":2,"kp":[{"topic":"T12","index":3,"expect":"Los puertos pertenecen a la capa de"}]},{"id":"S3","name":"Red","topics":["T07"],"ask":2,"layers":3,"kp":[{"topic":"T07","index":5,"expect":"identifica el origen y el destino"}]},{"id":"S4","name":"Enlace y física","topics":["T08","T02"],"ask":2,"layers":4,"kp":[{"topic":"T08","index":3,"expect":"Enlace de datos"}]},{"id":"S5","name":"El medio inalámbrico","topics":["T02","T14"],"ask":1,"layers":4,"kp":[{"topic":"T02","index":1,"expect":"ondas electromagnéticas"}]},{"id":"S6","name":"Router de casa","topics":["T04"],"ask":2,"layers":4,"kp":[{"topic":"T04","index":1,"expect":"reparte la conexión"}]},{"id":"S7","name":"Cable e Internet","topics":["T02","T03","T04","T14"],"ask":2,"layers":4,"kp":[{"topic":"T04","index":3,"expect":"la interconexión de muchas LAN"}]},{"id":"S8","name":"Servidor","topics":["T05","T12","T11"],"ask":2,"layers":1,"kp":[{"topic":"T12","index":4,"expect":"hacia el puerto 443 del servidor"}]},{"id":"S9","name":"Epílogo","topics":["T06","T13","T15"],"ask":2,"layers":1,"kp":[{"topic":"T13","index":0,"expect":"7 capas, modelo"}]}],"pads":[{"x":0,"z":44},{"x":0,"z":30},{"x":0,"z":16},{"x":-14,"z":16},{"x":-28,"z":2},{"x":-28,"z":-12},{"x":-14,"z":-12},{"x":0,"z":-26},{"x":0,"z":-40},{"x":0,"z":-54}]}}}};
+  /* Matemática pura de Ciudad Núcleo: movimiento con colisión círculo-AABB, escenas (plaza y distritos), portales, dirección del héroe, cercanos y distribución de edificios.
    Sin DOM. Vista desde arriba: el movimiento es relativo a la pantalla (mz = -1 va a -z, arriba) y yaw 0 mira hacia -z. */
 var CityMove = (function () {
   var WALK = 10, RUN = 14, ACC = 0.15, DT_MAX = 0.05, SKIN = 1e-4, EPS = 1e-6;
@@ -2404,22 +2410,42 @@ var CityMove = (function () {
   /* punto de interacción de una caja sólida (torre, puente): su puerta, 1.2 m al frente (lado sur) */
   function door(o) { return { x: o.x, z: o.z + o.d / 2 + 1.2 }; }
 
-  /* Cajas de colisión: edificios, torre, sede, muros de la plaza, puente (cerrado si !restored) con sus muros laterales, y el borde del mundo. */
-  function boxesFor(D, restored) {
-    var M = D.districts.M02, B = D.bounds, boxes = [];
-    layoutBuildings(M).forEach(function (b) { boxes.push(aabb(b)); });
-    boxes.push(aabb(M.tower));
-    if (D.plaza.hq) boxes.push(aabb(D.plaza.hq));
-    D.plaza.roads.forEach(function (r) { boxes.push(aabb(r.wall)); });
-    var br = M.bridge, z0 = br.z - br.d / 2, z1 = br.z + br.d / 2, big = 10;
-    boxes.push({ minX: B.minX - big, maxX: br.x - br.w / 2, minZ: z0, maxZ: z1 });          // muros laterales del puente
-    boxes.push({ minX: br.x + br.w / 2, maxX: B.maxX + big, minZ: z0, maxZ: z1 });
-    if (!restored) boxes.push(aabb(br));
+  var own = Object.prototype.hasOwnProperty;
+  /* Escena por id: 'plaza', o un distrito propio de D.districts; null para cualquier otro texto (nunca resuelve __proto__, constructor…). */
+  function scene(D, id) {
+    if (id === 'plaza') return D.plaza;
+    return (typeof id === 'string' && own.call(D.districts, id)) ? D.districts[id] : null;
+  }
+  /* Cajas de colisión de una escena: en la plaza, la sede y los muros de los portales sin distrito (los portales abiertos no son sólidos);
+     en un distrito, sus edificios y su torre; y siempre el borde del mundo. Escena inválida → []. */
+  function boxesFor(D, sceneId) {
+    var sc = scene(D, sceneId), B, boxes = [], big = 10;
+    if (!sc) return boxes;
+    B = sc.bounds;
+    if (sceneId === 'plaza') {
+      if (sc.hq) boxes.push(aabb(sc.hq));
+      sc.portals.forEach(function (p) { if (!own.call(D.districts, p.dist)) boxes.push(aabb(p)); });
+    } else {
+      layoutBuildings(sc).forEach(function (b) { boxes.push(aabb(b)); });
+      boxes.push(aabb(sc.tower));
+    }
     boxes.push({ minX: B.minX - big, maxX: B.minX, minZ: B.minZ - big, maxZ: B.maxZ + big });  // borde del mundo
     boxes.push({ minX: B.maxX, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.maxZ + big });
     boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.minZ - big, maxZ: B.minZ });
     boxes.push({ minX: B.minX - big, maxX: B.maxX + big, minZ: B.maxZ, maxZ: B.maxZ + big });
     return boxes;
+  }
+  /* Portal que contiene el punto (el centro del héroe dentro de su caja): en la plaza el id del distrito (solo si existe);
+     en un distrito, 'plaza' si está en su salida; null en cualquier otro caso. */
+  function portalAt(D, sceneId, x, z) {
+    var sc = scene(D, sceneId), i, b, p;
+    if (!sc || !isNum(x) || !isNum(z)) return null;
+    function inside(o) { b = aabb(o); return x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ; }
+    if (sceneId === 'plaza') {
+      for (i = 0; i < sc.portals.length; i++) { p = sc.portals[i]; if (own.call(D.districts, p.dist) && inside(p)) return p.dist; }
+      return null;
+    }
+    return inside(sc.exit) ? 'plaza' : null;
   }
 
   function overlaps(x, z, r, b) {
@@ -2489,12 +2515,12 @@ var CityMove = (function () {
     return out;
   }
 
-  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, boxesFor: boxesFor, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, within: within };
+  return { isNum: isNum, coord: coord, layoutBuildings: layoutBuildings, scene: scene, boxesFor: boxesFor, portalAt: portalAt, door: door, step: step, faceOf: faceOf, WALK: WALK, RUN: RUN, within: within };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityMove;
 
-/* Lógica pura de la historia de Ciudad Núcleo: normalización del guardado, restauración, rangos y objetivo activo.
-   Sin DOM ni Three. D = CITY_DATA; C = S.city. Nunca confía en los booleanos guardados: restored y powers se recalculan. */
+/* Lógica pura de la historia de Ciudad Núcleo: normalización del guardado por distrito (S.city.d[mid]), migración del formato plano,
+   restauración, rangos y objetivo activo. Sin DOM. D = CITY_DATA; C = S.city. Nunca confía en los booleanos guardados: restored y powers se recalculan. */
 var CityStory = (function () {
   /* alias distinto de CityMove: un `var CityMove` aquí taparía al global en el navegador */
   var CM = (typeof CityMove !== 'undefined') ? CityMove : require('./move.js');
@@ -2519,52 +2545,112 @@ var CityStory = (function () {
     if (plainObj(obj)) idList.forEach(function (id) { if (own.call(obj, id) && okv(obj[id])) o[id] = obj[id]; });
     return o;
   }
-  function taughtCount(C, D) {
-    var t = plainObj(C.taught) ? C.taught : {};
-    return D.districts.M02.apprentices.filter(function (a) { return own.call(t, a.id) && t[a.id] === true; }).length;
+  /* lectura segura de una clave propia (un __proto__ del JSON nunca se hereda) */
+  function get(o, k) { return (plainObj(o) && own.call(o, k)) ? o[k] : undefined; }
+  function isTrue(v) { return v === true; }
+
+  /* Solo para migrar guardados anteriores a los distritos: el único distrito que existía era M02 y su rect ocupaba el mundo al norte
+     de la plaza (el mundo viejo medía -70..70 × -195..40). Cerrado en todos los bordes; luego la posición se acota a los bounds de M02. */
+  var LEGACY_ID = 'M02', LEGACY_M02_RECT = { minX: -70, maxX: 70, minZ: -195, maxZ: -44 };
+  var TIP_IDS = ['talk', 'star', 'creature', 'repair', 'tower', 'portals'];
+
+  /* un llamador que no es función, que lanza o que no devuelve true exactamente → no pasó el jefe; solo se llama con ids de D.districts */
+  function bossOk(bossPassedOf, mid) {
+    try { return typeof bossPassedOf === 'function' && bossPassedOf(mid) === true; } catch (e) { return false; }
   }
-  function condition(C, D, bossPassed) { return !!bossPassed && taughtCount(C, D) >= D.districts.M02.need; }
+  function dOf(C, mid) { var d = plainObj(C.d) && own.call(C.d, mid) && plainObj(C.d[mid]) ? C.d[mid] : {}; return d; }
+  function taughtCount(C, D, mid) {
+    var t = plainObj(dOf(C, mid).taught) ? dOf(C, mid).taught : {};
+    return D.districts[mid].apprentices.filter(function (a) { return own.call(t, a.id) && t[a.id] === true; }).length;
+  }
+  function condition(C, D, mid, bossPassedOf) { return bossOk(bossPassedOf, mid) && taughtCount(C, D, mid) >= D.districts[mid].need; }
   function insideBox(x, z, r, boxes) {
     return boxes.some(function (b) {
-      var cx = Math.min(b.maxX, Math.max(b.minX, x)), cz = Math.min(b.maxZ, Math.max(b.minZ, z)), dx = x - cx, dz = z - cz;
-      return dx * dx + dz * dz < r * r;
+      var cx = Math.min(b.maxX, Math.max(b.minX, x)), cz = Math.min(b.maxZ, Math.max(b.minZ, z)), dx = x - cx, dz = z - cz, rr = r - 1e-6;
+      return dx * dx + dz * dz < rr * rr;
     });
   }
+  function inRect(x, z, R) { return x >= R.minX && x <= R.maxX && z >= R.minZ && z <= R.maxZ; }
+  function routeDone(r, n) {
+    var v = get(r, 'done');
+    return (typeof v === 'number' && isFinite(v) && Math.floor(v) === v && v > 0) ? Math.min(v, n) : 0;
+  }
 
-  /* Reconstruye S.city con listas blancas: ids de CITY_DATA con hasOwnProperty, fechas reales y no futuras, y posición válida. */
-  function normalizeCity(raw, D, bossPassed, todayStr) {
-    var src = plainObj(raw) ? raw : {}, M = D.districts.M02, B = D.bounds, r = D.radius || 0.4, sp = D.spawn;
-    var C = {
-      prologue: src.prologue === true, run: src.run === true, bridgeSeen: src.bridgeSeen === true,
-      beaten: pick(src.beaten, ids(M.creatures), function (v) { return validDate(v, todayStr); }),
-      repairs: pick(src.repairs, ids(M.repairs), function (v) { return v === true; }),
-      taught: pick(src.taught, ids(M.apprentices), function (v) { return v === true; }),
-      restored: {}, powers: {}, at: { x: sp.x, z: sp.z, yaw: sp.yaw }
-    };
-    var ok = condition(C, D, bossPassed);
-    if (ok) { C.restored.M02 = true; C.powers.planos = true; }
-    var a = plainObj(src.at) ? src.at : null;
-    if (a && CM.isNum(a.x) && CM.isNum(a.z)) {
-      var x = CM.coord(a.x, B.minX + r, B.maxX - r, sp.x), z = CM.coord(a.z, B.minZ + r, B.maxZ - r, sp.z);
-      if (!insideBox(x, z, r, CM.boxesFor(D, ok))) {
-        C.at = { x: x, z: z, yaw: CM.isNum(a.yaw) ? normYaw(a.yaw) : sp.yaw };
-      }
+  /* Posición válida dentro de una escena: se acota a sus bounds menos el radio; una caja sólida → su entrada; un portal (o la salida) →
+     el punto de regreso del portal (o la entrada del distrito) para no cambiar de escena nada más cargar. */
+  function resolveAt(a, sceneId, D) {
+    var sc = CM.scene(D, sceneId), B = sc.bounds, r = D.radius || 0.4, e = sc.entry;
+    var entry = { x: e.x, z: e.z, yaw: e.yaw };
+    if (!plainObj(a) || !CM.isNum(a.x) || !CM.isNum(a.z)) return entry;
+    var x = CM.coord(a.x, B.minX + r, B.maxX - r, e.x), z = CM.coord(a.z, B.minZ + r, B.maxZ - r, e.z);
+    if (insideBox(x, z, r, CM.boxesFor(D, sceneId))) return entry;
+    var hit = CM.portalAt(D, sceneId, x, z);
+    if (hit !== null) {
+      if (sceneId !== 'plaza') return entry;
+      var p = D.plaza.portals.filter(function (q) { return q.dist === hit; })[0];
+      return { x: p.back.x, z: p.back.z, yaw: p.back.yaw };
+    }
+    return { x: x, z: z, yaw: CM.isNum(a.yaw) ? normYaw(a.yaw) : e.yaw };
+  }
+
+  /* Reconstruye S.city con listas blancas. bossPassedOf(mid) dice si el jefe de ese módulo está aprobado.
+     Sin d (guardado anterior a los distritos) se migran los campos planos a d[LEGACY_ID]; con d gana d. */
+  function normalizeCity(raw, D, bossPassedOf, todayStr) {
+    var src = plainObj(raw) ? raw : {}, mids = Object.keys(D.districts), srcD = get(src, 'd');
+    var C = { prologue: get(src, 'prologue') === true, run: get(src, 'run') === true, tips: pick(get(src, 'tips'), TIP_IDS, isTrue), scene: 'plaza', at: null, d: {}, restored: {}, powers: {} };
+    mids.forEach(function (mid) {
+      var M = D.districts[mid], base = plainObj(srcD) ? get(srcD, mid) : (mid === LEGACY_ID ? src : null);
+      var o = {
+        beaten: pick(get(base, 'beaten'), ids(M.creatures), function (v) { return validDate(v, todayStr); }),
+        repairs: pick(get(base, 'repairs'), ids(M.repairs), isTrue),
+        taught: pick(get(base, 'taught'), ids(M.apprentices), isTrue)
+      };
+      if (M.route) o.route = { done: routeDone(get(base, 'route'), M.route.stations.length) };
+      C.d[mid] = o;
+    });
+    mids.forEach(function (mid) {
+      if (condition(C, D, mid, bossPassedOf)) { C.restored[mid] = true; var pw = D.districts[mid].celebrate && D.districts[mid].celebrate.power; if (pw) C.powers[pw.id] = true; }
+    });
+    var a = get(src, 'at'), sc = get(src, 'scene');
+    if (own.call(src, 'scene')) {   // con scene: válida → esa escena; cualquier otro valor → la plaza en su entrada (la posición era de una escena desconocida)
+      var known = typeof sc === 'string' && (sc === 'plaza' || own.call(D.districts, sc));
+      C.scene = known ? sc : 'plaza';
+      C.at = known ? resolveAt(a, C.scene, D) : resolveAt(null, 'plaza', D);
+    } else {   // sin scene: migración por el rect del mundo viejo
+      var ok = plainObj(a) && CM.isNum(a.x) && CM.isNum(a.z), legacy = ok && own.call(D.districts, LEGACY_ID) && inRect(a.x, a.z, LEGACY_M02_RECT);
+      C.scene = legacy ? LEGACY_ID : 'plaza';
+      C.at = resolveAt(a, C.scene, D);
     }
     return C;
   }
 
-  /* 0 a 100: la mitad por enseñar a 8 de los 12 aprendices y la otra mitad por el jefe */
-  function restoration(C, D, bossPassed) {
-    var need = D.districts.M02.need, t = Math.min(taughtCount(C, D), need);
+  /* Espejo: copia d[LEGACY_ID] a los campos planos que leía el código anterior, para que una pestaña vieja no pierda el progreso de ese distrito. */
+  function mirror(C) {
+    var d = dOf(C, LEGACY_ID);
+    function copy(o) { var r = {}; if (plainObj(o)) Object.keys(o).forEach(function (k) { r[k] = o[k]; }); return r; }
+    C.beaten = copy(d.beaten); C.repairs = copy(d.repairs); C.taught = copy(d.taught);
+    return C;
+  }
+
+  /* 0 a 100: la mitad por enseñar a `need` aprendices y la otra mitad por el jefe */
+  function restoration(C, D, mid, bossPassed) {
+    var need = D.districts[mid].need, t = Math.min(taughtCount(C, D, mid), need);
     return Math.round(100 * (0.5 * t / need + 0.5 * (bossPassed ? 1 : 0)));
   }
-  /* Idempotente: pone o quita restored.M02 y powers.planos según la condición. changed solo si M02 pasó de no restaurado a restaurado. */
-  function applyRestore(C, D, bossPassed) {
-    var ok = condition(C, D, bossPassed), was = !!(C.restored && C.restored.M02 === true);
+  /* Idempotente: pone o quita restored[mid] y los poderes según la condición. changed lista los distritos que pasaron de no restaurados a restaurados. */
+  function applyRestore(C, D, bossPassedOf) {
+    var changed = [];
     if (!plainObj(C.restored)) C.restored = {};
-    if (!plainObj(C.powers)) C.powers = {};
-    if (ok) { C.restored.M02 = true; C.powers.planos = true; } else { delete C.restored.M02; delete C.powers.planos; }
-    return { changed: ok && !was };
+    C.powers = {};
+    Object.keys(D.districts).forEach(function (mid) {
+      var ok = condition(C, D, mid, bossPassedOf), was = C.restored[mid] === true;
+      if (ok) {
+        C.restored[mid] = true;
+        var pw = D.districts[mid].celebrate && D.districts[mid].celebrate.power; if (pw) C.powers[pw.id] = true;
+        if (!was) changed.push(mid);
+      } else delete C.restored[mid];
+    });
+    return { changed: changed };
   }
   function rankOf(C, D) {
     var n = 0, rs = plainObj(C.restored) ? C.restored : {};
@@ -2573,18 +2659,29 @@ var CityStory = (function () {
     D.ranks.forEach(function (rk) { if (n >= rk[0]) name = rk[1]; });
     return name;
   }
-  function apprenticesAvailable(C, D, starsOf) {
-    var t = plainObj(C.taught) ? C.taught : {};
-    return D.districts.M02.apprentices.filter(function (a) { return t[a.id] !== true && starsOf(a.topic) >= 1; });
+  function apprenticesAvailable(C, D, mid, starsOf) {
+    var t = plainObj(dOf(C, mid).taught) ? dOf(C, mid).taught : {};
+    return D.districts[mid].apprentices.filter(function (a) { return t[a.id] !== true && starsOf(a.topic) >= 1; });
+  }
+  /* distrito recomendado: el primero de D.order que existe y no está restaurado */
+  function recommended(C, D) {
+    var rs = plainObj(C.restored) ? C.restored : {}, i;
+    for (i = 0; i < D.order.length; i++) if (own.call(D.districts, D.order[i]) && rs[D.order[i]] !== true) return D.order[i];
+    return null;
   }
 
-  /* Objetivo activo (spec §3.5). ctx = { learned(topic), stars(topic), beatenEver(id), beatenToday(id), bossUnlocked, bossPassed } */
-  function nextObjective(C, D, ctx) {
-    var M = D.districts.M02, dir = D.plaza.director, i;
-    if (!C.prologue) return { kind: 'director', id: dir.id, label: 'Habla con ' + dir.name };
-    if (C.restored && C.restored.M02 === true) {
-      return C.bridgeSeen ? { kind: 'done', id: null, label: 'Capítulo completo' } : { kind: 'bridge', id: M.bridge.id, label: 'Cruza el puente' };
+  /* Objetivo activo. En la plaza: Iris y luego el portal recomendado. En un distrito (sceneId = su id):
+     ctx = { learned(topic), stars(topic), beatenEver(id), beatenToday(id), bossUnlocked, bossPassed } */
+  function nextObjective(C, D, sceneId, ctx) {
+    var dir = D.plaza.director, i;
+    if (sceneId === 'plaza') {
+      if (!C.prologue) return { kind: 'director', id: dir.id, label: 'Habla con ' + dir.name };
+      var rec = recommended(C, D);
+      return rec ? { kind: 'portal', id: rec, label: 'Entra a ' + D.districts[rec].name } : { kind: 'none', id: null, label: 'Ciudad al día: más distritos pronto' };
     }
+    if (typeof sceneId !== 'string' || !own.call(D.districts, sceneId)) return { kind: 'none', id: null, label: '' };
+    var M = D.districts[sceneId], dd = dOf(C, sceneId);
+    if (C.restored && C.restored[sceneId] === true) return { kind: 'plaza', id: 'exit', label: 'Vuelve a la plaza' };
     if (ctx.bossUnlocked && !ctx.bossPassed) return { kind: 'tower', id: M.tower.id, label: 'Entra a la torre' };
     for (i = 0; i < M.creatures.length; i++) {
       var cr = M.creatures[i], ms = cr.topics.map(function (t) { return M.mentors.filter(function (m) { return m.topic === t; })[0]; });
@@ -2594,16 +2691,20 @@ var CityStory = (function () {
       if (noStars) return { kind: 'practice', id: noStars.id, label: 'Practica con ' + noStars.name };
       if (!ctx.beatenEver(cr.id)) return { kind: 'creature', id: cr.id, label: 'Enfrenta a ' + cr.name };
     }
-    var rp = M.repairs.filter(function (x) { return !(C.repairs && C.repairs[x.id] === true); })[0];
-    if (rp) return { kind: 'repair', id: rp.id, label: 'Repara el ' + rp.label };
-    var ap = apprenticesAvailable(C, D, ctx.stars)[0];
+    if (M.route) {
+      var done = routeDone(dd.route, M.route.stations.length);
+      if (done < M.route.stations.length) return { kind: 'route', id: 'pad' + done, label: 'Ruta del paquete · estación ' + (done + 1) + ' de ' + M.route.stations.length };
+    }
+    var rp = M.repairs.filter(function (x) { return !(plainObj(dd.repairs) && dd.repairs[x.id] === true); })[0];
+    if (rp) return { kind: 'repair', id: rp.id, label: 'Repara ' + rp.label };
+    var ap = apprenticesAvailable(C, D, sceneId, ctx.stars)[0];
     if (ap) return { kind: 'apprentice', id: ap.id, label: 'Enseña a ' + ap.name };
     var cb = M.creatures.filter(function (x) { return !ctx.beatenToday(x.id); })[0];
     if (cb) return { kind: 'creature', id: cb.id, label: 'Enfrenta a ' + cb.name };
     return { kind: 'none', id: null, label: '' };
   }
 
-  return { normalizeCity: normalizeCity, taughtCount: taughtCount, restoration: restoration, applyRestore: applyRestore, rankOf: rankOf, apprenticesAvailable: apprenticesAvailable, nextObjective: nextObjective };
+  return { normalizeCity: normalizeCity, taughtCount: taughtCount, restoration: restoration, applyRestore: applyRestore, rankOf: rankOf, apprenticesAvailable: apprenticesAvailable, nextObjective: nextObjective, mirror: mirror, LEGACY_M02_RECT: LEGACY_M02_RECT, TIP_IDS: TIP_IDS };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityStory;
 
@@ -2721,7 +2822,7 @@ var CityInput = (function () {
       win.removeEventListener('keydown', onKeyDown); win.removeEventListener('keyup', onKeyUp);
       win.removeEventListener('blur', releaseAll); doc.removeEventListener('visibilitychange', onVisibility);
     }
-    return { intent: intent, joy: joy, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
+    return { intent: intent, joy: joy, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, releaseAll: releaseAll, dispose: dispose };
   }
   return { create: create };
 })();
@@ -2732,7 +2833,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     return {
       v: 1, xp: 0, days: { last: null, count: 0 }, session: 0, lastActive: 0, topics: {}, qs: {}, boss: {},
       hero: { name: 'Héroe' },
-      virtues: {}, city: CityStory.normalizeCity({}, CITY_DATA, false, today()),
+      virtues: {}, city: CityStory.normalizeCity({}, CITY_DATA, function () { return false; }, today()),
       stats: { learnTopics: [], cleared: 0, roundsNoPower: 0, bossFailed: {} }
     };
   }
@@ -2741,6 +2842,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     var t = s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1').slice(0, 20);
     return /[\uD800-\uDBFF]$/.test(t) ? t.slice(0, -1) : t;
   }
+  /* Jefe aprobado de un módulo. bossPassedIn lee un objeto boss (lo usa migrate, que corre antes de que exista S); bossPassedOf lee el estado vivo. */
+  function bossPassedIn(boss, mid) { var b = (boss && Object.prototype.hasOwnProperty.call(boss, mid)) ? boss[mid] : null; return !!b && b.passed === true; }
+  function bossPassedOf(mid) { return bossPassedIn(S.boss, mid); }
   function migrate(o) {
     var f = fresh(), cityRaw = o.city, worldRaw = o.world;
     for (var k in f) if (!(k in o)) o[k] = f[k];
@@ -2785,7 +2889,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     });
     o.stats.cleared = Math.floor(num(o.stats.cleared, 0)); o.stats.roundsNoPower = Math.floor(num(o.stats.roundsNoPower, 0));
     /* S.city: lista blanca completa; city.run hereda world.run solo si el guardado no traía city.run propio */
-    var bp = !!(o.boss.M02 && o.boss.M02.passed === true);
+    var bp = function (mid) { return bossPassedIn(o.boss, mid); };   // migrate corre antes de que exista S: lee el boss que está migrando
     var oldRun = plainObj(worldRaw) ? !!worldRaw.run : null;
     var hadRun = plainObj(cityRaw) && typeof cityRaw.run === 'boolean';
     o.city = CityStory.normalizeCity(cityRaw, CITY_DATA, bp, today());
@@ -2803,7 +2907,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     try { if (localStorage.getItem(KEY + '_bak') === null) localStorage.setItem(KEY + '_bak', raw); } catch (e3) {}
     return null;
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { saveWarn(); } }
+  function save() { try { CityStory.mirror(S.city); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { saveWarn(); } }   // mirror: los campos planos de M02 que lee una pestaña con el código anterior
   function saveWarn() {
     try {
       if (document.getElementById('savewarn')) return;
@@ -3091,15 +3195,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     R.i++;
     if (R.i >= R.items.length) finish(); else present();
   }
-  /* Registra el resultado de una ronda de la ciudad (cfg.city): vencida, reparada o enseñada */
+  /* Progreso de un distrito (S.city.d[mid]); null si mid no es un distrito de los datos */
+  function cityD(mid) { return (typeof mid === 'string' && Object.prototype.hasOwnProperty.call(S.city.d, mid)) ? S.city.d[mid] : null; }
+  /* Registra el resultado de una ronda de la ciudad (cfg.city = { kind, id, mid }): vencida, reparada o enseñada, en el distrito de la ronda */
   function cityResolve() {
-    var c = R.cfg.city;
-    if (!c || typeof c.id !== 'string') return;
-    if (c.kind === 'battle') { if (R.won) S.city.beaten[c.id] = today(); }
-    else if (c.kind === 'repair') { if (R.ok === 2 && R.assisted === 0) S.city.repairs[c.id] = true; }
-    else if (c.kind === 'teach') { if (R.ok === 1) S.city.taught[c.id] = true; }
+    var c = R.cfg.city, d = c ? cityD(c.mid) : null;
+    if (!c || !d || typeof c.id !== 'string') return;
+    if (c.kind === 'battle') { if (R.won) d.beaten[c.id] = today(); }
+    else if (c.kind === 'repair') { if (R.ok === 2 && R.assisted === 0) d.repairs[c.id] = true; }
+    else if (c.kind === 'teach') { if (R.ok === 1) d.taught[c.id] = true; }
   }
-  var cityRestorePending = false;
+  var cityRestorePending = [];   // ids de los distritos recién restaurados que aún no se celebraron
   /* Gancho de prueba: solo existe si la página de pruebas lo pide antes de cargar */
   if (window.__CITY_TEST__ === true) window.__CITY_ROUND__ = { startRound: startRound, battleItems: battleItems, repairItems: repairItems };
   function finish() {
@@ -3129,8 +3235,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     checkVirtues();
     if (R.battle) { R.won = R.battle.hp <= 0; R.tie = !R.won && R.battle.en > 0; }   // sin preguntas con vida y energía: Empate
     cityResolve();
-    var rs = CityStory.applyRestore(S.city, CITY_DATA, !!(S.boss.M02 && S.boss.M02.passed === true));
-    if (rs.changed) cityRestorePending = true;
+    var rs = CityStory.applyRestore(S.city, CITY_DATA, bossPassedOf);
+    if (rs.changed.length) cityRestorePending = cityRestorePending.concat(rs.changed);
     R.lvl1 = levelOf(S.xp);
     R.done = true;
     save();
@@ -3205,7 +3311,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityInput;
     var h = header() + '<main><div class="crumb"><button class="btn sm ghost" data-act="home">← Módulos</button></div>' +
       '<div class="head"><span class="tag">' + esc(m.id) + '</span><h1>' + esc(m.title) + '</h1>' +
       '<div class="bar" role="img" aria-label="' + dominio(m) + ' por ciento de dominio"><i style="width:' + dominio(m) + '%"></i></div>' +
-      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
+      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (Object.prototype.hasOwnProperty.call(CITY_DATA.districts, m.id) ? '<div><button class="btn sm primary" data-act="district" data-id="' + esc(m.id) + '"><span aria-hidden="true">▶</span> Ir al distrito</button></div>' : '') + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
       '<h2 class="h2">Modos del módulo</h2><div class="modes">' +
       modeBtn('tf', 'Relámpago', '10 afirmaciones, 12 s cada una', true) +
       modeBtn('scenario', '¿Qué usarías?', 'Decisiones de diseño en casos reales', true) +
@@ -3798,17 +3904,35 @@ if (typeof module !== 'undefined' && module.exports) module.exports = TripScene;
 
   
   /* Sprites 2D de Ciudad Núcleo: pixel art neón generado por código, un atlas (un canvas) por tipo, cuadros de 14×14 px.
-   Sin imágenes externas. Las variantes salen solo de ids de CITY_DATA, nunca del guardado. */
+   Sin imágenes externas. Las variantes salen solo de CITY_DATA (nunca del guardado): 'iris' y 'mid:id' para cada mentor, aprendiz y criatura
+   de cada distrito, porque un id (m01) se repite entre distritos. El aspecto del primer distrito se conserva; los demás tienen el suyo. */
 var CitySprites = (function () {
   var CELL = 14, FACES = ['up', 'down', 'left', 'right'];
-  var PERSON = ['iris']; (function () { var i; for (i = 1; i <= 23; i++) PERSON.push('m' + (i < 10 ? '0' : '') + i); for (i = 1; i <= 12; i++) PERSON.push('a' + (i < 10 ? '0' : '') + i); })();
-  var CREATURE = ['bit', 'silicio', 'kernel', 'eco', 'huerfano', 'alucina'];
-  var THING = ['repair', 'repaired', 'lamp', 'lampOn', 'ask'];
+  /* listas de variantes (se rellenan en setData; las arrays son siempre las mismas para que `kinds` no quede viejo) */
+  var PERSON = ['iris'], CREATURE = [], THING = ['repair', 'repaired', 'lamp', 'lampOn', 'ask'];
+  var LOOK = ['iris'], STYLE = [], FIRST = { mentor: '', apprentice: '', creature: '' };
   var KINDS = { hero: [''], person: PERSON, creature: CREATURE, thing: THING };
   var SUIT = ['#3d7ad8', '#e0533a', '#3aa36b', '#9b5fd8', '#f2c14e', '#6bb6d6'], SKIN = ['#f1c9a5', '#d9a273', '#a86f46', '#7b4a2d'];
-  var doc = null, atlas = {};
+  var doc = null, atlas = {}, data = null;
 
-  function init(d) { doc = d; atlas = {}; }
+  function init(d) { if (d !== doc) { doc = d; atlas = {}; } }
+  /* Genera las variantes desde CITY_DATA. Con los mismos datos no hace nada (los atlas siguen valiendo); con otros los descarta. */
+  function setData(D) {
+    if (D === data) return;
+    data = D; atlas = {};
+    PERSON.length = 0; CREATURE.length = 0; LOOK.length = 0; STYLE.length = 0;
+    PERSON.push('iris'); LOOK.push('iris'); FIRST.mentor = ''; FIRST.apprentice = ''; FIRST.creature = '';
+    var mids = D && D.districts ? Object.keys(D.districts) : [];
+    mids.forEach(function (mid, di) {
+      var M = D.districts[mid];
+      function add(list, kind) {
+        list.forEach(function (o) { var v = mid + ':' + o.id; PERSON.push(v); LOOK.push(di === 0 ? o.id : v); if (!FIRST[kind]) FIRST[kind] = v; });
+      }
+      add(M.mentors || [], 'mentor');
+      add(M.apprentices || [], 'apprentice');
+      (M.creatures || []).forEach(function (c, ci) { var v = mid + ':' + c.id; CREATURE.push(v); STYLE.push((ci + di * 3) % 6); if (!FIRST.creature) FIRST.creature = v; });
+    });
+  }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
   function idx(list, v) { var i = list.indexOf(v); return i < 0 ? 0 : i; }
   function px(g, c, x, y, w, h) { g.fillStyle = c; g.fillRect(x, y, w, h); }
@@ -3829,8 +3953,8 @@ var CitySprites = (function () {
     var h = hash(id), isIris = id === 'iris';
     person(g, ox, oy, face, step, isIris ? '#ffd23f' : SUIT[h % 6], SKIN[(h >>> 3) % 4], isIris ? '#e8ecff' : ['#3b2a20', '#1f1a17', '#6b4423', '#b9772f'][(h >>> 5) % 4], isIris ? '#ff4fd8' : '#12162e');
   }
-  function creature(g, ox, oy, step, id) {
-    var i = idx(CREATURE, id), body = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'][i], dk = '#3a2470', y = step ? 1 : 0;
+  function creature(g, ox, oy, step, i) {
+    var body = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'][i], dk = '#3a2470', y = step ? 1 : 0;
     px(g, 'rgba(0,0,0,0.30)', ox + 2, oy + 12, 10, 2);
     px(g, body, ox + 2, oy + 4 + y, 10, 7); px(g, body, ox + 3, oy + 3 + y, 8, 1);
     if (i === 0) { px(g, dk, ox + 3, oy + 1 + y, 2, 3); px(g, dk, ox + 9, oy + 1 + y, 2, 3); }
@@ -3852,15 +3976,15 @@ var CitySprites = (function () {
   function build(kind) {
     var list = KINDS[kind], cols, rows, cv, g, v, f, s;
     if (kind === 'hero' || kind === 'person') { cols = 8; rows = list.length; }
-    else if (kind === 'creature') { cols = 2; rows = list.length; }
+    else if (kind === 'creature') { cols = 2; rows = Math.max(1, list.length); }
     else { cols = list.length; rows = 1; }
     cv = doc.createElement('canvas'); cv.width = cols * CELL; cv.height = rows * CELL;
     g = cv.getContext('2d');
     if (!g) throw new Error('sin-2d');
     for (v = 0; v < list.length; v++) {
       if (kind === 'hero') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) hero(g, (f * 2 + s) * CELL, 0, f, s);
-      else if (kind === 'person') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) personV(g, (f * 2 + s) * CELL, v * CELL, f, s, list[v]);
-      else if (kind === 'creature') for (s = 0; s < 2; s++) creature(g, s * CELL, v * CELL, s, list[v]);
+      else if (kind === 'person') for (f = 0; f < 4; f++) for (s = 0; s < 2; s++) personV(g, (f * 2 + s) * CELL, v * CELL, f, s, LOOK[v]);
+      else if (kind === 'creature') for (s = 0; s < 2; s++) creature(g, s * CELL, v * CELL, s, STYLE[v]);
       else thing(g, v * CELL, 0, list[v]);
     }
     return cv;
@@ -3878,16 +4002,25 @@ var CitySprites = (function () {
     return { img: atlas[kind], sx: sx, sy: sy, w: CELL, h: CELL };
   }
 
-  /* Pinta cada canvas[data-spr="hero"] de root con el héroe de frente, sin suavizado. */
+  /* Pinta cada canvas[data-spr] de root (hero, mentor, creature o apprentice) con su personaje de frente, sin suavizado. */
+  function iconOf(name) {
+    if (name === 'hero') return ['hero', ''];
+    if (name === 'mentor') return ['person', FIRST.mentor];
+    if (name === 'apprentice') return ['person', FIRST.apprentice];
+    if (name === 'creature') return ['creature', FIRST.creature];
+    return null;
+  }
   function paintIcons(root) {
     if (!root || !root.querySelectorAll) return;
-    var list = root.querySelectorAll('canvas[data-spr="hero"]'), i, cv, g, r;
+    var list = root.querySelectorAll('canvas[data-spr]'), i, cv, g, r, ic;
     for (i = 0; i < list.length; i++) {
       cv = list[i]; g = null;
+      ic = iconOf(cv.getAttribute ? cv.getAttribute('data-spr') : null);
+      if (!ic) continue;
       try { g = cv.getContext('2d'); } catch (e) {}
       if (!g) continue;
       try {
-        r = frame('hero', '', 'down', 0);
+        r = frame(ic[0], ic[1], 'down', 0);
         g.imageSmoothingEnabled = false;
         g.clearRect(0, 0, cv.width, cv.height);
         g.drawImage(r.img, r.sx, r.sy, r.w, r.h, 0, 0, cv.width, cv.height);
@@ -3896,14 +4029,17 @@ var CitySprites = (function () {
   }
 
   if (typeof document !== 'undefined') init(document);
-  return { init: init, frame: frame, paintIcons: paintIcons, kinds: KINDS, CELL: CELL };
+  if (typeof CITY_DATA !== 'undefined') setData(CITY_DATA);   // en el navegador los datos ya están en el mismo ámbito
+  return { init: init, setData: setData, frame: frame, paintIcons: paintIcons, kinds: KINDS, CELL: CELL };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CitySprites;
 
-/* Mundo 2D de Ciudad Núcleo (vista desde arriba, pixel art neón). Contrato (spec §3.1):
-   CityWorld2D.create(canvas, D, opts) → Promise<api>; opts = { reducedMotion, tick(dt), state(), onLost?, raf?, caf?, pixelRatio?, search?, doc? }.
-   El mapa fijo se prerenderiza a 8 px/m (sin dpr ni zoom); cada cuadro copia el rectángulo visible y dibuja encima sprites y partículas.
-   Por cuadro NO se usa shadowBlur, filter, composite distinto de source-over, canvas nuevos ni get/putImageData. */
+/* Mundo 2D de Ciudad Núcleo (vista desde arriba, pixel art neón), una escena a la vez: la plaza o un distrito.
+   Contrato: CityWorld2D.create(canvas, D, sceneId, opts) → Promise<api>; opts = { reducedMotion, tick(dt), state(), onLost?, raf?, caf?, pixelRatio?, search?, doc? }.
+   api = { resize, setPaused(reason, on), dispose, encounter(id), dissolve(id), stats(), setRoute(done) }.
+   El mapa de la escena se prerenderiza una sola vez a 8 px/m (sin dpr ni zoom); cada cuadro copia el rectángulo visible y dibuja encima
+   sprites, la ruta del paquete (pads, cable y paquete) y partículas. Por cuadro NO se usa shadowBlur, filter, composite distinto de
+   source-over, canvas nuevos ni get/putImageData; encender un tramo de la ruta nunca repinta el mapa. */
 var CityWorld2D = (function () {
   /* alias distintos de los globales: un `var Three3D` aquí taparía al global en el navegador */
   var T3 = (typeof Three3D !== 'undefined') ? Three3D : require('../three/shared.js');
@@ -3911,72 +4047,97 @@ var CityWorld2D = (function () {
   var CMv = (typeof CityMove !== 'undefined') ? CityMove : require('./move.js');
   var PX = 8, BG = '#0d1230', FOG = 'rgba(176,108,255,0.08)', STAR_COL = ['#6b7280', '#cd7f32', '#cfd6e6', '#ffd23f'];
   var NEON = ['#5ce1ff', '#ff4fd8', '#7dff8a', '#ffd76a'];
-  var NPART = 200;
+  var NPART = 200, CABLE_OFF = '#2a3358', CHECK = '#eafff3', PACKET = '#ffffff', PACKET_MS = 800;
 
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  /* Prerenderiza el mapa en un canvas de 140×8 por 235×8 px. restored enciende más las ventanas del Taller. */
-  function buildMap(D, doc, restored, into) {
-    var B = D.bounds, M = D.districts.M02, P = D.plaza, w = Math.round((B.maxX - B.minX) * PX), h = Math.round((B.maxZ - B.minZ) * PX);
+  /* Prerenderiza el mapa de una escena a 8 px/m. restored enciende más las ventanas del distrito. */
+  function buildMap(D, sceneId, doc, restored, into) {
+    var SC = CMv.scene(D, sceneId);
+    if (!SC) throw new Error('escena');
+    var B = SC.bounds, w = Math.round((B.maxX - B.minX) * PX), h = Math.round((B.maxZ - B.minZ) * PX);
     var cv = into || doc.createElement('canvas'); cv.width = w; cv.height = h;
     var g = cv.getContext('2d');
     if (!g) throw new Error('sin-2d');
     function X(x) { return (x - B.minX) * PX; }
     function Z(z) { return (z - B.minZ) * PX; }
     function rect(c, x0, z0, x1, z1) { g.fillStyle = c; g.fillRect(Math.round(X(x0)), Math.round(Z(z0)), Math.round((x1 - x0) * PX), Math.round((z1 - z0) * PX)); }
-    rect('#141a3a', B.minX, B.minZ, B.maxX, B.maxZ);
-    // plaza (disco de baldosas) y calles
-    var r, a, i;
-    g.fillStyle = '#1b2250';
-    for (a = -P.r; a <= P.r; a += 0.5) { var half = Math.sqrt(Math.max(0, P.r * P.r - a * a)); g.fillRect(Math.round(X(-half)), Math.round(Z(a)), Math.round(half * 2 * PX), Math.round(0.5 * PX) + 1); }
-    // baldosas de la plaza y anillo neón
-    for (a = -P.r + 3; a < P.r; a += 3) {
-      var hw = Math.sqrt(Math.max(0, P.r * P.r - a * a));
-      rect('#232c63', -hw, a - 0.06, hw, a + 0.06); rect('#232c63', a - 0.06, -hw, a + 0.06, hw);
+    function label(txt, x, z, c, size) { g.fillStyle = c; g.font = 'bold ' + size + 'px ui-monospace, monospace'; g.textAlign = 'center'; g.fillText(txt, X(x), Z(z)); }
+    /* arco abierto (portal de un distrito o salida): suelo oscuro, dintel y umbral en el color a, postes en el color b */
+    function arch(o, ca, cb, txt) {
+      var x0 = o.x - o.w / 2, x1 = o.x + o.w / 2, z0 = o.z - o.d / 2, z1 = o.z + o.d / 2;
+      rect('#0d1230', x0, z0, x1, z1); rect(ca, x0, z0, x1, z0 + 0.3); rect(ca, x0, z1 - 0.3, x1, z1);
+      rect(cb, x0, z0, x0 + 0.8, z1); rect(cb, x1 - 0.8, z0, x1, z1);
+      label(txt, o.x, o.z + 0.7, ca, 18);
     }
-    g.strokeStyle = '#5ce1ff'; g.lineWidth = 3; g.beginPath(); g.arc(X(0), Z(0), P.r * PX, 0, Math.PI * 2); g.stroke();
-    g.strokeStyle = '#ff4fd8'; g.lineWidth = 1; g.beginPath(); g.arc(X(0), Z(0), (P.r - 1) * PX, 0, Math.PI * 2); g.stroke();
-    var road = '#232a52', line = '#5ce1ff';
-    var R0 = M.rect;
-    rect(road, -3, R0.maxZ - 4, 3, -P.r + 1);   // calle de la plaza al distrito
-    P.roads.forEach(function (rd) { var an = rd.angle * Math.PI / 180; for (r = P.r; r < Math.hypot(rd.wall.x, rd.wall.z); r += 0.5) rect(road, Math.cos(an) * r - 2, Math.sin(an) * r - 2, Math.cos(an) * r + 2, Math.sin(an) * r + 2); });
-    D.streets.z.forEach(function (z) { rect(road, R0.minX - 2, z - 3, R0.maxX + 2, z + 3); rect(line, R0.minX - 2, z - 0.06, R0.maxX + 2, z + 0.06); });
-    D.streets.x.forEach(function (x) { rect(road, x - 3, R0.minZ, x + 3, R0.maxZ); rect(line, x - 0.06, R0.minZ, x + 0.06, R0.maxZ); });
-    // edificios: sombra, cuerpo, borde neón por manzana y ventanas deterministas
+    rect('#141a3a', B.minX, B.minZ, B.maxX, B.maxZ);
+    var road = '#232a52', r, a;
+    if (sceneId === 'plaza') {
+      var P = SC;
+      // disco de baldosas, baldosas y anillo neón
+      g.fillStyle = '#1b2250';
+      for (a = -P.r; a <= P.r; a += 0.5) { var half = Math.sqrt(Math.max(0, P.r * P.r - a * a)); g.fillRect(Math.round(X(-half)), Math.round(Z(a)), Math.round(half * 2 * PX), Math.round(0.5 * PX) + 1); }
+      for (a = -P.r + 3; a < P.r; a += 3) {
+        var hw = Math.sqrt(Math.max(0, P.r * P.r - a * a));
+        rect('#232c63', -hw, a - 0.06, hw, a + 0.06); rect('#232c63', a - 0.06, -hw, a + 0.06, hw);
+      }
+      g.strokeStyle = '#5ce1ff'; g.lineWidth = 3; g.beginPath(); g.arc(X(0), Z(0), P.r * PX, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = '#ff4fd8'; g.lineWidth = 1; g.beginPath(); g.arc(X(0), Z(0), (P.r - 1) * PX, 0, Math.PI * 2); g.stroke();
+      // un camino del anillo a cada portal
+      P.portals.forEach(function (p) { var an = p.angle * Math.PI / 180; for (r = P.r; r < Math.hypot(p.x, p.z); r += 0.5) rect(road, Math.cos(an) * r - 2, Math.sin(an) * r - 2, Math.cos(an) * r + 2, Math.sin(an) * r + 2); });
+      // sede y espejo
+      var hq = P.hq;
+      rect('rgba(0,0,0,0.30)', hq.x - hq.w / 2 + 1, hq.z - hq.d / 2 + 1, hq.x + hq.w / 2 + 1, hq.z + hq.d / 2 + 1);
+      rect('#3d6fa8', hq.x - hq.w / 2, hq.z - hq.d / 2, hq.x + hq.w / 2, hq.z + hq.d / 2); rect('#5ce1ff', hq.x - hq.w / 2, hq.z - hq.d / 2, hq.x + hq.w / 2, hq.z - hq.d / 2 + 0.4); rect('#ffd76a', hq.x - 1.5, hq.z + hq.d / 2 - 1.2, hq.x + 1.5, hq.z + hq.d / 2);
+      var wxx; for (wxx = hq.x - hq.w / 2 + 1.2; wxx < hq.x + hq.w / 2 - 1.5; wxx += 2.2) { rect('#ffd76a', wxx, hq.z - hq.d / 2 + 1.5, wxx + 1, hq.z - hq.d / 2 + 2.5); rect('#5ce1ff', wxx, hq.z - hq.d / 2 + 3.5, wxx + 1, hq.z - hq.d / 2 + 4.5); }
+      rect('#9be7ff', P.mirror.x - 0.7, P.mirror.z - 1.2, P.mirror.x + 0.7, P.mirror.z + 1.2);
+      // portales: arco abierto con los colores del distrito, o muro de La Maraña con letrero
+      P.portals.forEach(function (p) {
+        var Md = Object.prototype.hasOwnProperty.call(D.districts, p.dist) ? D.districts[p.dist] : null;
+        if (Md) arch(p, Md.colors.a, Md.colors.b, p.dist);
+        else { rect('#2a1f3d', p.x - p.w / 2, p.z - p.d / 2, p.x + p.w / 2, p.z + p.d / 2); rect('#ffd76a', p.x - 1.5, p.z - 0.3, p.x + 1.5, p.z + 0.3); label(p.dist, p.x, p.z - 1.4, '#8a7fb0', 16); }
+      });
+      return cv;
+    }
+    // ---- distrito: calles, edificios y torre ----
+    var cols = SC.colors, line = cols.a, red = SC.style === 'red', tw = SC.tower;
+    SC.streets.z.forEach(function (z) { rect(road, B.minX, z - 3, B.maxX, z + 3); rect(line, B.minX, z - 0.06, B.maxX, z + 0.06); });
+    SC.streets.x.forEach(function (x) { rect(road, x - 3, B.minZ, x + 3, B.maxZ); rect(line, x - 0.06, B.minZ, x + 0.06, B.maxZ); });
     var lit = restored ? '#fff0a0' : '#ffd76a';
-    CMv.layoutBuildings(M).forEach(function (b, n) {
-      var neon = NEON[b.block % 4], x0 = b.x - b.w / 2, z0 = b.z - b.d / 2, x1 = b.x + b.w / 2, z1 = b.z + b.d / 2;
+    CMv.layoutBuildings(SC).forEach(function (b, n) {
+      var neon = red ? (b.block % 2 ? cols.b : cols.a) : NEON[b.block % 4], x0 = b.x - b.w / 2, z0 = b.z - b.d / 2, x1 = b.x + b.w / 2, z1 = b.z + b.d / 2;
       rect('rgba(0,0,0,0.30)', x0 + b.h * 0.12, z0 + b.h * 0.12, x1 + b.h * 0.12, z1 + b.h * 0.12);
       rect('#2a2f5e', x0, z0, x1, z1); rect(neon, x0, z0, x1, z0 + 0.35); rect('#1f2450', x0, z1 - 0.5, x1, z1);
       var hh = hash('w' + n), wx, wz;
       for (wz = z0 + 1; wz < z1 - 1.2; wz += 1.5) for (wx = x0 + 0.8; wx < x1 - 1; wx += 1.4) { hh = Math.imul(hh ^ (hh >>> 13), 1274126177) >>> 0; if (hh % 3) rect(hh % 5 === 0 ? neon : lit, wx, wz, wx + 0.55, wz + 0.45); }
+      if (red) {   // antena en la azotea y franjas de rack en la fachada
+        var ax = x0 + 0.8 + (hash('a' + n) % 100) / 100 * Math.max(0.1, b.w - 1.6);
+        rect(cols.a, ax, z0 - 1.4, ax + 0.3, z0 + 0.3); rect(cols.b, ax - 0.5, z0 - 1.4, ax + 0.8, z0 - 1.1);
+        rect(cols.b, x0 + 0.5, z1 - 1.3, x1 - 0.5, z1 - 1.15); rect(cols.a, x0 + 0.5, z1 - 1.0, x1 - 0.5, z1 - 0.85);
+      }
     });
-    // sede, espejo y torre
-    var hq = P.hq, tw = M.tower;
-    rect('rgba(0,0,0,0.30)', hq.x - hq.w / 2 + 1, hq.z - hq.d / 2 + 1, hq.x + hq.w / 2 + 1, hq.z + hq.d / 2 + 1);
-    rect('#3d6fa8', hq.x - hq.w / 2, hq.z - hq.d / 2, hq.x + hq.w / 2, hq.z + hq.d / 2); rect('#5ce1ff', hq.x - hq.w / 2, hq.z - hq.d / 2, hq.x + hq.w / 2, hq.z - hq.d / 2 + 0.4); rect('#ffd76a', hq.x - 1.5, hq.z + hq.d / 2 - 1.2, hq.x + 1.5, hq.z + hq.d / 2);
-    var wxx; for (wxx = hq.x - hq.w / 2 + 1.2; wxx < hq.x + hq.w / 2 - 1.5; wxx += 2.2) { rect('#ffd76a', wxx, hq.z - hq.d / 2 + 1.5, wxx + 1, hq.z - hq.d / 2 + 2.5); rect('#5ce1ff', wxx, hq.z - hq.d / 2 + 3.5, wxx + 1, hq.z - hq.d / 2 + 4.5); }
-    rect('#9be7ff', P.mirror.x - 0.7, P.mirror.z - 1.2, P.mirror.x + 0.7, P.mirror.z + 1.2);
     rect('rgba(0,0,0,0.30)', tw.x - tw.w / 2 + 2, tw.z - tw.d / 2 + 2, tw.x + tw.w / 2 + 2, tw.z + tw.d / 2 + 2);
     rect('#5b6270', tw.x - tw.w / 2, tw.z - tw.d / 2, tw.x + tw.w / 2, tw.z + tw.d / 2); rect('#ffd23f', tw.x - tw.w / 2 + 1, tw.z - tw.d / 2 + 1, tw.x + tw.w / 2 - 1, tw.z + tw.d / 2 - 1);
-    // muros de La Maraña con letrero
-    P.roads.forEach(function (rd) { var wl = rd.wall; rect('#2a1f3d', wl.x - wl.w / 2, wl.z - wl.d / 2, wl.x + wl.w / 2, wl.z + wl.d / 2); rect('#ffd76a', wl.x - 1.5, wl.z - 0.3, wl.x + 1.5, wl.z + 0.3); });
+    arch(SC.exit, cols.a, cols.b, 'PLAZA');
     return cv;
   }
 
-  function create(canvas, D, opts) {
+  function create(canvas, D, sceneId, opts) {
     opts = opts || {};
-    var M = D.districts.M02, P = D.plaza, B = D.bounds;
+    var SC = CMv.scene(D, sceneId);
+    if (!SC) return Promise.reject(new Error('escena inválida'));
+    var isPlaza = sceneId === 'plaza', P = D.plaza, B = SC.bounds;
     var doc = opts.doc || (typeof document !== 'undefined' ? document : null);
     if (opts.doc) SP.init(opts.doc);
+    SP.setData(D);
     var ctx = null, map = null, restored0 = false;
     try {
       ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('sin-2d');
-      var s0 = opts.state ? opts.state() : null;   // si el distrito ya está restaurado el mapa se prerenderiza una sola vez, ya restaurado
+      var s0 = opts.state ? opts.state() : null;   // si la escena ya está restaurada el mapa se prerenderiza una sola vez, ya restaurado
       restored0 = !!(s0 && s0.flags && s0.flags.restored);
-      map = buildMap(D, doc, restored0);
+      map = buildMap(D, sceneId, doc, restored0);
       ['hero', 'person', 'creature', 'thing'].forEach(function (k) { SP.frame(k, '', 'down', 0); });   // un atlas imposible rechaza aquí, no en el primer cuadro
     } catch (e) { return Promise.reject(new Error('sin-2d')); }
     var raf = opts.raf || function (cb) { return requestAnimationFrame(cb); };
@@ -3990,18 +4151,37 @@ var CityWorld2D = (function () {
     var parts = [], nLive = 0, sparkT = 0, st = { npc: 0, part: 0, tick: 0, draw: 0, p95: 0 }, times = [], frames = 0;
     var i;
     for (i = 0; i < NPART; i++) parts.push({ x: 0, z: 0, vx: 0, vz: 0, life: 0, c: '#b06cff' });
-    // NPC: lista fija con posición
-    var npcs = [{ id: P.director.id, kind: 'person', x: P.director.x, z: P.director.z }];
-    M.mentors.forEach(function (m) { npcs.push({ id: m.id, kind: 'person', x: m.x, z: m.z, star: true }); });
-    M.creatures.forEach(function (c) { npcs.push({ id: c.id, kind: 'creature', x: c.area.x, z: c.area.z }); });
-    M.apprentices.forEach(function (a) { npcs.push({ id: a.id, kind: 'person', x: a.x, z: a.z, ask: true }); });
+    // NPC de la escena: Iris en la plaza; mentores, criaturas y aprendices en un distrito
+    var npcs = [], vId = function (id) { return sceneId + ':' + id; };
+    if (isPlaza) npcs.push({ id: P.director.id, v: P.director.id, kind: 'person', x: P.director.x, z: P.director.z });
+    else {
+      SC.mentors.forEach(function (m) { npcs.push({ id: m.id, v: vId(m.id), kind: 'person', x: m.x, z: m.z, star: true }); });
+      SC.creatures.forEach(function (c) { npcs.push({ id: c.id, v: vId(c.id), kind: 'creature', x: c.area.x, z: c.area.z }); });
+      SC.apprentices.forEach(function (a) { npcs.push({ id: a.id, v: vId(a.id), kind: 'person', x: a.x, z: a.z, ask: true }); });
+    }
     var byId = Object.create(null); npcs.forEach(function (n) { byId[n.id] = n; });
-    var lamps = []; for (i = 0; i < 8; i++) lamps.push({ x: Math.cos(i * Math.PI / 4) * 20, z: Math.sin(i * Math.PI / 4) * 20 });
-    var walls = P.roads.map(function (r) { return r.wall; });
-    var fogBlobs = []; for (i = 0; i < 14; i++) fogBlobs.push({ x: M.rect.minX + (hash('f' + i) % 1000) / 1000 * (M.rect.maxX - M.rect.minX), z: M.rect.minZ + (hash('g' + i) % 1000) / 1000 * (M.rect.maxZ - M.rect.minZ), r: 7 + (i % 4) * 2 });
+    var repairs = isPlaza ? [] : SC.repairs;
+    // 8 faroles: en el anillo de la plaza o en los cruces de calles más cercanos a la entrada del distrito
+    var lamps = [];
+    if (isPlaza) for (i = 0; i < 8; i++) lamps.push({ x: Math.cos(i * Math.PI / 4) * 20, z: Math.sin(i * Math.PI / 4) * 20 });
+    else {
+      var cross = []; SC.streets.x.forEach(function (x) { SC.streets.z.forEach(function (z) { cross.push({ x: x, z: z, d: Math.hypot(x - SC.entry.x, z - SC.entry.z) }); }); });
+      cross.sort(function (a, b) { return a.d - b.d; });
+      for (i = 0; i < 8; i++) lamps.push(cross[i % cross.length]);
+    }
+    // muros de La Maraña (portales sin distrito) para las chispas de la plaza
+    var walls = isPlaza ? P.portals.filter(function (p) { return !Object.prototype.hasOwnProperty.call(D.districts, p.dist); }) : [];
+    var fogBlobs = []; for (i = 0; i < 14; i++) fogBlobs.push({ x: B.minX + (hash('f' + i) % 1000) / 1000 * (B.maxX - B.minX), z: B.minZ + (hash('g' + i) % 1000) / 1000 * (B.maxZ - B.minZ), r: 7 + (i % 4) * 2 });
+    // ruta del paquete (solo distritos con ruta): pads, tramos de cable por las calles y paquete
+    var route = (!isPlaza && SC.route) ? SC.route : null, pads = route ? route.pads : [], legs = [], routeDone = 0, routeInit = false, packet = null;
+    if (route) for (i = 0; i + 1 < pads.length; i++) {
+      var p0 = pads[i], p1 = pads[i + 1], pts = [[p0.x, p0.z], [p1.x, p0.z], [p1.x, p1.z]], rs = [], k2;
+      for (k2 = 0; k2 < 2; k2++) if (pts[k2][0] !== pts[k2 + 1][0] || pts[k2][1] !== pts[k2 + 1][1]) rs.push({ x0: Math.min(pts[k2][0], pts[k2 + 1][0]) - 0.25, z0: Math.min(pts[k2][1], pts[k2 + 1][1]) - 0.25, x1: Math.max(pts[k2][0], pts[k2 + 1][0]) + 0.25, z1: Math.max(pts[k2][1], pts[k2 + 1][1]) + 0.25 });
+      legs.push({ rects: rs, pts: pts });
+    }
     var lastRestored = restored0, errs = 0;
 
-    var fpsEl = null, fpsAcc = 0;
+    var fpsEl = null;
     if (/fps=1/.test(search) && canvas.parentNode && typeof document !== 'undefined') {
       fpsEl = document.createElement('div'); fpsEl.id = 'city-fps'; fpsEl.style.cssText = 'position:absolute;left:8px;bottom:8px;font:12px monospace;color:#5ce1ff;pointer-events:none;z-index:9';
       canvas.parentNode.appendChild(fpsEl);
@@ -4032,10 +4212,14 @@ var CityWorld2D = (function () {
       sparkT += dt;
       if (sparkT > 160) {
         sparkT = 0;
-        var w = walls[Math.floor(time / 160) % walls.length];
-        if (Math.abs(w.x - hx) < 40 && Math.abs(w.z - hz) < 60) spawn(w.x + (Math.random() - 0.5) * 5, w.z, 0, -1.5, 900, '#b06cff');
-        var rp = M.repairs[Math.floor(time / 160) % M.repairs.length];
-        if (!(flags.repairs && flags.repairs[rp.id]) && Math.abs(rp.x - hx) < 30 && Math.abs(rp.z - hz) < 50) spawn(rp.x, rp.z - 0.8, (Math.random() - 0.5) * 2, -2, 500, '#ffd76a');
+        if (walls.length) {   // las chispas salen de los muros de La Maraña (solo en la plaza) y de los retos sin reparar (solo en un distrito)
+          var w = walls[Math.floor(time / 160) % walls.length];
+          if (Math.abs(w.x - hx) < 40 && Math.abs(w.z - hz) < 60) spawn(w.x + (Math.random() - 0.5) * 5, w.z, 0, -1.5, 900, '#b06cff');
+        }
+        if (repairs.length) {
+          var rp = repairs[Math.floor(time / 160) % repairs.length];
+          if (!(flags.repairs && flags.repairs[rp.id]) && Math.abs(rp.x - hx) < 30 && Math.abs(rp.z - hz) < 50) spawn(rp.x, rp.z - 0.8, (Math.random() - 0.5) * 2, -2, 500, '#ffd76a');
+        }
       }
     }
 
@@ -4048,41 +4232,70 @@ var CityWorld2D = (function () {
       ctx.drawImage(r.img, r.sx, r.sy, r.w, r.h, Math.round(SXp(x) - dw / 2), Math.round(SZp(z) - dh * 0.9 - (lift || 0)), dw, dh);
     }
 
+    /* cable (encendido hasta el pad activo), paquete y pads: terminados con ✓ y relleno oscuro, el activo relleno con el color del distrito,
+       los siguientes solo con contorno (la diferencia es de forma, no solo de color) */
+    function drawRoute() {
+      var cols = SC.colors, j, k, L, q, S = Math.round(3 * ppm), X, Z, o, u = Math.max(2, Math.round(ppm * 0.25));
+      for (j = 0; j < legs.length; j++) {
+        ctx.fillStyle = j < routeDone ? cols.a : CABLE_OFF;
+        for (k = 0; k < legs[j].rects.length; k++) { q = legs[j].rects[k]; ctx.fillRect(Math.round(SXp(q.x0)), Math.round(SZp(q.z0)), Math.max(2, Math.round((q.x1 - q.x0) * ppm)), Math.max(2, Math.round((q.z1 - q.z0) * ppm))); }
+      }
+      if (packet && !reduced && legs[packet.seg]) {
+        L = legs[packet.seg].pts; var l1 = Math.abs(L[1][0] - L[0][0]) + Math.abs(L[1][1] - L[0][1]), l2 = Math.abs(L[2][0] - L[1][0]) + Math.abs(L[2][1] - L[1][1]), d = clamp(packet.t / PACKET_MS, 0, 1) * (l1 + l2), px, pz;
+        if (d <= l1) { px = L[0][0] + (L[1][0] - L[0][0]) * (l1 ? d / l1 : 0); pz = L[0][1] + (L[1][1] - L[0][1]) * (l1 ? d / l1 : 0); }
+        else { var e = l2 ? (d - l1) / l2 : 0; px = L[1][0] + (L[2][0] - L[1][0]) * e; pz = L[1][1] + (L[2][1] - L[1][1]) * e; }
+        if (onScreen(px, pz, 20)) { ctx.fillStyle = PACKET; ctx.fillRect(Math.round(SXp(px) - 2 * u), Math.round(SZp(pz) - 2 * u), 4 * u, 4 * u); }
+      }
+      for (j = 0; j < pads.length; j++) {
+        o = pads[j]; if (!onScreen(o.x, o.z, S)) continue;
+        X = Math.round(SXp(o.x) - S / 2); Z = Math.round(SZp(o.z) - S / 2);
+        if (j < routeDone) {
+          ctx.fillStyle = '#10152e'; ctx.fillRect(X, Z, S, S);
+          ctx.fillStyle = CHECK;
+          ctx.fillRect(X + Math.round(S * 0.2), Z + Math.round(S * 0.5), u, u * 2); ctx.fillRect(X + Math.round(S * 0.2) + u, Z + Math.round(S * 0.5) + u, u, u * 2);
+          ctx.fillRect(X + Math.round(S * 0.2) + 2 * u, Z + Math.round(S * 0.5) + 2 * u, u, u); ctx.fillRect(X + Math.round(S * 0.2) + 3 * u, Z + Math.round(S * 0.5) + u, u, u * 2);
+          ctx.fillRect(X + Math.round(S * 0.2) + 4 * u, Z + Math.round(S * 0.5) - u, u, u * 2); ctx.fillRect(X + Math.round(S * 0.2) + 5 * u, Z + Math.round(S * 0.5) - 3 * u, u, u * 2);
+          ctx.strokeStyle = cols.a; ctx.lineWidth = 2; ctx.strokeRect(X, Z, S, S);
+        } else if (j === routeDone) {
+          ctx.fillStyle = cols.a; ctx.fillRect(X, Z, S, S);
+          ctx.fillStyle = '#10152e'; ctx.fillRect(X + u * 2, Z + u * 2, S - u * 4, S - u * 4);
+          ctx.fillStyle = (!reduced && Math.floor(time / 500) % 2) ? cols.b : cols.a; ctx.fillRect(X + Math.round(S / 2) - u, Z + Math.round(S / 2) - u, u * 2, u * 2);
+        } else { ctx.strokeStyle = '#4a5280'; ctx.lineWidth = 2; ctx.strokeRect(X + 1, Z + 1, S - 2, S - 2); }
+      }
+    }
+
     function draw(s) {
       var t0 = typeof performance !== 'undefined' ? performance.now() : 0;
       var h = s.hero, f = s.flags || {}, zoom = clamp(typeof s.zoom === 'number' && isFinite(s.zoom) ? s.zoom : 1, 1, 1.75);
       ppm = Math.round(PX * zoom * pr * 4) / 4; sprS = Math.round(2 * zoom * pr * 4) / 4;
       cx = h.x + camOffX; cz = h.z + camOffZ;
       sx = W_ / 2; sy = H_ * (portrait ? 0.55 : 0.5);
-      if (!!f.restored !== lastRestored) { lastRestored = !!f.restored; try { buildMap(D, doc, lastRestored, map); } catch (e) {} }
+      if (!!f.restored !== lastRestored) { lastRestored = !!f.restored; try { buildMap(D, sceneId, doc, lastRestored, map); } catch (e) {} }
       ctx.fillStyle = BG; ctx.fillRect(0, 0, W_, H_);
       // rectángulo visible del mapa
       var wx0 = cx - sx / ppm, wz0 = cz - sy / ppm, wx1 = cx + (W_ - sx) / ppm, wz1 = cz + (H_ - sy) / ppm;
       var vx0 = Math.max(wx0, B.minX), vz0 = Math.max(wz0, B.minZ), vx1 = Math.min(wx1, B.maxX), vz1 = Math.min(wz1, B.maxZ);
       if (vx1 > vx0 && vz1 > vz0) ctx.drawImage(map, (vx0 - B.minX) * PX, (vz0 - B.minZ) * PX, (vx1 - vx0) * PX, (vz1 - vz0) * PX, Math.round(SXp(vx0)), Math.round(SZp(vz0)), Math.round((vx1 - vx0) * ppm), Math.round((vz1 - vz0) * ppm));
       var n = 0, m = 16 * sprS, j, o, fr, sc;
-      // puente cerrado o construido
-      var br = M.bridge, bx = SXp(br.x - br.w / 2), bz = SZp(br.z - br.d / 2);
-      ctx.fillStyle = f.restored ? '#c4a46b' : '#2a1f3d'; ctx.fillRect(Math.round(bx), Math.round(bz), Math.round(br.w * ppm), Math.round(br.d * ppm));
-      if (f.restored) { ctx.fillStyle = '#ffd76a'; ctx.fillRect(Math.round(bx), Math.round(SZp(br.z + br.d / 2) - 2), Math.round(br.w * ppm), 2); }
+      if (route) drawRoute();
       // retos
-      for (j = 0; j < M.repairs.length; j++) { o = M.repairs[j]; if (onScreen(o.x, o.z, m)) { spr(SP.frame('thing', f.repairs && f.repairs[o.id] ? 'repaired' : 'repair', 'down', 0), o.x, o.z); n++; } }
+      for (j = 0; j < repairs.length; j++) { o = repairs[j]; if (onScreen(o.x, o.z, m)) { spr(SP.frame('thing', f.repairs && f.repairs[o.id] ? 'repaired' : 'repair', 'down', 0), o.x, o.z); n++; } }
       // faroles
-      for (j = 0; j < 8; j++) if (onScreen(lamps[j].x, lamps[j].z, m)) { spr(SP.frame('thing', j < (f.lit | 0) ? 'lampOn' : 'lamp', 'down', 0), lamps[j].x, lamps[j].z); n++; }
+      for (j = 0; j < lamps.length; j++) if (onScreen(lamps[j].x, lamps[j].z, m)) { spr(SP.frame('thing', j < (f.lit | 0) ? 'lampOn' : 'lamp', 'down', 0), lamps[j].x, lamps[j].z); n++; }
       // NPC
       var bob = reduced ? 0 : Math.sin(time / 400) * 2;
       for (j = 0; j < npcs.length; j++) {
         o = npcs[j];
         if (!onScreen(o.x, o.z, m)) continue;
-        if (o.kind === 'creature') { if ((f.beatenToday && f.beatenToday[o.id]) || dis[o.id] === 'gone') continue; spr(SP.frame('creature', o.id, 'down', reduced ? 0 : (Math.floor(time / 300) % 2)), o.x, o.z, 4 + bob * sprS); }
-        else if (o.ask) { if (!(f.apprenticesVisible && f.apprenticesVisible[o.id])) continue; spr(SP.frame('person', o.id, 'down', 0), o.x, o.z); spr(SP.frame('thing', 'ask', 'down', 0), o.x, o.z, 15 * sprS); }
-        else { spr(SP.frame('person', o.id, 'down', 0), o.x, o.z); if (o.star) { sc = (f.stars && f.stars[o.id]) | 0; sc = clamp(sc, 0, 3); ctx.fillStyle = STAR_COL[sc]; var cnt = Math.max(1, sc), q; for (q = 0; q < cnt; q++) ctx.fillRect(Math.round(SXp(o.x) - cnt * 2 * sprS + q * 4 * sprS), Math.round(SZp(o.z) - 17 * sprS), 3 * sprS, 3 * sprS); } }
+        if (o.kind === 'creature') { if ((f.beatenToday && f.beatenToday[o.id]) || dis[o.id] === 'gone') continue; spr(SP.frame('creature', o.v, 'down', reduced ? 0 : (Math.floor(time / 300) % 2)), o.x, o.z, 4 + bob * sprS); }
+        else if (o.ask) { if (!(f.apprenticesVisible && f.apprenticesVisible[o.id])) continue; spr(SP.frame('person', o.v, 'down', 0), o.x, o.z); spr(SP.frame('thing', 'ask', 'down', 0), o.x, o.z, 15 * sprS); }
+        else { spr(SP.frame('person', o.v, 'down', 0), o.x, o.z); if (o.star) { sc = (f.stars && f.stars[o.id]) | 0; sc = clamp(sc, 0, 3); ctx.fillStyle = STAR_COL[sc]; var cnt = Math.max(1, sc), q; for (q = 0; q < cnt; q++) ctx.fillRect(Math.round(SXp(o.x) - cnt * 2 * sprS + q * 4 * sprS), Math.round(SZp(o.z) - 17 * sprS), 3 * sprS, 3 * sprS); } }
         n++;
       }
       // héroe
       fr = SP.frame('hero', '', h.face, (!reduced && h.speed > 0.5) ? (Math.floor(time / 150) % 2) : 0);
       spr(fr, h.x, h.z); n++;
-      // neblina de La Maraña sobre el distrito mientras no esté restaurado
+      // neblina de La Maraña sobre la escena mientras no esté restaurada
       if (!f.restored) {
         ctx.fillStyle = FOG;
         for (j = 0; j < fogBlobs.length; j++) { o = fogBlobs[j]; var drift = reduced ? 0 : Math.sin(time / 2500 + j) * 2; if (onScreen(o.x + drift, o.z, o.r * ppm)) ctx.fillRect(Math.round(SXp(o.x + drift - o.r)), Math.round(SZp(o.z - o.r * 0.6)), Math.round(o.r * 2 * ppm), Math.round(o.r * 1.2 * ppm)); }
@@ -4103,6 +4316,7 @@ var CityWorld2D = (function () {
         var dt = running ? pauser.tick(ts) : 0, t1 = typeof performance !== 'undefined' ? performance.now() : 0;
         if (!(dt >= 0 && dt <= 50)) dt = 0;   // timestamp de rAF inválido (NaN, Infinity): ese cuadro no avanza el tiempo
         time += dt;
+        if (packet) { packet.t += dt; if (packet.t >= PACKET_MS) packet = null; }
         if (opts.tick) opts.tick(dt);
         if (disposed) return;
         st.tick = (typeof performance !== 'undefined' ? performance.now() : 0) - t1;
@@ -4153,6 +4367,14 @@ var CityWorld2D = (function () {
         frameNow();
       });
     }
+    /* done = estaciones terminadas (0..pads). La primera llamada solo fija el estado; avanzar de a una estación lanza el paquete por el tramo nuevo. */
+    function setRoute(n) {
+      if (disposed || !route) return;
+      var v = (typeof n === 'number' && isFinite(n) && Math.floor(n) === n) ? clamp(n, 0, pads.length) : 0;
+      if (routeInit && v === routeDone + 1 && !reduced) packet = { seg: routeDone, t: 0 };
+      routeDone = v; routeInit = true;
+      frameNow();
+    }
     var onLostEv = function () { if (opts.onLost) opts.onLost(); };
     canvas.addEventListener('contextlost', onLostEv);
     function dispose() {
@@ -4165,22 +4387,22 @@ var CityWorld2D = (function () {
       canvas.width = 0; canvas.height = 0;   // libera la memoria del canvas (en iOS cuenta para el total)
       if (fpsEl && fpsEl.parentNode) fpsEl.parentNode.removeChild(fpsEl);
     }
-    var api = { resize: resize, setPaused: setPaused, dispose: dispose, encounter: encounter, dissolve: dissolve, stats: function () { return { npc: st.npc, part: nLive, tick: st.tick, draw: st.draw, p95: st.p95 }; } };
+    var api = { resize: resize, setPaused: setPaused, dispose: dispose, encounter: encounter, dissolve: dissolve, setRoute: setRoute, stats: function () { return { npc: st.npc, part: nLive, tick: st.tick, draw: st.draw, p95: st.p95 }; } };
     readReduced();
     frameNow();
     return Promise.resolve(api);
   }
 
-  return { create: create, buildMap: buildMap, PX: PX };
+  return { create: create };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityWorld2D;
 
-/* Vista `city` de Ciudad Núcleo (se inserta DENTRO de la IIFE del motor: usa S, V, go, esc, fmt, mod, starsOf, queue, sample,
-   startRound, levelOf, CITY_DATA, CityMove, CityStory, CityInput y CityWorld2D). ES5. Texto de datos: solo esc()/fmt() en innerHTML;
+/* Vista `city` de Ciudad Núcleo, una escena a la vez: la plaza o un distrito (CD.scene). Se inserta DENTRO de la IIFE del motor: usa S, V, go,
+   esc, fmt, mod, starsOf, queue, sample, startRound, levelOf, bossPassedOf, cityD, beatenToday, CITY_DATA, CityMove, CityStory, CityInput y CityWorld2D. ES5. Texto de datos: solo esc()/fmt() en innerHTML;
    el botón de acción, #city-live y #city-obj se escriben solo con textContent. */
 var CD = null, cityGen = 0;
 var CITY_LOAD_HTML = '<div id="city-loadbox"><p role="status" id="city-load">Preparando la ciudad…</p><button class="btn" data-act="cx" data-c="quit">Salir</button></div>';
-var CITY_ZMIN = 1, CITY_ZMAX = 1.75, CITY_LOAD_MS = 250, CITY_SAVE_M = 1;
+var CITY_ZMIN = 1, CITY_ZMAX = 1.75, CITY_LOAD_MS = 250, CITY_FADE_MS = 250, CITY_SAVE_M = 1;
 var CITY_ROTATE_Q = '(orientation: landscape) and (max-height: 499px) and (pointer: coarse)';
 var CITY_NEAR = 2.2;
 
@@ -4195,35 +4417,66 @@ function cityWorldFactory() {
   if (window.__CITY_TEST__ === true && f && typeof f.create === 'function' && !(typeof Node !== 'undefined' && f instanceof Node)) return f;
   return (typeof CityWorld2D !== 'undefined') ? CityWorld2D : null;
 }
-function cityBossPassed() { return !!(S.boss.M02 && S.boss.M02.passed === true); }
-
-/* ---------- lugares: interactuables ---------- */
+function cityReduced() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+}
+function cityHasDistrict(id) { return typeof id === 'string' && Object.prototype.hasOwnProperty.call(CITY_DATA.districts, id); }
+function citySceneName(id) { var sc = CityMove.scene(CITY_DATA, id); return sc ? sc.name : ''; }
+function cityPortalOf(dist) { var ps = CITY_DATA.plaza.portals, i; for (i = 0; i < ps.length; i++) if (ps[i].dist === dist) return ps[i]; return null; }
+/* punto de llegada en una escena: la entrada de un distrito, o el punto de regreso del portal de un distrito al volver a la plaza */
+function cityArrival(sceneId, from) {
+  if (sceneId === 'plaza') { var p = from ? cityPortalOf(from) : null, b = p ? p.back : CITY_DATA.plaza.entry; return { x: b.x, z: b.z, yaw: b.yaw }; }
+  var e = CITY_DATA.districts[sceneId].entry; return { x: e.x, z: e.z, yaw: e.yaw };
+}
+function cityRestoredN() {
+  var ids = Object.keys(CITY_DATA.districts), n = 0;
+  ids.forEach(function (id) { if (S.city.restored[id] === true) n++; });
+  return { done: n, total: ids.length };
+}
+/* ---------- lugares: interactuables de la escena activa ---------- */
 function cityBase() {
-  var M = CITY_DATA.districts.M02, P = CITY_DATA.plaza, out = [], d;
-  out.push({ id: P.director.id, kind: 'director', name: P.director.name, label: 'Hablar con ' + P.director.name, x: P.director.x, z: P.director.z });
-  out.push({ id: P.mirror.id, kind: 'mirror', name: P.mirror.name, label: 'Mirar el espejo', x: P.mirror.x, z: P.mirror.z });
+  var out = [], d, M, P = CITY_DATA.plaza;
+  if (CD.scene === 'plaza') {
+    out.push({ id: P.director.id, kind: 'director', name: P.director.name, label: 'Hablar con ' + P.director.name, x: P.director.x, z: P.director.z });
+    out.push({ id: P.mirror.id, kind: 'mirror', name: P.mirror.name, label: 'Mirar el espejo', x: P.mirror.x, z: P.mirror.z });
+    P.portals.forEach(function (p) {
+      var Md = cityHasDistrict(p.dist) ? CITY_DATA.districts[p.dist] : null;
+      out.push({ id: 'portal:' + p.dist, kind: 'portal', dist: p.dist, name: Md ? Md.name : p.dist, label: Md ? 'Entrar a ' + Md.name : 'Ver ' + p.dist, sub: '', x: p.x, z: p.z, r: 4 });
+    });
+    return out;
+  }
+  M = CD.sc;
   M.mentors.forEach(function (m) { out.push({ id: m.id, kind: 'mentor', name: m.name, label: 'Hablar con ' + m.name, x: m.x, z: m.z, topic: m.topic }); });
   M.creatures.forEach(function (c) { out.push({ id: c.id, kind: 'creature', name: c.name, label: 'Enfrentar a ' + c.name, x: c.area.x, z: c.area.z, topics: c.topics }); });
   M.repairs.forEach(function (r) { out.push({ id: r.id, kind: 'repair', name: r.label, label: 'Reparar ' + r.label, x: r.x, z: r.z, topic: r.topic }); });
   M.apprentices.forEach(function (a) { out.push({ id: a.id, kind: 'apprentice', name: a.name, label: 'Enseñar a ' + a.name, x: a.x, z: a.z, topic: a.topic, mode: a.mode }); });
   d = CityMove.door(M.tower); out.push({ id: M.tower.id, kind: 'tower', name: 'Torre', label: 'Entrar a la torre', x: d.x, z: d.z });
-  d = CityMove.door(M.bridge); out.push({ id: M.bridge.id, kind: 'bridge', name: 'Puente', label: 'Cruzar el puente', x: d.x, z: d.z });
+  out.push({ id: 'exit', kind: 'exit', name: 'Plaza', label: 'Volver a la plaza', x: M.exit.x, z: M.exit.z, r: 4 });
   return out;
 }
 /* Lugares disponibles ahora: se recalcula solo en cityRefresh (cambian los flags o el día), nunca por cuadro */
 function cityItems() { return (CD && CD.items) || []; }
 /* Ids de los aprendices que se ofrecen ahora (regla única: CityStory.apprenticesAvailable) */
 function cityApprenticeIds() {
-  var m = mod('M02'), out = {};
-  CityStory.apprenticesAvailable(S.city, CITY_DATA, function (t) { return starsOf(m, t); }).forEach(function (a) { out[a.id] = 1; });
+  var out = {};
+  if (CD.scene === 'plaza') return out;
+  var m = mod(CD.scene);
+  CityStory.apprenticesAvailable(S.city, CITY_DATA, CD.scene, function (t) { return starsOf(m, t); }).forEach(function (a) { out[a.id] = 1; });
   return out;
+}
+/* texto secundario del portal: módulo, número de temas y avance del distrito */
+function cityPortalSub(dist) {
+  if (!cityHasDistrict(dist)) return dist + ' · Próximamente';
+  var m = mod(dist);
+  return dist + ' · ' + (m ? m.topics.length : 0) + ' temas · ' + CityStory.restoration(S.city, CITY_DATA, dist, bossPassedOf(dist)) + ' % restaurado';
 }
 function cityBuildItems() {
   if (!CD.base) CD.base = cityBase();
-  var avail = cityApprenticeIds();
+  var avail = cityApprenticeIds(), sc = CD.scene, dd = sc === 'plaza' ? null : cityD(sc);
   return CD.base.filter(function (o) {
-    if (o.kind === 'creature') return !beatenToday(o.id);
-    if (o.kind === 'repair') return S.city.repairs[o.id] !== true;
+    if (o.kind === 'portal') { o.sub = cityPortalSub(o.dist); return true; }
+    if (o.kind === 'creature') return !beatenToday(sc, o.id);
+    if (o.kind === 'repair') return !(dd && dd.repairs[o.id] === true);
     if (o.kind === 'apprentice') return !!avail[o.id];
     return true;
   });
@@ -4240,30 +4493,36 @@ function cityItem(id) {
   for (var i = 0; i < CD.base.length; i++) if (CD.base[i].id === id) return CD.base[i];
   return null;
 }
-function cityZone(x, z) {
-  var r = CITY_DATA.districts.M02.rect;
-  return (x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) ? 'Taller Comunal' : 'Plaza central';
-}
-
 /* ---------- objetivo ---------- */
 function cityObjective() {
-  var m = mod('M02');
-  return CityStory.nextObjective(S.city, CITY_DATA, {
-    learned: function (t) { return S.stats.learnTopics.indexOf('M02:' + t) >= 0; },
+  var sc = CD.scene;
+  if (sc === 'plaza') return CityStory.nextObjective(S.city, CITY_DATA, 'plaza', null);
+  var m = mod(sc), dd = cityD(sc);
+  return CityStory.nextObjective(S.city, CITY_DATA, sc, {
+    learned: function (t) { return S.stats.learnTopics.indexOf(sc + ':' + t) >= 0; },
     stars: function (t) { return starsOf(m, t); },
-    beatenEver: function (id) { return !!S.city.beaten[id]; },
-    beatenToday: function (id) { return beatenToday(id); },
-    bossUnlocked: bossUnlocked(m), bossPassed: cityBossPassed()
+    beatenEver: function (id) { return !!dd.beaten[id]; },
+    beatenToday: function (id) { return beatenToday(sc, id); },
+    bossUnlocked: bossUnlocked(m), bossPassed: bossPassedOf(sc)
   });
 }
 function cityObjTarget(o) {
-  if (!o || !o.id) return null;
-  return cityItem(o.id);
+  if (!o) return null;
+  var id = o.kind === 'portal' ? 'portal:' + o.id : (o.kind === 'plaza' ? 'exit' : o.id);
+  return id ? cityItem(id) : null;
 }
+/* flags del mundo: restored y lit significan "esta escena" (distrito: restaurado y progreso de 0 a 8; plaza: todos los distritos y su avance) */
 function cityFlags() {
-  var m = mod('M02'), M = CITY_DATA.districts.M02, f = { beatenToday: {}, repairs: {}, apprenticesVisible: {}, stars: {}, restored: !!(S.city.restored && S.city.restored.M02 === true), lit: Math.min(8, CityStory.taughtCount(S.city, CITY_DATA)) };
-  M.creatures.forEach(function (c) { if (beatenToday(c.id)) f.beatenToday[c.id] = 1; });
-  M.repairs.forEach(function (r) { if (S.city.repairs[r.id] === true) f.repairs[r.id] = 1; });
+  var f = { beatenToday: {}, repairs: {}, apprenticesVisible: {}, stars: {}, restored: false, lit: 0 }, sc = CD.scene;
+  if (sc === 'plaza') {
+    var n = cityRestoredN(); f.restored = n.total > 0 && n.done === n.total; f.lit = n.total ? Math.round(8 * n.done / n.total) : 0;
+    return f;
+  }
+  var m = mod(sc), M = CD.sc, dd = cityD(sc);
+  f.restored = S.city.restored[sc] === true;
+  f.lit = Math.round(8 * Math.min(CityStory.taughtCount(S.city, CITY_DATA, sc), M.need) / M.need);
+  M.creatures.forEach(function (c) { if (beatenToday(sc, c.id)) f.beatenToday[c.id] = 1; });
+  M.repairs.forEach(function (r) { if (dd.repairs[r.id] === true) f.repairs[r.id] = 1; });
   f.apprenticesVisible = cityApprenticeIds();
   M.mentors.forEach(function (x) { f.stars[x.id] = starsOf(m, x.topic); });
   return f;
@@ -4279,7 +4538,7 @@ function cityMakeInput() {
   var inp = CityInput.create(cityRootEl(), {
     safe: citySafe,
     isActive: function () { return !cityBlocked(); },
-    isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate')); }
+    isFree: function (el) { return !(el && el.closest && el.closest('button, #city-sheet, #city-pausebox, #city-rotate, #city-err, #city-veil')); }
   });
   /* con la hoja o la pausa abiertas el mundo no agenda cuadros (no hay tick): Esc se atiende aquí, después del listener del input */
   var fn = function () { if (CD && CD.input === inp && !CD.suspended && (CD.sheet || CD.paused) && inp.consumePause()) cityPauseKey(); };
@@ -4300,9 +4559,9 @@ function cityHtml() {
     '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span>' + run +
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
     '<div id="city-live" class="sronly" aria-live="polite"></div>' +
-    '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden></button></div>' +
+    '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden><span class="act-main"></span><span class="act-sub" hidden></span></button></div>' +
     '<div id="city-sheet" hidden role="dialog" aria-modal="true"></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
-    '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div>' +
+    '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div><div id="city-err" hidden></div><div id="city-veil" aria-hidden="true"></div>' +
     '<div id="city-safe" style="position:fixed;left:0;bottom:0;padding-left:env(safe-area-inset-left);padding-bottom:env(safe-area-inset-bottom);visibility:hidden"></div>';
 }
 function cityTeardown() {
@@ -4310,6 +4569,7 @@ function cityTeardown() {
   var c = CD; CD = null;
   if (!c) return;
   if (c.loadTimer) clearTimeout(c.loadTimer);
+  if (c.fadeT) clearTimeout(c.fadeT);
   cityDropInput(c);
   if (c.world) { try { c.world.dispose(); } catch (e2) {} }
 }
@@ -4319,7 +4579,7 @@ function cityStop() {
   if (r) { r.hidden = true; r.innerHTML = ''; }
 }
 function cityPos() { return CD ? { x: CD.hero.x, z: CD.hero.z, yaw: CD.hero.yaw } : null; }
-function citySave() { var p = cityPos(); if (p) S.city.at = p; save(); }
+function citySave() { var p = cityPos(); if (p) { S.city.at = p; S.city.scene = CD.scene; } save(); }
 function cityFallback(kind) {
   if (CD) citySave();
   cityTeardown();
@@ -4331,42 +4591,110 @@ function cityFallback(kind) {
   }
   var b = r.querySelector('button.primary'); if (b) cFocus(b);
 }
+/* Estado de la vista para una escena: su objeto, sus cajas, el héroe en `at` y los cachés vacíos */
+function citySetScene(c, id, at) {
+  c.scene = id; c.sc = CityMove.scene(CITY_DATA, id); c.boxes = CityMove.boxesFor(CITY_DATA, id);
+  c.base = null; c.items = null; c.flags = null; c.teach = null; c.nearId = null; c.obj = null; c.objTarget = null; c.lastAng = -1; c.joyKey = '';
+  c.hero = { x: at.x, z: at.z, yaw: at.yaw, vx: 0, vz: 0, speed: 0 }; c.safe = { x: at.x, z: at.z, yaw: at.yaw }; c.savedAt = { x: at.x, z: at.z };
+  c.face = CityMove.faceOf(at.yaw);
+}
+/* Crea el mundo de una escena sobre el canvas de la vista */
+function cityCreateWorld(c, sceneId) {
+  var F = cityWorldFactory();
+  if (!F) return Promise.reject(new Error('sin mundo'));
+  var made, tok = c.wtok = (c.wtok || 0) + 1;   // un aviso de pérdida de un mundo que ya se liberó (otra escena) no cuenta
+  try {
+    made = F.create(c.canvas, CITY_DATA, sceneId, { reducedMotion: cityReduced(), tick: cityTick, state: cityState, onLost: function () { if (CD !== c || c.wtok !== tok) return; if (c.suspended) c.lost = true; else cityFallback('lost'); } });
+  } catch (e) { return Promise.reject(e); }
+  return Promise.resolve(made);
+}
+/* Aviso de que un distrito no se pudo abrir: no se cierra solo, con Reintentar (con el foco) y Cerrar. Está fuera de #city-ui-main. */
+function cityShowError(name, id) {
+  var e = cId('city-err'); if (!e) return;
+  e.innerHTML = '<div class="banner up" role="alert"><p>' + esc('No se pudo abrir ' + name + '.') + '</p><div class="actions"><button class="btn primary" data-act="cx" data-c="err-retry" data-id="' + esc(id) + '">Reintentar</button><button class="btn" data-act="cx" data-c="err-close">Cerrar</button></div></div>';
+  e.hidden = false; cFocus(e.querySelector('button.primary'));
+}
+function cityHideError() { var e = cId('city-err'); if (e) { e.hidden = true; e.innerHTML = ''; } }
+/* Un distrito no se pudo crear: se intenta la plaza (en el regreso de su portal) y se avisa; si la plaza tampoco, "No se pudo mostrar la ciudad." */
+function cityFailScene(c, g, sceneId, done) {
+  if (CD !== c || cityGen !== g) return;
+  if (sceneId === 'plaza') { cityFallback('init'); return; }
+  var back = cityArrival('plaza', sceneId), name = citySceneName(sceneId);
+  citySetScene(c, 'plaza', back);
+  S.city.scene = 'plaza'; S.city.at = { x: back.x, z: back.z, yaw: back.yaw }; save();   // la partida queda en la plaza: no se pierde
+  cityCreateWorld(c, 'plaza').then(function (world) { done(world); cityShowError(name, sceneId); }, function () { if (CD === c && cityGen === g) cityFallback('init'); });
+}
 function cityStart() {
   if (CD && CD.world && !CD.suspended) return;
   cityTeardown();
-  var gen = ++cityGen, r = cityRootEl(), at = S.city.at;
+  var gen = ++cityGen, r = cityRootEl(), at = S.city.at, sceneId = S.city.scene;
   r.hidden = false;
   r.innerHTML = cityHtml();
   var cv = cId('city-cv'), c;
   c = CD = {
-    gen: gen, canvas: cv, world: null, input: null, base: null, flags: null, items: null, loadTimer: null,
-    hero: { x: at.x, z: at.z, yaw: at.yaw, vx: 0, vz: 0, speed: 0 }, safe: { x: at.x, z: at.z, yaw: at.yaw }, savedAt: { x: at.x, z: at.z },
-    face: CityMove.faceOf(at.yaw), zoom: CITY_ZMIN, boxes: CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true)),
-    st: { hero: { x: at.x, z: at.z, face: 'up', speed: 0 }, zoom: CITY_ZMIN, flags: null },
+    gen: gen, canvas: cv, world: null, input: null, loadTimer: null, fadeT: null, fading: false, entered: false,
+    scene: 'plaza', sc: null, base: null, flags: null, items: null, hero: null, safe: null, savedAt: null, face: 'up', boxes: [],
+    zoom: CITY_ZMIN, st: { hero: { x: at.x, z: at.z, face: 'up', speed: 0 }, zoom: CITY_ZMIN, flags: null },
     paused: false, sheet: false, rotate: false, suspended: false, lost: false, lastObjId: null, lastZone: null, nearId: null,
     saveT: 0, objT: 0, obj: null, objTarget: null, sheetFor: null, day: '', dayT: 0, lastAng: -1
   };
+  citySetScene(c, sceneId, at);
   c.loadTimer = setTimeout(function () {   // el aviso solo se muestra si el mundo tarda más de 250 ms
     c.loadTimer = null;
     if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', CITY_LOAD_HTML); }
   }, CITY_LOAD_MS);
-  var fail = function () { if (gen === cityGen) cityFallback('init'); };
-  var F = cityWorldFactory();
-  if (!F) { fail(); return; }
-  var rm = false;
-  try { rm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
-  var made;
-  try {
-    made = F.create(cv, CITY_DATA, { reducedMotion: rm, tick: cityTick, state: cityState, onLost: function () { if (CD !== c) return; if (c.suspended) c.lost = true; else cityFallback('lost'); } });
-  } catch (e2) { fail(); return; }
-  Promise.resolve(made).then(function (world) {
+  var ready = function (world) {
     if (gen !== cityGen || V.name !== 'city') { try { world.dispose(); } catch (e) {} if (gen === cityGen) cityTeardown(); return; }
     if (c.loadTimer) { clearTimeout(c.loadTimer); c.loadTimer = null; }
     CD.world = world;
     CD.input = cityMakeInput();
     var lb = cId('city-loadbox'); if (lb) lb.remove();
     cityRefresh(); cityRotateCheck(); cityAnnounce();
-  }).then(null, fail);
+  };
+  cityCreateWorld(c, sceneId).then(ready, function () { cityFailScene(c, gen, sceneId, ready); });
+}
+/* Cambio de escena (spec §2): fundido a negro, se libera el mundo y se crea el nuevo con la pantalla negra, se guarda y se aclara.
+   Los temporizadores (nunca transitionend) viven en CD.fadeT y cityTeardown los cancela; un create tardío se descarta con cityGen. */
+function cityEnter(sceneId, at) {
+  var c = CD;
+  if (!c || !c.world || c.fading || c.suspended || !CityMove.scene(CITY_DATA, sceneId)) return;
+  c.fading = true; cityInert();
+  try { c.world.setPaused('fade', true); } catch (e) {}
+  var g = cityGen, ms = cityReduced() ? 0 : CITY_FADE_MS, veil = cId('city-veil');
+  if (veil) veil.style.opacity = '1';
+  cityHideError();
+  var arrived = function (world) {
+    if (CD !== c || cityGen !== g) { try { world.dispose(); } catch (e) {} return; }
+    if (c.loadTimer) { clearTimeout(c.loadTimer); c.loadTimer = null; }
+    var lb = cId('city-loadbox'); if (lb) lb.remove();
+    c.world = world; c.entered = true;
+    if (c.input) c.input.releaseAll();   // una tecla sostenida no debe cruzar la salida recién estrenada
+    citySave();
+    cityRefresh(); cityRotateCheck(); cityAnnounce();
+    var v = cId('city-veil'); if (v) v.style.opacity = '0';
+    c.fadeT = setTimeout(function () {
+      c.fadeT = null; if (CD !== c || cityGen !== g) return;
+      c.fading = false; cityInert();
+      var ae = document.activeElement;   // el foco se perdió si está en body, en un nodo que ya no existe o en un botón oculto (p. ej. #city-act al salir del portal)
+      if (!ae || ae === document.body || !ae.isConnected || ae.hidden || (ae.closest && ae.closest('[hidden]'))) cFocus(cId('city-pause'));
+    }, ms);
+  };
+  c.fadeT = setTimeout(function () {
+    c.fadeT = null; if (CD !== c || cityGen !== g) return;
+    var old = c.world; c.world = null; c.wtok = (c.wtok || 0) + 1;   // lo que avise el mundo viejo al liberarse ya no cuenta
+    if (old) { try { old.dispose(); } catch (e) {} }
+    citySetScene(c, sceneId, at);
+    var name = c.sc.name;
+    c.loadTimer = setTimeout(function () {
+      c.loadTimer = null;
+      if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', '<div id="city-loadbox"><p role="status" id="city-load">' + esc('Abriendo ' + name + '…') + '</p></div>'); }
+    }, CITY_LOAD_MS);
+    cityCreateWorld(c, sceneId).then(arrived, function () {
+      if (CD !== c || cityGen !== g) return;
+      var lb2 = cId('city-loadbox'); if (lb2) lb2.remove();
+      cityFailScene(c, g, sceneId, function (world) { arrived(world); });
+    });
+  }, ms);
 }
 function citySuspend() {
   if (!CD || CD.suspended) return;
@@ -4383,11 +4711,11 @@ function cityResume() {
   cityRootEl().hidden = false;
   CD.input = cityMakeInput();
   cityReleaseUi();
-  CD.boxes = CityMove.boxesFor(CITY_DATA, !!(S.city.restored && S.city.restored.M02 === true));
-  if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (S.city.beaten[pb] === today() && CD.world) CD.world.dissolve(pb); }
+  CD.boxes = CityMove.boxesFor(CITY_DATA, CD.scene);
+  if (CD.pendingBattle) { var pb = CD.pendingBattle; CD.pendingBattle = null; if (beatenToday(CD.scene, pb) && CD.world) CD.world.dissolve(pb); }
   if (CD.world) { CD.world.setPaused('suspended', false); CD.world.resize(); }   // primero se quita la pausa: con 'suspended' activo resize no hace nada
   cityRefresh(); cityRotateCheck(); cityAnnounce();
-  if (cityRestorePending) { cityRestorePending = false; cityCelebrate(''); }
+  if (cityRestorePending.length) { var rp = cityRestorePending; cityRestorePending = []; cityCelebrate(rp, ''); }
 }
 function cityRotateCheck() {
   if (!CD || !CD.world || CD.suspended) return;
@@ -4401,18 +4729,19 @@ function cityRotateCheck() {
 }
 function cityInert() {
   var u = cId('city-ui-main'); if (!u || !CD) return;
-  if (CD.paused || CD.rotate || CD.sheet) u.setAttribute('inert', ''); else u.removeAttribute('inert');
+  if (CD.paused || CD.rotate || CD.sheet || CD.fading) u.setAttribute('inert', ''); else u.removeAttribute('inert');
   [cId('city-sheet'), cId('city-pausebox')].forEach(function (el) { if (el) { if (CD.rotate) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } });
 }
 
 /* ---------- HUD ---------- */
 function cityHud(force) {
   if (!CD) return;
-  var info = lvlInfo(S.xp), bp = cityBossPassed();
+  var info = lvlInfo(S.xp);
   var set = function (id, t) { var el = cId(id); if (el && el.textContent !== t) el.textContent = t; };
   set('city-rank', CityStory.rankOf(S.city, CITY_DATA));
   set('city-xp', nf(S.xp) + ' XP · Nv ' + info.lv);
-  set('city-rest', 'Distrito ' + CityStory.restoration(S.city, CITY_DATA, bp) + ' %');
+  var rn = cityRestoredN();
+  set('city-rest', CD.scene === 'plaza' ? 'Distritos ' + rn.done + ' de ' + rn.total : CD.sc.name + ' ' + CityStory.restoration(S.city, CITY_DATA, CD.scene, bossPassedOf(CD.scene)) + ' %');
   cityObjUpdate(force);
 }
 function cityObjUpdate(force) {
@@ -4436,18 +4765,25 @@ function cityObjUpdate(force) {
 function cityAnnounce() {
   if (!CD) return;
   var lv = cId('city-live'); if (!lv) return;
-  var zone = cityZone(CD.hero.x, CD.hero.z), o = CD.obj || cityObjective(), id = o && o.id ? o.kind + ':' + o.id : (o ? o.kind : '');
-  if (zone !== CD.lastZone) { CD.lastZone = zone; CD.lastObjId = id; lv.textContent = zone + (o && o.label ? '. ' + o.label : ''); }
-  else if (id !== CD.lastObjId) { CD.lastObjId = id; lv.textContent = (o && o.label) ? 'Objetivo: ' + o.label : ''; }
+  var name = CD.sc.name, o = CD.obj || cityObjective(), id = o && o.id ? o.kind + ':' + o.id : (o ? o.kind : ''), lab = o && o.label ? o.label : '';
+  if (CD.scene !== CD.lastZone) {
+    CD.lastZone = CD.scene; CD.lastObjId = id;
+    lv.textContent = CD.entered ? 'Entraste a ' + name + '.' + (lab ? ' Objetivo: ' + lab + '.' : '') : name + (lab ? '. ' + lab : '');
+  } else if (id !== CD.lastObjId) { CD.lastObjId = id; lv.textContent = lab ? 'Objetivo: ' + lab : ''; }
+}
+function citySetAct(b, label, sub) {
+  var m = b.querySelector('.act-main'), u = b.querySelector('.act-sub');
+  if (m) m.textContent = label;
+  if (u) { u.textContent = sub || ''; u.hidden = !sub; }
 }
 function cityUpdateNear(force) {
   if (!CD) return;
-  var list = cityItems(), best = null, bd = CITY_NEAR * CITY_NEAR, i, o, dx, dz, d2;
-  for (i = 0; i < list.length; i++) { o = list[i]; dx = o.x - CD.hero.x; dz = o.z - CD.hero.z; d2 = dx * dx + dz * dz; if (d2 <= bd) { bd = d2; best = o; } }
+  var list = cityItems(), best = null, bd = Infinity, i, o, dx, dz, d2, rr;
+  for (i = 0; i < list.length; i++) { o = list[i]; dx = o.x - CD.hero.x; dz = o.z - CD.hero.z; d2 = dx * dx + dz * dz; rr = o.r || CITY_NEAR; if (d2 <= rr * rr && d2 < bd) { bd = d2; best = o; } }
   var id = best ? best.id : null, b = cId('city-act');
   if (!b || (!force && id === CD.nearId)) return;
   CD.nearId = id;
-  if (best) { b.textContent = best.label; b.hidden = false; } else { b.textContent = ''; b.hidden = true; }
+  if (best) { citySetAct(b, best.label, best.sub); b.hidden = false; } else { citySetAct(b, '', ''); b.hidden = true; }
 }
 /* ---------- contrato con el mundo ---------- */
 function cityState() {
@@ -4457,7 +4793,7 @@ function cityState() {
   s.zoom = CD.zoom; s.flags = CD.flags || (CD.flags = cityFlags());
   return s;
 }
-function cityBlocked() { return !CD || !CD.world || CD.suspended || CD.paused || CD.sheet || CD.rotate || CD.lost || CD.busy; }
+function cityBlocked() { return !CD || !CD.world || CD.suspended || CD.paused || CD.sheet || CD.rotate || CD.lost || CD.busy || CD.fading; }
 /* Zoom: dueño único. El pellizco multiplica (continuo); los pasos de rueda y teclas suman 0.25 y encajan en la rejilla de 0.25. NaN cae a 1. No se guarda. */
 function cityZoomBy(factor, steps) {
   if (!CD) return;
@@ -4489,6 +4825,8 @@ function cityTick(dt) {
   var nh = CityMove.step(c.hero, { mx: it.mx, mz: it.mz, run: it.run }, sec, c.boxes, { canRun: canRun, radius: CITY_DATA.radius, safe: c.safe });
   c.hero = nh; c.safe = { x: nh.x, z: nh.z, yaw: nh.yaw };
   if (nh.speed > 0.1) c.face = CityMove.faceOf(nh.yaw);
+  var hit = CityMove.portalAt(CITY_DATA, c.scene, nh.x, nh.z);   // pisar la boca de un portal o la salida cambia de escena
+  if (hit !== null) { cityStepOn(hit); return; }
   c.saveT += sec; c.objT += sec;
   if (c.saveT >= 5) {   // guardado periódico solo si el héroe se movió más de 1 m (al pausar, suspender o salir siempre se guarda)
     c.saveT = 0;
@@ -4501,6 +4839,11 @@ function cityTick(dt) {
   if (act && c.nearId) { var o = cityItem(c.nearId); if (o) cityOpen(o); }
 }
 /* Dibuja la palanca: atenuada en su sitio de reposo y, al tocar, bajo el dedo con el botón desplazado (solo escribe si cambió) */
+/* hit = distrito del portal pisado en la plaza, o 'plaza' al pisar la salida de un distrito */
+function cityStepOn(hit) {
+  if (CD.scene === 'plaza') cityEnter(hit, cityArrival(hit));
+  else cityEnter('plaza', cityArrival('plaza', CD.scene));
+}
 function cityJoyDraw(c) {
   var el = cId('city-joy'); if (!el || !c.input) return;
   var j = c.input.joy(), key = j.on ? Math.round(j.x) + ',' + Math.round(j.y) + ',' + Math.round(j.kx) + ',' + Math.round(j.ky) : '';
@@ -4545,9 +4888,9 @@ function citySheetHtml(sub, title, body, actions) {
 }
 /* Lección del mentor: resumen y puntos clave del tema; abrirla cuenta como lección vista */
 function cityLesson(o) {
-  var m = mod('M02'), t = m.tById[o.topic];
+  var m = mod(CD.scene), t = m.tById[o.topic];
   if (!t) return;
-  var lk = 'M02:' + t.id;
+  var lk = CD.scene + ':' + t.id;
   if (S.stats.learnTopics.indexOf(lk) < 0) { S.stats.learnTopics.push(lk); checkVirtues(); save(); }
   var body = '<p class="lead">' + fmt(t.summary) + '</p><ul class="kp">' + t.keyPoints.map(function (k) { return '<li>' + fmt(k) + '</li>'; }).join('') + '</ul>' +
     '<p class="meta">' + esc('Para la primera estrella hacen falta al menos 6 respuestas') + '</p>';
@@ -4566,7 +4909,7 @@ function cityReleaseUi() {
 function cityPractice(id) {
   var o = cityItem(id); if (!CD || !o) return;
   cityReleaseUi();
-  startRound({ kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'city' }, city: { kind: 'practice', id: id } }, itemsFor('quiz', mod('M02'), o.topic));
+  startRound({ kind: 'quiz', title: 'Quiz', mid: CD.scene, back: { name: 'city' }, city: { kind: 'practice', id: id, mid: CD.scene } }, itemsFor('quiz', mod(CD.scene), o.topic));
 }
 /* Prólogo: tres paneles; terminar o saltar lo marca como visto */
 var CITY_PROLOGUE = [
@@ -4586,14 +4929,14 @@ function cityPrologueDone() { if (!S.city.prologue) { S.city.prologue = true; sa
 
 /* Enseñar (explicar): el aprendiz pide explicación; hay que elegir los 3 puntos clave del tema entre 6 */
 function cityKpPool(o) {
-  var m = mod('M02'), own = shuffle(m.tById[o.topic].keyPoints).slice(0, 3).map(function (t) { return { t: t, own: true }; });
+  var m = mod(CD.scene), own = shuffle(m.tById[o.topic].keyPoints).slice(0, 3).map(function (t) { return { t: t, own: true }; });
   var others = []; m.topics.forEach(function (tp) { if (tp.id !== o.topic) tp.keyPoints.forEach(function (k) { others.push(k); }); });
   var foreign = shuffle(others).slice(0, 3).map(function (t) { return { t: t, own: false }; });
   return shuffle(own.concat(foreign));
 }
 function cityTeachExplain(o, fresh) {
   if (!CD) return;
-  var m = mod('M02'), tp = m.tById[o.topic];
+  var m = mod(CD.scene), tp = m.tById[o.topic];
   if (fresh || !CD.teach || CD.teach.id !== o.id) CD.teach = { id: o.id, o: o, items: cityKpPool(o), picked: {}, checked: false };
   var T = CD.teach, n = Object.keys(T.picked).length;
   var rows = T.items.map(function (it, i) {
@@ -4617,40 +4960,50 @@ function cityTeachGo() {
   if (!good) { T.checked = true; cityTeachExplain(T.o, false); return; }
   touch();
   var gainXp = teachXp(); S.xp += gainXp;
-  S.city.taught[T.o.id] = true;
-  var rs = CityStory.applyRestore(S.city, CITY_DATA, cityBossPassed());
+  cityD(CD.scene).taught[T.o.id] = true;
+  var rs = CityStory.applyRestore(S.city, CITY_DATA, bossPassedOf);
   checkVirtues(); save();
   CD.teach = null;
-  if (rs.changed) { cityRestorePending = false; cityRefresh(); cityCelebrate('¡Gracias, ' + T.o.name + ' lo entendió!'); }
+  if (rs.changed.length) { cityRestorePending = []; cityRefresh(); cityCelebrate(rs.changed, '¡Gracias, ' + T.o.name + ' lo entendió!'); }
   else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(T.o.name + ' lo entendió gracias a ti. +' + gainXp + ' XP.') + '</p>'), '[data-c="sheetclose"]', T.o.id);
 }
 function cityTeachCorrect(o) {
-  var qs = shuffle(ofType(mod('M02'), 'error', o.topic));
+  var qs = shuffle(ofType(mod(CD.scene), 'error', o.topic));
   if (!qs.length || !CD) return;
-  startRound({ kind: 'error', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: o.id } }, [qs[0]]);
+  startRound({ kind: 'error', title: 'Enseñar', mid: CD.scene, back: { name: 'city' }, city: { kind: 'teach', id: o.id, mid: CD.scene } }, [qs[0]]);
 }
-function cityCelebrate(pre) {
-  cityOpenSheet(citySheetHtml('Capítulo 1', '¡Distrito restaurado!', '<p>' + esc((pre ? pre + ' ' : '') + 'El Taller Comunal vuelve a funcionar y ya no depende de una sola persona.') + '</p>' +
-    '<p><b>' + esc('Poder nuevo: Planos. Subes a ' + CityStory.rankOf(S.city, CITY_DATA) + '.') + '</b></p>'), '[data-c="sheetclose"]', 'celebracion');
+/* Celebración de uno o más distritos recién restaurados: el texto y el poder salen de los datos de cada distrito */
+function cityCelebrate(mids, pre) {
+  var texts = [], powers = [], names = [];
+  mids.forEach(function (id) {
+    if (!cityHasDistrict(id)) return;
+    var M = CITY_DATA.districts[id];
+    names.push(M.name); texts.push((M.celebrate && M.celebrate.text) || 'El distrito vuelve a funcionar.');
+    if (M.celebrate && M.celebrate.power) powers.push(M.celebrate.power.name);
+  });
+  if (!names.length) return;
+  var body = '<p>' + esc((pre ? pre + ' ' : '') + texts.join(' ')) + '</p>' +
+    '<p><b>' + esc((powers.length ? 'Poder nuevo: ' + powers.join(', ') + '. ' : '') + 'Subes a ' + CityStory.rankOf(S.city, CITY_DATA) + '.') + '</b></p>';
+  cityOpenSheet(citySheetHtml(names.join(' · '), names.length > 1 ? '¡Distritos restaurados!' : '¡Distrito restaurado!', body), '[data-c="sheetclose"]', 'celebracion');
 }
 function cityTower(o) {
-  var m = mod('M02');
+  var mid = CD.scene, m = mod(mid);
   if (bossUnlocked(m)) {
     cityReleaseUi();
-    startRound({ kind: 'boss', title: 'Jefe final', mid: 'M02', back: { name: 'city' }, city: { kind: 'boss', id: 'torre' } }, itemsFor('boss', m));
+    startRound({ kind: 'boss', title: 'Jefe final', mid: mid, back: { name: 'city' }, city: { kind: 'boss', id: 'torre', mid: mid } }, itemsFor('boss', m));
     return;
   }
   var miss = m.topics.filter(function (t) { return starsOf(m, t.id) < 1; });
-  cityOpenSheet(citySheetHtml('Torre del Taller', 'Te faltan ' + miss.length + (miss.length === 1 ? ' tema' : ' temas'),
+  cityOpenSheet(citySheetHtml('Torre · ' + CD.sc.name, 'Te faltan ' + miss.length + (miss.length === 1 ? ' tema' : ' temas'),
     '<p>Consigue al menos una estrella en cada tema para enfrentar al jefe.</p><ul class="kp">' + miss.map(function (t) { return '<li>' + esc(t.id + ' ' + t.title) + '</li>'; }).join('') + '</ul>'), '[data-c="sheetclose"]', o.id);
 }
-function cityBridge(o) {
-  if (S.city.restored && S.city.restored.M02 === true) {
-    S.city.bridgeSeen = true; save();
-    cityOpenSheet(citySheetHtml('Puente al Archivo', 'Próximamente', '<p>El puente ya está construido. El siguiente distrito abrirá en el capítulo 2.</p>'), '[data-c="sheetclose"]', o.id);
-  } else {
-    cityOpenSheet(citySheetHtml('Puente', 'Cerrado por La Maraña', '<p>Restaura el Taller Comunal para que el puente se abra.</p>'), '[data-c="sheetclose"]', o.id);
-  }
+/* Portal de la plaza: un distrito que existe se abre; uno que no, muestra una hoja corta ("Ir al módulo" solo si el módulo existe) */
+function cityPortal(o) {
+  if (cityHasDistrict(o.dist)) { cityEnter(o.dist, cityArrival(o.dist)); return; }
+  var mm = mod(o.dist);
+  cityOpenSheet(citySheetHtml('Próximamente', mm ? o.dist + ' · ' + mm.title : o.dist + ' · Próximamente',
+    '<p>' + esc('Este distrito llegará pronto.' + (mm ? ' Mientras, puedes estudiarlo desde Módulos.' : '')) + '</p>',
+    mm ? '<button class="btn primary" data-act="cx" data-c="go-module" data-id="' + esc(o.dist) + '">Ir al módulo</button>' : ''), mm ? '[data-c="go-module"]' : '[data-c="sheetclose"]', o.id);
 }
 /* Criatura: el mundo hace el encuentro y al resolver empieza la batalla; si el mundo ya no existe, no pasa nada */
 function cityEncounter(o) {
@@ -4659,14 +5012,14 @@ function cityEncounter(o) {
   var go = function () {
     if (CD !== c) return;
     c.busy = false; c.pendingBattle = o.id;
-    startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: o.id, name: o.name, mod: 'M02', topics: o.topics }, city: { kind: 'battle', id: o.id } }, battleItems({ mod: 'M02', topics: o.topics, n: 8 }));
+    startRound({ kind: 'battle', title: 'Batalla', mid: c.scene, back: { name: 'city' }, villain: { id: o.id, name: o.name, mod: c.scene, topics: o.topics }, city: { kind: 'battle', id: o.id, mid: c.scene } }, battleItems({ mod: c.scene, topics: o.topics, n: 8 }));
   };
   var p; try { p = c.world.encounter(o.id); } catch (e) { p = null; }
   Promise.resolve(p).then(go, go);
 }
 /* Abre el lugar según su tipo (todos los tipos de cityBase tienen su rama) */
 function cityOpen(o) {
-  if (!CD || !o) return;
+  if (!CD || !o || CD.fading) return;
   if (o.kind === 'director' && !S.city.prologue) {
     cityPrologue(0);
   } else if (o.kind === 'director') {
@@ -4680,12 +5033,14 @@ function cityOpen(o) {
     if (o.mode === 'correct') cityTeachCorrect(o); else cityTeachExplain(o, true);
   } else if (o.kind === 'tower') {
     cityTower(o);
-  } else if (o.kind === 'bridge') {
-    cityBridge(o);
+  } else if (o.kind === 'portal') {
+    cityPortal(o);
+  } else if (o.kind === 'exit') {
+    cityEnter('plaza', cityArrival('plaza', CD.scene));
   } else if (o.kind === 'creature') {
     cityEncounter(o);
   } else if (o.kind === 'repair') {
-    startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: o.id } }, repairItems('M02', o.topic));
+    startRound({ kind: 'repair', title: 'Reparación', mid: CD.scene, back: { name: 'city' }, city: { kind: 'repair', id: o.id, mid: CD.scene } }, repairItems(CD.scene, o.topic));
   }
 }
 
@@ -4730,10 +5085,12 @@ function cityPauseAct(a) {
     var list = CityMove.within(CD.hero, cityItems(), 15);
     cityPauseList('Lugares cercanos', list.map(function (o) { return '<button class="btn" data-act="cx" data-c="go" data-id="' + esc(o.id) + '">' + esc(o.label) + ' · ' + Math.round(o.dist) + ' m</button>'; }), 'No hay lugares a menos de 15 m.');
   } else if (a === 'learned') {
-    var m = mod('M02'), M = CITY_DATA.districts.M02, rows = [];
+    var mid = CD.scene, rows = [];
+    if (mid === 'plaza') { cityPauseList('Lecciones vistas', rows, 'Entra a un distrito para ver sus lecciones.'); return; }
+    var m = mod(mid), M = CD.sc;
     S.stats.learnTopics.forEach(function (k) {
-      if (k.indexOf('M02:') !== 0 || !m.tById[k.slice(4)]) return;
-      var tp = m.tById[k.slice(4)], mm = M.mentors.filter(function (x) { return x.topic === tp.id; })[0];
+      if (k.indexOf(mid + ':') !== 0 || !m.tById[k.slice(mid.length + 1)]) return;
+      var tp = m.tById[k.slice(mid.length + 1)], mm = M.mentors.filter(function (x) { return x.topic === tp.id; })[0];
       if (mm) rows.push('<button class="btn" data-act="cx" data-c="lesson" data-id="' + esc(mm.id) + '">' + esc(tp.id + ' ' + tp.title) + ' · ' + starStr(starsOf(m, tp.id)) + '</button>');
     });
     cityPauseList('Lecciones vistas', rows, 'Todavía no has visto lecciones de este distrito.');
@@ -4747,9 +5104,18 @@ function cityPauseAct(a) {
 }
 
 /* ---------- eventos ---------- */
+/* módulo al que lleva "Ir a los módulos": el distrito donde estabas o el primero que existe */
+function cityModTarget() {
+  if (cityHasDistrict(S.city.scene)) return S.city.scene;
+  for (var i = 0; i < CITY_DATA.order.length; i++) if (cityHasDistrict(CITY_DATA.order[i])) return CITY_DATA.order[i];
+  return Object.keys(CITY_DATA.districts)[0];
+}
 function cityAct(c, b) {
   if (c === 'quit' || c === 'home') { if (CD) citySave(); go('home'); }
-  else if (c === 'mods') go('module', { mod: 'M02' });
+  else if (c === 'mods') go('module', { mod: cityModTarget() });
+  else if (c === 'go-module') { if (CD) citySave(); go('module', { mod: b.dataset.id }); }
+  else if (c === 'err-retry') { var rid = b.dataset.id; cityHideError(); if (CD && cityHasDistrict(rid)) cityEnter(rid, cityArrival(rid)); }
+  else if (c === 'err-close') { cityHideError(); cFocus(cId('city-pause')); }
   else if (c === 'retry') { cityStop(); cityStart(); }
   else if (c === 'pause') { if (CD && CD.world) { if (CD.paused) cityClosePause(); else if (!CD.sheet) cityOpenPause(); } }
   else if (c === 'pauseclose') cityClosePause();
@@ -5013,7 +5379,7 @@ if (window.__CITY_TEST__ === true) {
   window.addEventListener('resize', function () { if (TD && TD.scene) TD.scene.resize(); });
   document.addEventListener('visibilitychange', function () { if (TD && TD.scene) TD.scene.setPaused('hidden', document.hidden); if (CD && CD.world) CD.world.setPaused('hidden', document.hidden); });
 
-  function beatenToday(id) { return S.city.beaten[id] === today(); }
+  function beatenToday(mid, id) { var d = cityD(mid); return !!d && d.beaten[id] === today(); }
   /* Pool barajado de preguntas mcq+tf de los temas, sin repetir: las primeras n son la ronda y arr.pool guarda el resto */
   function battleItems(v) {
     var m = mod(v.mod), pool = [];
@@ -5051,6 +5417,7 @@ if (window.__CITY_TEST__ === true) {
     if (a === 'home') go('home');
     else if (a === 'trip') go('trip');
     else if (a === 'city') go('city');
+    else if (a === 'district') { var e0 = Object.prototype.hasOwnProperty.call(CITY_DATA.districts, d.id) ? CITY_DATA.districts[d.id].entry : null; if (e0) { S.city.scene = d.id; S.city.at = { x: e0.x, z: e0.z, yaw: e0.yaw }; save(); go('city'); } }
     else if (a === 'hero') go('hero');
     else if (a === 'mod') go('module', { mod: d.id });
     else if (a === 'topic') go('topic', { mod: V.mod, topic: d.id });

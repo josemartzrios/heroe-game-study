@@ -317,6 +317,12 @@ body.city-on{overflow:hidden}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
 #city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
+#city-err{position:absolute; left:0; right:0; top:0; z-index:3; display:flex; justify-content:center; padding:max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left))}
+#city-err[hidden]{display:none}
+#city-err .banner{width:100%; max-width:560px; background:var(--surface)}
+#city-veil{position:absolute; inset:0; z-index:5; background:#000; opacity:0; pointer-events:none; transition:opacity .25s}
+#city-act .act-sub{display:block; font-size:12px; font-weight:400}
+#city-act .act-sub[hidden]{display:none}
 #city-pausebox{position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; background:rgba(11,18,32,.72)}
 #city-pausebox[hidden]{display:none}
 #city-pausebox .banner{width:100%; background:var(--surface)}
@@ -892,7 +898,7 @@ const MODULES = [
     var h = header() + '<main><div class="crumb"><button class="btn sm ghost" data-act="home">← Módulos</button></div>' +
       '<div class="head"><span class="tag">' + esc(m.id) + '</span><h1>' + esc(m.title) + '</h1>' +
       '<div class="bar" role="img" aria-label="' + dominio(m) + ' por ciento de dominio"><i style="width:' + dominio(m) + '%"></i></div>' +
-      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
+      '<p class="meta">' + dominio(m) + ' % de dominio · ' + totalStars(m) + ' de ' + (3 * m.topics.length) + ' estrellas' + (b ? ' · Mejor jefe: ' + b.best + ' de 20' : '') + '</p>' + (Object.prototype.hasOwnProperty.call(CITY_DATA.districts, m.id) ? '<div><button class="btn sm primary" data-act="district" data-id="' + esc(m.id) + '"><span aria-hidden="true">▶</span> Ir al distrito</button></div>' : '') + (m.id === 'M08' ? '<div><button class="btn sm" data-act="trip">Viaja como paquete</button></div>' : '') + '</div>' +
       '<h2 class="h2">Modos del módulo</h2><div class="modes">' +
       modeBtn('tf', 'Relámpago', '10 afirmaciones, 12 s cada una', true) +
       modeBtn('scenario', '¿Qué usarías?', 'Decisiones de diseño en casos reales', true) +
@@ -1371,6 +1377,7 @@ const MODULES = [
     if (a === 'home') go('home');
     else if (a === 'trip') go('trip');
     else if (a === 'city') go('city');
+    else if (a === 'district') { var e0 = Object.prototype.hasOwnProperty.call(CITY_DATA.districts, d.id) ? CITY_DATA.districts[d.id].entry : null; if (e0) { S.city.scene = d.id; S.city.at = { x: e0.x, z: e0.z, yaw: e0.yaw }; save(); go('city'); } }
     else if (a === 'hero') go('hero');
     else if (a === 'mod') go('module', { mod: d.id });
     else if (a === 'topic') go('topic', { mod: V.mod, topic: d.id });

@@ -112,7 +112,7 @@ var CityInput = (function () {
       win.removeEventListener('keydown', onKeyDown); win.removeEventListener('keyup', onKeyUp);
       win.removeEventListener('blur', releaseAll); doc.removeEventListener('visibilitychange', onVisibility);
     }
-    return { intent: intent, joy: joy, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, dispose: dispose };
+    return { intent: intent, joy: joy, consumeZoom: consumeZoom, consumeAction: consumeAction, consumePause: consumePause, releaseAll: releaseAll, dispose: dispose };
   }
   return { create: create };
 })();

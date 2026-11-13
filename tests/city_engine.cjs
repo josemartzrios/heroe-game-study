@@ -32,8 +32,8 @@ function boot(opts = {}) {
       w.__TRIP_IMPORT__ = () => { st.trips++; return Promise.resolve({ THREE_FAKE: true }); };
       {
         w.__CITY_WORLD__ = {
-          create(canvas, D, o) {
-            st.creates++; st.lastOpts = o; st.canvases.push(canvas);
+          create(canvas, D, sceneId, o) {
+            st.creates++; st.lastOpts = o; st.canvases.push(canvas); (st.scenes = st.scenes || []).push(sceneId);
             if (opts.createReject) return Promise.reject(new Error('create falló'));
             const api = {
               resize: () => st.calls.push(['resize']),
@@ -65,7 +65,9 @@ function findQ(w, d) {
 const correctText = (q) => (q.type === 'tf' ? (q.answer ? 'Verdadero' : 'Falso') : q.options[q.answer]);
 function answerRight(w, d) { const q = findQ(w, d); const b = [...d.querySelectorAll('.opt')].find((x) => norm(x.querySelector('span:last-child').textContent) === norm(correctText(q))); click(w, b); const n = d.querySelector('#nextbtn'); if (n) click(w, n); }
 
-const base = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o);
+const M2AT = { x: 0, z: -52, yaw: Math.PI };   // entrada de M02: las pruebas de lugares del Taller arrancan ahí; las de la plaza piden scene 'plaza'
+const withScene = (s) => { const c = Object.assign({}, s.city || {}); if (!('scene' in c) && !('at' in c)) { c.scene = 'M02'; c.at = Object.assign({}, M2AT); } s.city = c; return s; };
+const base = (o = {}) => withScene(Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o));
 const saved = (w) => JSON.parse(w.localStorage.getItem(KEY));
 const $ = (e, s) => e.d.querySelector(s);
 const root = (e) => $(e, '#city-root');
@@ -123,7 +125,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     }
 
     // (c) pérdida de contexto y reintento en la posición guardada
-    e = boot({ seed: base() }); await enter(e);
+    e = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e);
     api(e).teleport(10, 5);
     e.st.lastOpts.onLost(); await tick();
     ok('(c) onLost: "Se perdió la vista de la ciudad." con Reintentar y Salir y sin "3D"', !/3D/.test(root(e).textContent) && /Se perdió la vista de la ciudad\./.test(root(e).textContent) && !!btnText(e, /^Reintentar$/) && !!btnText(e, /^Salir$/));
@@ -136,7 +138,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     // (c2) pérdida de contexto con la ciudad suspendida
     e = boot({ seed: base() }); await enter(e);
     const RND = () => e.w.__CITY_ROUND__;
-    RND().startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09' } }, RND().repairItems('M02', 'T15'));
+    RND().startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09', mid: 'M02' } }, RND().repairItems('M02', 'T15'));
     e.st.lastOpts.onLost();
     answerRight(e.w, e.d); answerRight(e.w, e.d);
     click(e.w, $(e, '[data-act="back"]')); await tick();
@@ -167,7 +169,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
 
     // (f) ronda con back city: suspender y reanudar sin recrear
     e = boot({ seed: base() }); await enter(e);
-    RND().startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09' } }, RND().repairItems('M02', 'T15'));
+    RND().startRound({ kind: 'repair', title: 'Reparación', mid: 'M02', back: { name: 'city' }, city: { kind: 'repair', id: 'r09', mid: 'M02' } }, RND().repairItems('M02', 'T15'));
     ok('(f) la ronda suspende la ciudad: sin dispose, raíz oculta, setPaused(suspended)', e.st.disposed === 0 && root(e).hidden && callsOf(e, 'setPaused', 'suspended').some((c) => c[2] === true));
     e.w.dispatchEvent(new e.w.Event('resize'));
     answerRight(e.w, e.d);
@@ -175,7 +177,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     answerRight(e.w, e.d);
     click(e.w, $(e, '[data-act="back"]')); await tick();
     ok('(f) "Volver a la ciudad": reanuda sin create nuevo y con un solo resize', e.st.creates === 1 && !root(e).hidden && callsOf(e, 'resize').length === 1 && callsOf(e, 'setPaused', 'suspended').some((c) => c[2] === false) && e.d.body.classList.contains('city-on'), JSON.stringify(e.st.calls));
-    ok('(f) la reparación quedó guardada y la ciudad sigue sin errores', saved(e.w).city.repairs.r09 === true && e.errors.length === 0, e.errors.join('|'));
+    ok('(f) la reparación quedó guardada y la ciudad sigue sin errores', saved(e.w).city.d.M02.repairs.r09 === true && e.errors.length === 0, e.errors.join('|'));
     e.w.close();
 
     // (g) aviso de girar
@@ -187,7 +189,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (h) acción contextual junto a la directora, hoja, Esc y foco
-    e = boot({ seed: base({ city: { prologue: true } }) }); await enter(e);
+    e = boot({ seed: base({ city: { prologue: true, scene: 'plaza' } }) }); await enter(e);
     ok('(h) lejos de todo no hay acción', $(e, '#city-act').hidden);
     api(e).teleport(-6, -2.5);
     ok('(h) junto a Iris: #city-act dice "Hablar con Iris"', !$(e, '#city-act').hidden && $(e, '#city-act').textContent === 'Hablar con Iris', $(e, '#city-act').textContent);
@@ -198,7 +200,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (i) guardado de posición al pausar y visibilitychange
-    e = boot({ seed: base() }); await enter(e);
+    e = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e);
     api(e).teleport(12, 3);
     click(e.w, $(e, '#city-pause'));
     ok('(i) S.city.at se guarda al pausar', Math.abs(saved(e.w).city.at.x - 12) < 1e-6 && Math.abs(saved(e.w).city.at.z - 3) < 1e-6, JSON.stringify(saved(e.w).city.at));
@@ -208,7 +210,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (j) Lugares cercanos
-    e = boot({ seed: base({ city: { prologue: true } }) }); await enter(e);
+    e = boot({ seed: base({ city: { prologue: true, scene: 'plaza' } }) }); await enter(e);
     api(e).teleport(0, 0);
     click(e.w, $(e, '#city-pause'));
     click(e.w, btnText(e, /^Lugares cercanos$/, '#city-pausebox'));
@@ -219,15 +221,16 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e.w.close();
 
     // (k) objetivo y anuncios
-    e = boot({ seed: base() }); await enter(e);
+    e = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e);
     const o0 = $(e, '#city-obj').textContent;
     ok('(k) #city-obj: "Habla con Iris · N m" con entero', /^Habla con Iris · \d+ m$/.test(o0), o0);
     const l0 = live(e);
     api(e).teleport(0, 7); tickW(e, 300);
-    ok('(k) moverse 1 m no cambia #city-live', live(e) === l0 && /Plaza central/.test(l0), l0 + ' → ' + live(e));
-    api(e).teleport(0, -100); tickW(e, 300);
-    ok('(k) entrar al Taller Comunal se anuncia', /Taller Comunal/.test(live(e)), live(e));
-    ok('(k) objective() del gancho coincide', api(e).objective().id === 'iris');
+    ok('(k) moverse 1 m no cambia #city-live', live(e) === l0 && /^Plaza\./.test(l0), l0 + ' → ' + live(e));
+    const pm = (await import('../city/districts.mjs')).city.plaza.portals.find((p) => p.dist === 'M02');
+    api(e).teleport(pm.x, pm.z); tickW(e, 16); await sleep(700);
+    ok('(k) entrar al Taller Comunal se anuncia', /^Entraste a Taller Comunal\./.test(live(e)), live(e));
+    ok('(k) objective() del gancho coincide con el del distrito (mentor m01)', api(e).objective().id === 'm01', JSON.stringify(api(e).objective()));
     e.w.close();
     // objetivo cambia al vencer a la criatura actual
     const topicsDone = {}; const learn = [];
@@ -235,7 +238,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     e = boot({ seed: base({ topics: topicsDone, stats: { learnTopics: learn, cleared: 0, roundsNoPower: 0, bossFailed: {} }, city: { prologue: true } }) }); await enter(e);
     const lb = live(e), ob = $(e, '#city-obj').textContent;
     ok('(k) con el prólogo hecho y todo aprendido el objetivo es la primera criatura', /^Enfrenta a Bit Errante · \d+ m$/.test(ob), ob);
-    RND().startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: 'Bit Errante' }, city: { kind: 'battle', id: 'bit' } }, RND().battleItems({ mod: 'M02', topics: ['T01', 'T02', 'T03'], n: 8 }));
+    RND().startRound({ kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city' }, villain: { id: 'bit', name: 'Bit Errante' }, city: { kind: 'battle', id: 'bit', mid: 'M02' } }, RND().battleItems({ mod: 'M02', topics: ['T01', 'T02', 'T03'], n: 8 }));
     for (let i = 0; i < 4; i++) answerRight(e.w, e.d);
     click(e.w, $(e, '[data-act="back"]')); await tick();
     ok('(k) tras vencerla el objetivo y el anuncio cambian', /^Enfrenta a Cuello de Silicio/.test($(e, '#city-obj').textContent) && live(e) !== lb && /Cuello de Silicio/.test(live(e)), $(e, '#city-obj').textContent + ' | ' + live(e));
@@ -291,7 +294,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       const M2 = e2.w.eval('MODULES').find((m) => m.id === 'M02');
       ok('(o) "Ir al objetivo" abre la Lección del mentor de T02', !$(e2, '#city-sheet').hidden && $(e2, '#city-sheet').textContent.includes(M2.topics.find((x) => x.id === 'T02').title), $(e2, '#city-sheet').textContent.slice(0, 80));
       e2.w.close(); }
-    { const e2 = boot({ seed: base() }); await enter(e2);
+    { const e2 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e2);
       api(e2).teleport(6, -2.5); click(e2.w, $(e2, '#city-act'));
       ok('(o) el espejo va a "Tu héroe" y libera la ciudad', e2.st.disposed === 1 && /Héroe|héroe/.test(e2.d.body.textContent) && root(e2).hidden);
       e2.w.close(); }
@@ -308,7 +311,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       ok('(p) la acción llama a encounter(bit) y luego inicia la batalla suspendiendo la ciudad', callsOf(e3, 'encounter', 'bit').length === 1 && !!$(e3, '.arena') && root(e3).hidden);
       for (let i = 0; i < 4; i++) answerRight(e3.w, e3.d);
       click(e3.w, $(e3, '[data-act="back"]')); await tick();
-      ok('(p) victoria: beaten.bit = hoy y se llama a dissolve(bit)', saved(e3.w).city.beaten.bit === today(e3.w) && callsOf(e3, 'dissolve', 'bit').length === 1);
+      ok('(p) victoria: beaten.bit = hoy y se llama a dissolve(bit)', saved(e3.w).city.d.M02.beaten.bit === today(e3.w) && callsOf(e3, 'dissolve', 'bit').length === 1);
       api(e3).teleport(bit.x, bit.z); tickW(e3);
       ok('(p) la acción ya no ofrece a bit', $(e3, '#city-act').hidden);
       clock.ms = 25 * 3600000; tickW(e3);
@@ -320,7 +323,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       ok('(p) el reto abre su ronda con el chip "Reparación"', !!$(e3, '.prompt') && /Reparación/.test($(e3, '.chips').textContent) && root(e3).hidden);
       answerRight(e3.w, e3.d); answerRight(e3.w, e3.d);
       click(e3.w, $(e3, '[data-act="back"]')); await tick();
-      ok('(p) 2 aciertos: queda en repairs y desaparece de Lugares cercanos', saved(e3.w).city.repairs.r09 === true && (() => { click(e3.w, $(e3, '#city-pause')); click(e3.w, btnText(e3, /^Lugares cercanos$/, '#city-pausebox')); return ![...e3.d.querySelectorAll('#city-pausebox button')].some((b) => b.textContent.includes(r09.label)); })());
+      ok('(p) 2 aciertos: queda en repairs y desaparece de Lugares cercanos', saved(e3.w).city.d.M02.repairs.r09 === true && (() => { click(e3.w, $(e3, '#city-pause')); click(e3.w, btnText(e3, /^Lugares cercanos$/, '#city-pausebox')); return ![...e3.d.querySelectorAll('#city-pausebox button')].some((b) => b.textContent.includes(r09.label)); })());
       e3.w.close(); }
     { // derrota no marca; un fallo en el reto lo deja disponible; Lugares cercanos inicia criatura y reto
       const D3 = (await import('../city/districts.mjs')).city.districts.M02, bit = D3.creatures[0].area, r09 = D3.repairs.find((r) => r.id === 'r09');
@@ -330,7 +333,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       click(e3.w, [...e3.d.querySelectorAll('#city-pausebox button')].find((b) => /Bit Errante/.test(b.textContent))); await tick();
       ok('(p) Lugares cercanos inicia la batalla de la criatura', !!$(e3, '.arena'));
       for (let i = 0; i < 3 && $(e3, '.prompt'); i++) { const q = findQ(e3.w, e3.d), ct = norm(correctText(q)); click(e3.w, [...e3.d.querySelectorAll('.opt')].find((b) => !b.disabled && norm(b.querySelector('span:last-child').textContent) !== ct)); const n = $(e3, '#nextbtn'); if (n) click(e3.w, n); }
-      ok('(p) derrota: nada marcado', !(saved(e3.w).city.beaten || {}).bit);
+      ok('(p) derrota: nada marcado', !(saved(e3.w).city.d.M02.beaten || {}).bit);
       click(e3.w, $(e3, '[data-act="back"]')); await tick();
       api(e3).teleport(r09.x, r09.z + 3);
       click(e3.w, $(e3, '#city-pause')); click(e3.w, btnText(e3, /^Lugares cercanos$/, '#city-pausebox'));
@@ -339,7 +342,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       answerRight(e3.w, e3.d);
       { const q = findQ(e3.w, e3.d), ct = norm(correctText(q)); click(e3.w, [...e3.d.querySelectorAll('.opt')].find((b) => !b.disabled && norm(b.querySelector('span:last-child').textContent) !== ct)); const n = $(e3, '#nextbtn'); if (n) click(e3.w, n); }
       click(e3.w, $(e3, '[data-act="back"]')); await tick();
-      ok('(p) con un fallo el reto sigue disponible', !(saved(e3.w).city.repairs || {}).r09 && (api(e3).teleport(r09.x, r09.z + 1), $(e3, '#city-act').textContent === 'Reparar ' + r09.label));
+      ok('(p) con un fallo el reto sigue disponible', !(saved(e3.w).city.d.M02.repairs || {}).r09 && (api(e3).teleport(r09.x, r09.z + 1), $(e3, '#city-act').textContent === 'Reparar ' + r09.label));
       e3.w.close(); }
 
     // (q) enseñar, torre, restauración, puente, prólogo y objetivo
@@ -375,12 +378,12 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         ok('(q) una 4.ª selección no cambia nada y el contador sigue en "3 de 3"', before === 3 && pressed(e4).length === 3 && /3 de 3/.test($(e4, '#city-count').textContent));
         const set0 = kps(e4).map((b) => clean(b.textContent)).sort().join('|');
         click(e4.w, exp());
-        ok('(q) al fallar se marca "De otro tema" en los ajenos con texto', /De otro tema/.test(sh().textContent) && !saved(e4.w).city.taught.a01);
+        ok('(q) al fallar se marca "De otro tema" en los ajenos con texto', /De otro tema/.test(sh().textContent) && !saved(e4.w).city.d.M02.taught.a01);
         click(e4.w, btnText(e4, /^Reintentar$/, '#city-sheet'));
         const set1 = kps(e4).map((b) => clean(b.textContent)).sort().join('|');
         ok('(q) Reintentar vuelve a sortear el conjunto de los 6', set0 !== set1 && pressed(e4).length === 0);
         const xp0 = saved(e4.w).xp; pick(e4, 3, true, 'T05'); click(e4.w, exp());
-        ok('(q) con 3 correctos: +15 XP y taught.a01', saved(e4.w).xp === xp0 + 15 && saved(e4.w).city.taught.a01 === true, saved(e4.w).xp - xp0);
+        ok('(q) con 3 correctos: +15 XP y taught.a01', saved(e4.w).xp === xp0 + 15 && saved(e4.w).city.d.M02.taught.a01 === true, saved(e4.w).xp - xp0);
         ok('(q) tras enseñar, el aprendiz se va', (click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')), near(e4, a1), $(e4, '#city-act').hidden));
         e4.w.close(); }
       // corregir
@@ -391,7 +394,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         const a0 = Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0);
         answerRight(e4.w, e4.d);
         click(e4.w, $(e4, '[data-act="back"]')); await tick();
-        ok('(q) si acierta queda en taught y la pregunta se registra', saved(e4.w).city.taught.a02 === true && Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0) === a0 + 1);
+        ok('(q) si acierta queda en taught y la pregunta se registra', saved(e4.w).city.d.M02.taught.a02 === true && Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0) === a0 + 1);
         e4.w.close(); }
       // torre bloqueada
       { const e4 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e4);
@@ -410,13 +413,8 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         ok('(q) enseñar al 8.º: celebración con Planos y Junior', /Planos/.test($(e4, '#city-sheet').textContent) && /Junior/.test($(e4, '#city-sheet').textContent), $(e4, '#city-sheet').textContent.slice(0, 100));
         ok('(q) queda restored.M02, powers.planos y "Junior" en el HUD', saved(e4.w).city.restored.M02 === true && saved(e4.w).city.powers.planos === true && (click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')), $(e4, '#city-rank').textContent === 'Junior'));
         ok('(q) con flags.restored el mundo recibe restored=true', e4.st.lastOpts.state().flags.restored === true);
-        // puente
-        const door = { x: D4.bridge.x, z: D4.bridge.z + D4.bridge.d / 2 }; near(e4, door, 1.2);
-        ok('(q) puente: "Cruzar el puente"', $(e4, '#city-act').textContent === 'Cruzar el puente');
-        click(e4.w, $(e4, '#city-act'));
-        ok('(q) "Próximamente" y bridgeSeen', /Próximamente/.test($(e4, '#city-sheet').textContent) && saved(e4.w).city.bridgeSeen === true);
-        click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet'));
-        ok('(q) tras cruzar el objetivo es "Capítulo completo"', /Capítulo completo/.test($(e4, '#city-obj').textContent), $(e4, '#city-obj').textContent);
+        // distrito restaurado: el objetivo manda volver a la plaza
+        ok('(q) tras restaurar el objetivo es "Vuelve a la plaza"', /Vuelve a la plaza/.test($(e4, '#city-obj').textContent), $(e4, '#city-obj').textContent);
         e4.w.close(); }
       // jefe aprobado al final con 8 enseñados
       { const taught = {}; D4.apprentices.slice(0, 8).forEach((a) => { taught[a.id] = true; });
@@ -429,7 +427,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         ok('(q) aprobar el jefe y volver muestra la celebración', /Planos/.test($(e4, '#city-sheet').textContent) && saved(e4.w).city.restored.M02 === true);
         e4.w.close(); }
       // prólogo
-      { const e4 = boot({ seed: base() }); await enter(e4);
+      { const e4 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e4);
         near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
         ok('(q) prólogo: panel 1 con "Siguiente" y "Saltar"', /Ciudad Núcleo/.test($(e4, '#city-sheet').textContent) && !!btnText(e4, /^Siguiente$/, '#city-sheet') && !!btnText(e4, /^Saltar$/, '#city-sheet'));
         click(e4.w, btnText(e4, /^Siguiente$/, '#city-sheet')); const p2 = $(e4, '#city-sheet').textContent;
@@ -438,7 +436,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet'));
         ok('(q) al terminar S.city.prologue = true y una sola vez', saved(e4.w).city.prologue === true && (click(e4.w, $(e4, '#city-act')), !/Siguiente/.test($(e4, '#city-sheet').textContent)));
         e4.w.close();
-        const e5 = boot({ seed: base() }); await enter(e5); near(e5, { x: -6, z: -4 }); click(e5.w, $(e5, '#city-act')); click(e5.w, btnText(e5, /^Saltar$/, '#city-sheet'));
+        const e5 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e5); near(e5, { x: -6, z: -4 }); click(e5.w, $(e5, '#city-act')); click(e5.w, btnText(e5, /^Saltar$/, '#city-sheet'));
         ok('(q) "Saltar" lo marca como visto', saved(e5.w).city.prologue === true && $(e5, '#city-sheet').hidden);
         e5.w.close(); }
       // guardado manipulado (foco de revisión 2)
@@ -447,11 +445,14 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         ok('(q) 8 ids basura en taught y planos sin jefe: "Becario" y puente cerrado', $(e4, '#city-rank').textContent === 'Becario' && e4.st.lastOpts.state().flags.restored === false && (click(e4.w, $(e4, '#city-pause')), !saved(e4.w).city.powers.planos && !saved(e4.w).city.restored.M02));
         e4.w.close(); }
       // nombre malicioso
-      { const e4 = boot({ seed: base({ hero: { name: '<img id=pwn src=x>' }, topics: six(['T01']), city: { prologue: true } }) }); await enter(e4);
+      { const e4 = boot({ seed: base({ hero: { name: '<img id=pwn src=x>' }, topics: six(['T01']), city: { prologue: true, scene: 'plaza' } }) }); await enter(e4);
         near(e4, { x: -6, z: -4 }); click(e4.w, $(e4, '#city-act'));
-        const m1 = D4.mentors[0]; click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')); near(e4, m1); click(e4.w, $(e4, '#city-act'));
-        ok('(q) nombre del héroe malicioso: sin #pwn en el HUD ni en las hojas', !e4.d.querySelector('#pwn') && e4.errors.length === 0, e4.errors.join('|'));
-        e4.w.close(); }
+        ok('(q) nombre del héroe malicioso: sin #pwn en el HUD ni en la hoja de Iris', !e4.d.querySelector('#pwn') && e4.errors.length === 0, e4.errors.join('|'));
+        e4.w.close();
+        const e4b = boot({ seed: base({ hero: { name: '<img id=pwn src=x>' }, topics: six(['T01']), city: { prologue: true } }) }); await enter(e4b);
+        const m1 = D4.mentors[0]; near(e4b, m1); click(e4b.w, $(e4b, '#city-act'));
+        ok('(q) nombre del héroe malicioso: sin #pwn en la lección del mentor', !e4b.d.querySelector('#pwn') && e4b.errors.length === 0, e4b.errors.join('|'));
+        e4b.w.close(); }
     }
 
     // (u) zoom, dirección, flecha, estado reutilizado y guardado periódico (vista 2D)
@@ -486,7 +487,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       const e6 = boot({ seed: base({ city: { prologue: true, at: { x: 0, z: 8, yaw: Math.PI } } }) }); await enter(e6);
       ok('(u) al entrar con at.yaw = π la dirección es "down"', e6.st.lastOpts.state().hero.face === 'down');
       e6.w.close(); }
-    { const e5 = boot({ seed: base() }); await enter(e5);   // objetivo: Iris en (-6, -4)
+    { const e5 = boot({ seed: base({ city: { scene: 'plaza' } }) }); await enter(e5);   // objetivo: Iris en (-6, -4)
       const arrow = () => $(e5, '#city-arrow');
       api(e5).teleport(-6, 6); ok('(u) flecha: objetivo arriba → 0°', arrow().style.transform === 'rotate(0deg)' && !arrow().hidden, arrow().style.transform);
       api(e5).teleport(-16, -4); ok('(u) objetivo a la derecha → 90°', arrow().style.transform === 'rotate(90deg)', arrow().style.transform);
