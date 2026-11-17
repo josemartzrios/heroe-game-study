@@ -301,7 +301,7 @@ if (!isMainThread) {
     ok('B8 clic en la opción tachada no registra', sumA(st(e.w)) === a0);
     ans(e.w, e.d, true); const h = hud(e.d);
     ok('B8 acierto tras regen: energía ≤ 3, 1 respuesta más', h.en <= 3 && h.en >= 0 && sumA(st(e.w)) === a0 + 1, JSON.stringify(h));
-    if (h.hp === 0) { ok('B8 ese golpe fue el último y ganó la batalla (azar): no hay salida que comprobar', won(e.d)); e.w.close(); return; }
+    if (h.hp === 0) { nextB(e.w, e.d); ok('B8 ese golpe fue el último y ganó la batalla (azar): al continuar sale la victoria y no hay salida que comprobar', won(e.d)); e.w.close(); return; }
     nextB(e.w, e.d); click(e.w, L.btn(e.d, 'quit'));
     ok('B8 salir tras regen: no vencido', !st(e.w).city.d.M02.beaten.eco);
     ok('B8 sin errores', !e.errors.length, e.errors.join('|')); e.w.close(); });

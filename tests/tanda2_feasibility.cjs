@@ -5,6 +5,8 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const root = path.join(__dirname, '..');
 const imp = (f) => import(pathToFileURL(path.join(root, f)).href);
+const assert = require('assert');
+const same = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catch (e) { return false; } };
 const results = [];
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
 const pad = (n) => String(n).padStart(2, '0');
@@ -135,6 +137,7 @@ function build(id, s, makeLayout) {
 
     const errs = checkDistrict(dist, mod);
     ok(`${id}: checkDistrict R1–R7 sin errores`, errs.length === 0, errs.join(' | '));
+    ok(`${id}: el archivo real de city/districts es idéntico al armado desde la tabla del spec (datos, coordenadas y orden de take())`, same(dist, city.districts[id]), city.districts[id] ? 'difiere' : 'el distrito no está registrado');
 
     // detalle por regla (informativo; mismo criterio que checkDistrict)
     const count = (types, tid) => mod.questions.filter((q) => types.includes(q.type) && q.topic === tid).length;

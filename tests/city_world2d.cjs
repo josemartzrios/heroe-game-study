@@ -4,6 +4,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
 
 (async () => {
   const D = (await import('../city/districts.mjs')).city;
+  const OPEN = Object.keys(D.districts).length, PEND = D.order.length - OPEN;
   const SP = require('../city/sprites2d.js');
   const W = require('../city/world2d.js');
   const M = D.districts.M02, M8 = D.districts.M08, PZ = D.plaza, CMv = require('../city/move.js');
@@ -115,8 +116,8 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const box = (p) => { const X = (p.x - PB.minX) * 8, Z = (p.z - PB.minZ) * 8; return { x0: X - p.w * 4, x1: X + p.w * 4, z0: Z - p.d * 4, z1: Z + p.d * 4 }; };
     const hit = (b, c) => rr.some((r) => r.c === c && r.x < b.x1 && r.x + r.w > b.x0 && r.y < b.z1 && r.y + r.h > b.z0);
     const open = PZ.portals.filter((p) => D.districts[p.dist]), pend = PZ.portals.filter((p) => !D.districts[p.dist]);
-    ok('(p2) los portales abiertos (M02 y M08) llevan los colores de su distrito y no el muro de La Maraña', open.length === 2 && open.every((p) => hit(box(p), D.districts[p.dist].colors.a) && hit(box(p), D.districts[p.dist].colors.b) && !hit(box(p), '#2a1f3d')));
-    ok('(p3) los 9 portales sin distrito son muros de La Maraña', pend.length === 9 && pend.every((p) => hit(box(p), '#2a1f3d')));
+    ok('(p2) los portales abiertos (uno por distrito) llevan los colores de su distrito y no el muro de La Maraña', open.length === OPEN && open.every((p) => hit(box(p), D.districts[p.dist].colors.a) && hit(box(p), D.districts[p.dist].colors.b) && !hit(box(p), '#2a1f3d')));
+    ok('(p3) los portales sin distrito son muros de La Maraña', pend.length === PEND && pend.every((p) => hit(box(p), '#2a1f3d')));
     frame(f, api, 100);
     const allMentors = [].concat(...Object.keys(D.districts).map((m) => D.districts[m].mentors.map((x) => m + ':' + x.id)));
     ok('(p4) en la plaza se dibuja Iris y ningún mentor ni criatura de los distritos', sprDraws(f, 'person', 'iris').length === 1 && allMentors.every((v) => sprDraws(f, 'person', v).length === 0) && M.creatures.every((c) => sprDraws(f, 'creature', 'M02:' + c.id).length === 0));

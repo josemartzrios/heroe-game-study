@@ -2,6 +2,9 @@
 // Cada distrito vive en city/districts/*.mjs; los que aún no existen son muros de La Maraña con cartel "Próximamente".
 import { district as m02 } from './districts/m02.mjs';
 import { district as m08 } from './districts/m08.mjs';
+import { district as m03 } from './districts/m03.mjs';
+import { district as m01 } from './districts/m01.mjs';
+import { district as m10 } from './districts/m10.mjs';
 
 // Orden recomendado de los distritos (también el de los portales de la plaza para el objetivo "Entra a …").
 export const ORDER = ['M02', 'M08', 'M03', 'M01', 'M10', 'M04', 'M06', 'M07', 'M05', 'M09', 'M11'];
@@ -26,5 +29,5 @@ export const city = {
     hq: { x: 0, z: -14, w: 14, d: 10, h: 9 },
     director: { id: 'iris', name: 'Iris', x: -6, z: -4 }, mirror: { id: 'espejo', name: 'Espejo', x: 6, z: -4 }, portals
   },
-  districts: { M02: m02, M08: m08 }
+  districts: { M02: m02, M08: m08, M03: m03, M01: m01, M10: m10 }
 };

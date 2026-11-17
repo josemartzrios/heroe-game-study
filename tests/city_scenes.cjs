@@ -77,6 +77,7 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
 (async () => {
   const D = (await import('../city/districts.mjs')).city;
   const M2 = D.districts.M02, M8 = D.districts.M08, P = D.plaza;
+  const OPEN = Object.keys(D.districts).length, SIN = D.order.find((m) => !Object.prototype.hasOwnProperty.call(D.districts, m));
   const portal = (m) => P.portals.find((p) => p.dist === m);
   const near = (p) => ({ x: p.x, z: p.z + 2.5 });   // junto al portal, fuera de su caja y a menos de 4 m
   const goNear = (e, m) => { const q = near(portal(m)); api(e).teleport(q.x, q.z); };
@@ -84,7 +85,7 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
   try {
     // ---- entrada por botón: textos, fundido, orden de pausa y dispose, guardado ----
     e = boot({ seed: base() }); await enterCity(e);
-    ok('(a) la ciudad arranca en la plaza y el HUD dice "Distritos 0 de 2"', e.st.scenes.join() === 'plaza' && $(e, '#city-rest').textContent === 'Distritos 0 de 2', $(e, '#city-rest').textContent);
+    ok('(a) la ciudad arranca en la plaza y el HUD dice "Distritos 0 de N" con N = distritos de los datos', e.st.scenes.join() === 'plaza' && $(e, '#city-rest').textContent === 'Distritos 0 de ' + OPEN, $(e, '#city-rest').textContent);
     goNear(e, 'M08');
     ok('(b) junto al portal M08 el botón dice "Entrar a Nodo Enlace" y su texto secundario "M08 · 15 temas · 0 % restaurado"', act(e).main === 'Entrar a Nodo Enlace' && act(e).sub === 'M08 · 15 temas · 0 % restaurado' && !act(e).hidden, JSON.stringify(act(e)));
     click(e.w, $(e, '#city-act'));
@@ -158,13 +159,14 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
 
     // ---- Próximamente ----
     e = boot({ seed: base() }); await enterCity(e);
-    goNear(e, 'M03');
-    ok('(p) junto a un muro sin distrito el botón dice "Ver M03" con "M03 · Próximamente"', act(e).main === 'Ver M03' && act(e).sub === 'M03 · Próximamente', JSON.stringify(act(e)));
+    const SINT = e.w.eval('MODULES').find((m) => m.id === SIN).title;
+    goNear(e, SIN);
+    ok('(p) junto a un muro sin distrito el botón dice "Ver <módulo>" con "<módulo> · Próximamente"', act(e).main === 'Ver ' + SIN && act(e).sub === SIN + ' · Próximamente', JSON.stringify(act(e)));
     click(e.w, $(e, '#city-act'));
     const sheet = $(e, '#city-sheet'), btns = [...sheet.querySelectorAll('button')].map((b) => b.textContent);
-    ok('(p2) la hoja dice "M03 · Fundamentos de internet", el texto exacto y los botones "Ir al módulo" y "Cerrar"', sheet.querySelector('.prompt').textContent === 'M03 · Fundamentos de internet' && sheet.querySelector('p').textContent === 'Este distrito llegará pronto. Mientras, puedes estudiarlo desde Módulos.' && btns.join('|') === 'Ir al módulo|Cerrar', btns.join('|'));
+    ok('(p2) la hoja dice "<módulo> · <título>", el texto exacto y los botones "Ir al módulo" y "Cerrar"', sheet.querySelector('.prompt').textContent === SIN + ' · ' + SINT && sheet.querySelector('p').textContent === 'Este distrito llegará pronto. Mientras, puedes estudiarlo desde Módulos.' && btns.join('|') === 'Ir al módulo|Cerrar', btns.join('|'));
     click(e.w, cx(e, 'go-module')); await tick();
-    ok('(p3) "Ir al módulo" abre la página del módulo M03', !!$(e, '[data-act="home"]') && $(e, '.head h1').textContent === 'Fundamentos de internet', ($(e, '.head h1') || {}).textContent);
+    ok('(p3) "Ir al módulo" abre la página del módulo sin distrito', !!$(e, '[data-act="home"]') && $(e, '.head h1').textContent === SINT, ($(e, '.head h1') || {}).textContent);
     e.w.close();
     e = boot({ seed: base() }); await enterCity(e);
     goNear(e, 'M11'); click(e.w, $(e, '#city-act'));
@@ -236,8 +238,8 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     ok('(v2) "Ir al distrito" abre la ciudad en la entrada de M08', e.st.scenes.join() === 'M08' && saved(e.w).city.scene === 'M08' && saved(e.w).city.at.x === M8.entry.x && saved(e.w).city.at.z === M8.entry.z, e.st.scenes.join());
     e.w.close();
     e = boot({ seed: base() });
-    click(e.w, [...e.d.querySelectorAll('[data-act="mod"]')].find((b) => b.dataset.id === 'M03')); await tick();
-    ok('(v3) la página de un módulo sin distrito (M03) no tiene "Ir al distrito"', !$(e, '[data-act="district"]'));
+    click(e.w, [...e.d.querySelectorAll('[data-act="mod"]')].find((b) => b.dataset.id === SIN)); await tick();
+    ok('(v3) la página de un módulo sin distrito no tiene "Ir al distrito"', !$(e, '[data-act="district"]'));
     e.w.close();
 
     // ---- Enseñar: elegir un punto clave redibuja la hoja pero el foco se queda en el botón que se pulsó ----

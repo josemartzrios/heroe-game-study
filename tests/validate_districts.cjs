@@ -60,12 +60,13 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
   // ---- plaza: portales (R9) y rangos (R10) ----
   const ep = checkPlaza(city);
   ok('plaza válida: sin errores (11 portales, rangos, puntos libres)', ep.length === 0, ep.join(' || '));
+  const SIN = city.order.find((m) => !Object.prototype.hasOwnProperty.call(city.districts, m));   // un portal que sigue siendo muro sólido
   const mutP = (fn) => { const D = clone(city); fn(D); return checkPlaza(D); };
   expectRule('R9 portal repetido', mutP((D) => { D.plaza.portals[1].dist = D.plaza.portals[0].dist; }), 'R9', /repetid/);
   expectRule('R9 distrito de ORDER sin portal', mutP((D) => { D.plaza.portals = D.plaza.portals.filter((p) => p.dist !== 'M05'); }), 'R9', /M05/);
   expectRule('R9 portal de un distrito que no está en ORDER', mutP((D) => { D.plaza.portals[2].dist = 'M99'; }), 'R9', /M99/);
   expectRule('R9 distrito existente fuera de ORDER', mutP((D) => { D.order = D.order.filter((m) => m !== 'M08'); }), 'R9', /M08/);
-  expectRule('R9 back dentro de un muro sólido', mutP((D) => { const w = D.plaza.portals.find((p) => p.dist === 'M03'); D.plaza.portals.find((p) => p.dist === 'M08').back = { x: w.x, z: w.z, yaw: 0 }; }), 'R9', /back/);
+  expectRule('R9 back dentro de un muro sólido', mutP((D) => { const w = D.plaza.portals.find((p) => p.dist === SIN); D.plaza.portals.find((p) => p.dist === 'M08').back = { x: w.x, z: w.z, yaw: 0 }; }), 'R9', /back/);
   expectRule('R9 back dentro de la boca de un portal abierto', mutP((D) => { const q = D.plaza.portals.find((p) => p.dist === 'M02'); q.back = { x: q.x, z: q.z, yaw: 0 }; }), 'R9', /back/);
   expectRule('R9 back fuera de los bounds de la plaza', mutP((D) => { D.plaza.portals[0].back.x = 200; }), 'R9', /back/);
   expectRule('R10 tabla de rangos distinta', mutP((D) => { D.ranks[2][0] = 4; }), 'R10', /rangos/);

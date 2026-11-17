@@ -149,6 +149,32 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       ok('6b al entrar a la ciudad sale la celebración de Nodo Enlace (texto de los datos, sin poder)', !!sh && !sh.hidden && sh.textContent.includes('¡Distrito restaurado!') && sh.textContent.includes(M8.celebrate.text) && !/Poder nuevo/.test(sh.textContent), sh ? sh.textContent.slice(0, 200) : 'sin hoja');
       e.w.close(); }
 
+    // 6c. Review Focus 1 y 2 de la Tanda 2: un guardado de la Tanda 1 y el jefe de M01 aprobado desde Módulos
+    const M1 = D.districts.M01, NDIST = Object.keys(D.districts).length;
+    { const seed = base({ city: { prologue: true, d: { M02: { taught: set(['a01']) }, M08: { route: { done: 2 } } } } });
+      const e = boot(seed);
+      quick(e);   // fuerza save()
+      const s = saved(e.w).city;
+      ok('RF1 guardado de la Tanda 1: tras guardar, M03, M01 y M10 existen vacíos', ['M03', 'M01', 'M10'].every((m) => s.d[m] && keys(s.d[m].beaten) === '[]' && keys(s.d[m].repairs) === '[]' && keys(s.d[m].taught) === '[]' && !('route' in s.d[m])), JSON.stringify(s.d));
+      L.click(e.w, e.d.querySelector('[data-act="back"]'));
+      for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+      ok('RF1 el HUD dice "Distritos 0 de N" con N = distritos de los datos y sin errores', e.d.querySelector('#city-rest').textContent === 'Distritos 0 de ' + NDIST && e.errors.length === 0, e.d.querySelector('#city-rest').textContent + ' ' + e.errors.join('|'));
+      e.w.close(); }
+    { const seed = base({ boss: { M01: { best: 18, passed: true } }, city: { prologue: true, scene: 'M01', at: { x: M1.entry.x, z: M1.entry.z, yaw: 0 } } });
+      const e = boot(seed);
+      L.click(e.w, e.d.querySelector('[data-act="city"]'));
+      for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+      ok('RF2a jefe de M01 aprobado y 0 enseñados: la Ciudadela marca 50 % y el objetivo no manda a la torre', e.d.querySelector('#city-rest').textContent === M1.name + ' 50 %' && !/torre/i.test(e.d.querySelector('#city-obj').textContent), e.d.querySelector('#city-rest').textContent + ' | ' + e.d.querySelector('#city-obj').textContent);
+      e.w.close(); }
+    { const seed = base({ boss: { M01: { best: 18, passed: true } }, city: { prologue: true, d: { M01: { taught: set(M1.apprentices.slice(0, M1.need - 1).map((a) => a.id)) } } } });
+      const e = boot(seed);
+      const q = e.w.eval('MODULES').find((m) => m.id === 'M01').questions.find((x) => x.type === 'mcq');
+      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M01', back: { name: 'city' }, city: { kind: 'teach', id: M1.apprentices[M1.need - 1].id, mid: 'M01' } }, [q]);
+      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+      const s = saved(e.w).city;
+      ok('RF2b con need − 1 enseñados y el jefe aprobado, enseñar al siguiente restaura M01 sin poder nuevo', s.restored.M01 === true && keys(s.powers) === '[]', JSON.stringify([s.restored, s.powers]));
+      e.w.close(); }
+
     // 7. partida nueva: plaza, M08 con route.done 0, sin respaldo
     { const e = boot(null);
       quick(e);

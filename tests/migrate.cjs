@@ -44,7 +44,8 @@ function diff(a, b, p = '') {
     virtues: { constancia: 1700000000000, valentia: 1700000001000 },
     stats: { learnTopics: ['M01:T01', 'M01:T02'], cleared: 3, roundsNoPower: 2, bossFailed: { M08: true } },
     city: { prologue: true, run: true, tips: { talk: true }, scene: 'plaza', at: { x: 3, z: 5, yaw: 1 },
-      d: { M02: { beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true } }, M08: { beaten: {}, repairs: {}, taught: {}, route: { done: 2 } } }, restored: {}, powers: {},
+      d: { M02: { beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true } }, M08: { beaten: {}, repairs: {}, taught: {}, route: { done: 2 } },
+        M03: { beaten: {}, repairs: {}, taught: {} }, M01: { beaten: {}, repairs: {}, taught: {} }, M10: { beaten: {}, repairs: {}, taught: {} } }, restored: {}, powers: {},
       beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true } }   // los tres últimos campos planos son el espejo de d.M02 que escribe save()
   };
   e = L.boot(JSON.stringify(full)); s = resave(e);

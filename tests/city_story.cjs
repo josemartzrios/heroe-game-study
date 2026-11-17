@@ -11,7 +11,7 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 (async () => {
   const CS = require('../city/story.js'), CM = require('../city/move.js');
   const { city: D } = await import(pathToFileURL(path.join(__dirname, '..', 'city', 'districts.mjs')).href);
-  const M = D.districts.M02, M8 = D.districts.M08, P = D.plaza, MIDS = Object.keys(D.districts);
+  const M = D.districts.M02, M8 = D.districts.M08, P = D.plaza, MIDS = Object.keys(D.districts), SIN = D.order.find((m) => !Object.prototype.hasOwnProperty.call(D.districts, m));
   const NONE = () => false, BP = (list) => (mid) => list.indexOf(mid) >= 0;
   const fresh = (bp = NONE) => CS.normalizeCity({}, D, bp, TODAY);
   const norm = (raw, bp = NONE) => CS.normalizeCity(raw, D, bp, TODAY);
@@ -81,7 +81,7 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
     ok('normalizeCity: at dentro de un edificio de M02 vuelve a la entrada de M02', C.scene === 'M02' && C.at.x === M.entry.x && C.at.z === M.entry.z && C.at.yaw === M.entry.yaw && C2.scene === 'M02' && C2.at.x === M.entry.x && C2.at.z === M.entry.z, JSON.stringify([C.at, C2.at])); }
   { const C = norm({ scene: 'M02', at: { x: M.exit.x, z: M.exit.z, yaw: 1 } }), C2 = norm({ scene: 'M08', at: { x: M8.exit.x, z: M8.exit.z, yaw: 1 } });
     ok('normalizeCity: at en la salida de un distrito vuelve a su entrada', C.scene === 'M02' && C.at.x === M.entry.x && C.at.z === M.entry.z && C2.scene === 'M08' && C2.at.x === M8.entry.x && C2.at.z === M8.entry.z, JSON.stringify([C.at, C2.at])); }
-  { const p = portal('M08'), C = norm({ scene: 'plaza', at: { x: p.x, z: p.z, yaw: 0 } }), w = portal('M03'), C2 = norm({ scene: 'plaza', at: { x: w.x, z: w.z, yaw: 0 } });
+  { const p = portal('M08'), C = norm({ scene: 'plaza', at: { x: p.x, z: p.z, yaw: 0 } }), w = portal(SIN), C2 = norm({ scene: 'plaza', at: { x: w.x, z: w.z, yaw: 0 } });
     ok('normalizeCity: at en la boca de un portal → back; en un muro "Próximamente" → entrada de la plaza', C.at.x === p.back.x && C.at.z === p.back.z && C2.at.x === P.entry.x && C2.at.z === P.entry.z, JSON.stringify([C.at, C2.at])); }
   { const s8 = M8.mentors[0], C = norm({ scene: 'M08', at: { x: s8.x, z: s8.z, yaw: 1 } });
     ok('normalizeCity: con scene válida se usa su propia escena (no el rect viejo)', C.scene === 'M08' && C.at.x === s8.x && C.at.z === s8.z, JSON.stringify(C)); }
@@ -182,7 +182,7 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
     ok('nextObjective plaza: portal del primer distrito sin restaurar → "Entra a Taller Comunal"', o.kind === 'portal' && o.id === 'M02' && o.label === 'Entra a Taller Comunal', JSON.stringify(o));
     C.restored.M02 = true; const o2 = objPlaza(C);
     ok('nextObjective plaza: con M02 restaurado → "Entra a Nodo Enlace"', o2.kind === 'portal' && o2.id === 'M08' && o2.label === 'Entra a Nodo Enlace', JSON.stringify(o2));
-    C.restored.M08 = true; const o3 = objPlaza(C);
+    MIDS.forEach((m) => { C.restored[m] = true; }); const o3 = objPlaza(C);
     ok('nextObjective plaza: con todos restaurados → "Ciudad al día: más distritos pronto"', o3.kind === 'none' && o3.id === null && o3.label === 'Ciudad al día: más distritos pronto', JSON.stringify(o3));
     const C4 = fresh(); C4.prologue = true; C4.restored.M08 = true; ok('nextObjective plaza: sigue el orden ORDER aunque M08 ya esté restaurado (M02 primero)', objPlaza(C4).id === 'M02'); }
   { const C = fresh(); C.prologue = true; const st = ST(); const o = obj(C, st);
@@ -208,7 +208,7 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
     const C3 = fresh(); C3.prologue = true; const r3 = obj(C3, ST(), 'M08');
     ok('nextObjective M08: nada aprendido → mentor m01 Alma (la ruta no aparece antes que las criaturas)', r3.kind === 'mentor' && r3.id === 'm01' && r3.label === 'Habla con Alma', JSON.stringify(r3)); }
   { // partida simulada completa en los dos distritos: la plaza lleva a cada distrito y el final es "none"
-    const C = fresh(), sts = { M02: ST(), M08: ST() }; let scene = 'plaza'; const seen = []; let o, n = 0;
+    const C = fresh(), sts = Object.fromEntries(MIDS.map((m) => [m, ST()])); let scene = 'plaza'; const seen = []; let o, n = 0;
     const fulfil = (o) => { const Md = D.districts[scene], m = o.id && Md && Md.mentors.find((x) => x.id === o.id), st = sts[scene];
       switch (o.kind) { case 'director': C.prologue = true; return true; case 'portal': scene = o.id; return true; case 'plaza': scene = 'plaza'; return true;
         case 'mentor': st.learned[m.topic] = true; return true; case 'practice': st.stars[m.topic] = 1; return true; case 'creature': st.beaten[o.id] = TODAY; return true;
@@ -217,7 +217,7 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
         case 'tower': st.bossPassed = true; CS.applyRestore(C, D, (mid) => !!sts[mid].bossPassed); return true; default: return false; } };
     do { o = scene === 'plaza' ? CS.nextObjective(C, D, 'plaza', mk(ST(), 23)) : CS.nextObjective(C, D, scene, mk(sts[scene], D.districts[scene].mentors.length)); seen.push(scene + ':' + o.kind + ':' + o.id); n++; } while (fulfil(o) && n < 1000);
     const early = (mid) => D.districts[mid].creatures.filter((c) => { const i = seen.indexOf(mid + ':creature:' + c.id); return i >= 0 && seen.slice(0, i).every((k) => !k.startsWith(mid + ':repair')); }).length;
-    ok('nextObjective: partida completa en M02 y M08 termina en "none", restaura ambos, pasa por la ruta y pide las criaturas antes de los retos', o.kind === 'none' && C.restored.M02 === true && C.restored.M08 === true && C.d.M08.route.done === 10 && early('M02') === 6 && early('M08') === 5, `fin=${o.kind} pasos=${n} M02=${early('M02')} M08=${early('M08')} done=${C.d.M08.route.done}`); }
+    ok('nextObjective: partida completa en todos los distritos termina en "none", restaura todos, pasa por la ruta y pide las criaturas antes de los retos', o.kind === 'none' && MIDS.every((m) => C.restored[m] === true) && C.d.M08.route.done === 10 && early('M02') === 6 && early('M08') === 5, `fin=${o.kind} pasos=${n} M02=${early('M02')} M08=${early('M08')} done=${C.d.M08.route.done}`); }
   { const r = rng(21); let bad = 0;
     for (const [sc, nTop] of [['M02', 23], ['M08', 15]]) for (let i = 0; i < 250; i++) {
       const C = fresh(), st = ST(), Md = D.districts[sc]; C.prologue = r.bool(0.9); const p = r.int(0, 10) / 10;

@@ -51,10 +51,11 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
   const finite = (b) => ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => typeof b[k] === 'number' && Number.isFinite(b[k]));
   ok('boxesFor: cajas finitas y sin altura (el dibujo 2D no la usa)', plazaBoxes.concat(m2Boxes, m8Boxes).every((b) => finite(b) && !('h' in b)));
   const sameBox = (a, b) => ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => Math.abs(a[k] - b[k]) < 1e-9);
+  const OPEN = Object.keys(D.districts).length, PEND = D.order.length - OPEN, SIN = D.order.find((m) => !Object.prototype.hasOwnProperty.call(D.districts, m));
   const existing = P.portals.filter((p) => D.districts[p.dist]), pending = P.portals.filter((p) => !D.districts[p.dist]);
-  ok('portales: 11 en total (2 abiertos y 9 sin distrito)', P.portals.length === 11 && existing.length === 2 && pending.length === 9, existing.length + '/' + pending.length);
-  ok('boxesFor plaza: sede + 9 muros sin distrito + 4 bordes', plazaBoxes.length === 1 + 9 + 4, 'n=' + plazaBoxes.length);
-  ok('boxesFor plaza: los portales M02 y M08 NO son sólidos y los muros "Próximamente" sí', existing.every((p) => !plazaBoxes.some((b) => sameBox(b, aabbOf(p)))) && pending.every((p) => plazaBoxes.some((b) => sameBox(b, aabbOf(p)))));
+  ok('portales: uno por elemento de ORDER, abiertos los que tienen distrito', P.portals.length === D.order.length && existing.length === OPEN && pending.length === PEND, existing.length + '/' + pending.length);
+  ok('boxesFor plaza: sede + un muro por cada portal sin distrito + 4 bordes', plazaBoxes.length === 1 + PEND + 4, 'n=' + plazaBoxes.length);
+  ok('boxesFor plaza: los portales con distrito NO son sólidos y los muros "Próximamente" sí', existing.every((p) => !plazaBoxes.some((b) => sameBox(b, aabbOf(p)))) && pending.every((p) => plazaBoxes.some((b) => sameBox(b, aabbOf(p)))));
   ok('boxesFor M02: edificios + torre + 4 bordes (sin puente)', m2Boxes.length === CM.layoutBuildings(M2).length + 1 + 4, 'n=' + m2Boxes.length);
   ok('boxesFor M08: edificios + torre + 4 bordes', m8Boxes.length === CM.layoutBuildings(M8).length + 1 + 4, 'n=' + m8Boxes.length);
   ok('boxesFor con escena inválida → []', ['M99', '__proto__', 'constructor', null, 7].every((id) => Array.isArray(CM.boxesFor(D, id)) && CM.boxesFor(D, id).length === 0));
@@ -65,9 +66,9 @@ const crossed = (p, q, b) => { const dx = q.x - p.x, dz = q.z - p.z, L = Math.hy
       .flatMap(([, boxes, pts]) => pts.filter((q) => boxes.some((b) => d2(q.x, q.z, b) < 0.6 * 0.6)).map((q) => q.id || 'pad'));
     ok('boxesFor: ningún interactuable queda dentro de una caja en su escena (margen 0.6 m)', bad.length === 0, bad.join(',')); }
   { const at = (o) => [o.x, o.z];
-    const m8p = P.portals.find((p) => p.dist === 'M08'), m2p = P.portals.find((p) => p.dist === 'M02'), m3p = P.portals.find((p) => p.dist === 'M03');
+    const m8p = P.portals.find((p) => p.dist === 'M08'), m2p = P.portals.find((p) => p.dist === 'M02'), m3p = P.portals.find((p) => p.dist === SIN);
     ok('portalAt: la boca del portal M08 → "M08" y la del M02 → "M02"', CM.portalAt(D, 'plaza', ...at(m8p)) === 'M08' && CM.portalAt(D, 'plaza', ...at(m2p)) === 'M02');
-    ok('portalAt: un muro "Próximamente" (M03) → null, y la entrada de la plaza → null', CM.portalAt(D, 'plaza', ...at(m3p)) === null && CM.portalAt(D, 'plaza', P.entry.x, P.entry.z) === null);
+    ok('portalAt: un muro "Próximamente" (el primer módulo sin distrito) → null, y la entrada de la plaza → null', CM.portalAt(D, 'plaza', ...at(m3p)) === null && CM.portalAt(D, 'plaza', P.entry.x, P.entry.z) === null);
     ok('portalAt: la salida de M02 y la de M08 → "plaza"; su entrada → null', CM.portalAt(D, 'M02', M2.exit.x, M2.exit.z) === 'plaza' && CM.portalAt(D, 'M08', M8.exit.x, M8.exit.z) === 'plaza' && CM.portalAt(D, 'M02', M2.entry.x, M2.entry.z) === null && CM.portalAt(D, 'M08', M8.entry.x, M8.entry.z) === null);
     ok('portalAt: escena inválida o coordenadas no finitas → null', CM.portalAt(D, 'M99', 0, 0) === null && CM.portalAt(D, 'plaza', NaN, 0) === null && CM.portalAt(D, 'plaza', 0, '5') === null && CM.portalAt(D, '__proto__', 0, 0) === null); }
 

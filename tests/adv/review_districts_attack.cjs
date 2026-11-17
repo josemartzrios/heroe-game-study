@@ -78,7 +78,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   prop('A1 mirror: normalize(JSON(mirror(C))) == C y los campos planos son copias exactas de d.M02', caseArb, ([raw, set]) => {
     const C = normC(raw, set), M = CS.mirror(clone(C));
     const back = CS.normalizeCity(JSON.parse(JSON.stringify(M)), D, bpOf(set), TODAY);
-    assert.deepStrictEqual(back, C);
+    assert.deepStrictEqual(back, clone(C));   // lo que se guarda es JSON: un -0 de at.z vuelve como 0
     assert.deepStrictEqual(M.beaten, C.d.M02.beaten); assert.deepStrictEqual(M.repairs, C.d.M02.repairs); assert.deepStrictEqual(M.taught, C.d.M02.taught);
     // una pestaña vieja lee los planos: si se le quita d, la migración debe dar el mismo progreso de M02
     const old = clone(M); delete old.d;
