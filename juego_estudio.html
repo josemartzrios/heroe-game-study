@@ -289,11 +289,11 @@ body.city-on{overflow:hidden}
 #city-pause,#city-run,#city-act{min-height:44px; min-width:44px}
 .city-objrow{flex:1 1 100%; margin:0; display:flex; align-items:center; gap:8px; font-weight:600; background:var(--surface); border-radius:10px; padding:4px 10px; pointer-events:none; width:fit-content; max-width:100%; flex-basis:auto}
 #city-arrow{display:inline-block; transition:transform .1s}
-@media (max-width:360px){.city-hud{gap:6px; padding-bottom:6px} .city-objrow{font-size:.9rem; padding:3px 8px}}   /* teléfono chico: el HUD no pasa del 25 % del alto (320×640) */
+@media (max-width:400px){.city-hud{gap:6px; padding-bottom:6px} .city-hud > .btn.sm{padding-left:9px; padding-right:9px} .city-hud .pill{font-size:.72rem; padding:2px 7px; white-space:nowrap} .city-objrow{font-size:.85rem; padding:3px 8px}}   /* teléfono chico: el HUD (con Correr y la pill de capas) no pasa del 25 % del alto en 320×640 */
 #city-act{position:absolute; right:max(16px, env(safe-area-inset-right)); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 64px)}
 #city-act[hidden]{display:none}
 #city-root.sheet-open #city-act{display:none}
-#city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600}
+#city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600; z-index:6}   /* sobre el velo (z 5) */
 #city-sheet{position:absolute; inset:0; overflow:auto; overscroll-behavior:contain; background:var(--surface); padding:max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); z-index:2}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
 #city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
@@ -2607,7 +2607,7 @@ var CityStory = (function () {
   /* Espejo: copia d[LEGACY_ID] a los campos planos que leía el código anterior, para que una pestaña vieja no pierda el progreso de ese distrito. */
   function mirror(C) {
     var d = dOf(C, LEGACY_ID);
-    function copy(o) { var r = {}; if (plainObj(o)) Object.keys(o).forEach(function (k) { r[k] = o[k]; }); return r; }
+    function copy(o) { var r = {}; if (plainObj(o)) Object.keys(o).forEach(function (k) { if (k !== '__proto__') r[k] = o[k]; }); return r; }
     C.beaten = copy(d.beaten); C.repairs = copy(d.repairs); C.taught = copy(d.taught);
     return C;
   }
@@ -2748,7 +2748,7 @@ var CityInput = (function () {
       if (typing()) return;
       if (k === '+' || k === '=') { if (!e.repeat) zoomS += 1; return; }
       if (k === '-' || k === '_') { if (!e.repeat) zoomS -= 1; return; }
-      if (KEYS[k] || k === 'shift') { down[k] = true; return; }
+      if (KEYS[k] || k === 'shift') { if (!e.repeat) down[k] = true; return; }   // la repetición automática de una tecla sostenida no cuenta: tras releaseAll() no la reactiva
       if (k === 'e' || k === 'enter') {
         var ae = doc.activeElement;
         if (k === 'enter' && ae && ae.tagName === 'BUTTON') return;
@@ -4095,7 +4095,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityWorld2
    esc, fmt, mod, starsOf, queue, sample, startRound, levelOf, bossPassedOf, cityD, beatenToday, CITY_DATA, CityMove, CityStory, CityInput y CityWorld2D. ES5. Texto de datos: solo esc()/fmt() en innerHTML;
    el botón de acción, #city-live y #city-obj se escriben solo con textContent. */
 var CD = null, cityGen = 0;
-var CITY_LOAD_HTML = '<div id="city-loadbox"><p role="status" id="city-load">Preparando la ciudad…</p><button class="btn" data-act="cx" data-c="quit">Salir</button></div>';
+function cityLoadHtml(text) { return '<div id="city-loadbox"><p role="status" id="city-load">' + esc(text) + '</p><button class="btn" data-act="cx" data-c="quit">Salir</button></div>'; }
 var CITY_ZMIN = 1, CITY_ZMAX = 1.75, CITY_LOAD_MS = 250, CITY_FADE_MS = 250, CITY_SAVE_M = 1;
 var CITY_ROTATE_Q = '(orientation: landscape) and (max-height: 499px) and (pointer: coarse)';
 var CITY_NEAR = 2.2;
@@ -4251,17 +4251,18 @@ function cityMakeInput() {
 function cityDropInput(c) { if (c && c.input) { try { if (c.input.offKeys) c.input.offKeys(); c.input.dispose(); } catch (e) {} c.input = null; } }
 function cityPauseKey() {
   if (!CD) return;
-  if (CD.sheet) cityCloseSheet(); else if (CD.paused) cityClosePause(); else if (!CD.rotate) cityOpenPause();
+  if (CD.sheet) { if (CD.sheetFor === 'iris' && !S.city.prologue) cityIntroDone(); else cityCloseSheet(); }   // Esc en el prólogo cuenta como cerrarlo
+  else if (CD.paused) cityClosePause(); else if (!CD.rotate) cityOpenPause();
 }
 function cityFlush() { if (CD && CD.input) { CD.input.consumeAction(); CD.input.consumeZoom(); } }
 function cityHtml() {
   var run = levelOf(S.xp) >= 5 ? '<button class="btn sm" id="city-run" data-act="cx" data-c="run" aria-pressed="' + (S.city.run ? 'true' : 'false') + '">Correr</button>' : '';
   return '<canvas id="city-cv" aria-hidden="true"></canvas><div id="city-joy" aria-hidden="true"><i class="jbase"></i><i class="jknob"></i></div>' +
-    '<div id="city-ui-main"><div class="city-hud"><button class="btn sm" id="city-pause" data-act="cx" data-c="pause">Pausa</button>' +
-    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span><span class="pill" id="city-layers" hidden></span>' + run +
+    '<div id="city-ui-main"><div class="city-hud"><button class="btn sm" id="city-pause" data-act="cx" data-c="pause">Pausa</button>' + run +
+    '<span class="pill" id="city-rank"></span><span class="pill" id="city-xp"></span><span class="pill" id="city-rest"></span><span class="pill" id="city-layers" hidden></span>' +
     '<p class="city-objrow"><span id="city-arrow" aria-hidden="true">▲</span><span id="city-obj"></span></p></div>' +
-    '<div id="city-live" class="sronly" aria-live="polite"></div>' +
     '<button class="btn primary" id="city-act" data-act="cx" data-c="act" hidden><span class="act-main"></span><span class="act-sub" hidden></span></button></div>' +
+    '<div id="city-live" class="sronly" aria-live="polite"></div>' +   // fuera de #city-ui-main: ese subárbol queda inert durante el fundido y un inert no se anuncia
     '<div id="city-sheet" hidden role="dialog" aria-modal="true"></div><div id="city-pausebox" hidden role="dialog" aria-modal="true" aria-label="Pausa"></div>' +
     '<div id="city-rotate" hidden role="alert"><p>Gira tu teléfono a vertical</p></div><div id="city-err" hidden></div><div id="city-veil" aria-hidden="true"></div><div id="city-tip" role="status" data-act="cx" data-c="tip-close"></div>' +
     '<div id="city-safe" style="position:fixed;left:0;bottom:0;padding-left:env(safe-area-inset-left);padding-bottom:env(safe-area-inset-bottom);visibility:hidden"></div>';
@@ -4346,7 +4347,7 @@ function cityStart() {
   if (tipEl) { tipEl.addEventListener('mouseenter', function () { if (CD === c) c.tips.hover = true; }); tipEl.addEventListener('mouseleave', function () { if (CD === c) c.tips.hover = false; }); }
   c.loadTimer = setTimeout(function () {   // el aviso solo se muestra si el mundo tarda más de 250 ms
     c.loadTimer = null;
-    if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', CITY_LOAD_HTML); }
+    if (CD === c && !c.world) r.insertAdjacentHTML('beforeend', cityLoadHtml('Preparando la ciudad…'));
   }, CITY_LOAD_MS);
   var ready = function (world) {
     if (gen !== cityGen || V.name !== 'city') { try { world.dispose(); } catch (e) {} if (gen === cityGen) cityTeardown(); return; }
@@ -4357,6 +4358,7 @@ function cityStart() {
     c.starBase = cityStarSnapshot();
     cityRefresh(); cityRotateCheck(); cityAnnounce();
     if (!S.city.prologue) cityIntroOpen(0);   // quien entra por primera vez ve el prólogo de Iris sin tener que buscarla
+    else if (cityRestorePending.length) { var rp0 = cityRestorePending; cityRestorePending = []; cityCelebrate(rp0, ''); }   // restaurado con la ciudad detenida (ronda o jefe desde fuera)
   };
   cityCreateWorld(c, sceneId).then(ready, function () { cityFailScene(c, gen, sceneId, ready); });
 }
@@ -4394,7 +4396,7 @@ function cityEnter(sceneId, at) {
     var name = c.sc.name;
     c.loadTimer = setTimeout(function () {
       c.loadTimer = null;
-      if (CD === c && !c.world) { var u = cId('city-ui-main'); if (u) u.insertAdjacentHTML('beforeend', '<div id="city-loadbox"><p role="status" id="city-load">' + esc('Abriendo ' + name + '…') + '</p></div>'); }
+      if (CD === c && !c.world) cityRootEl().insertAdjacentHTML('beforeend', cityLoadHtml('Abriendo ' + name + '…'));   // en la raíz y sobre el velo: dentro de #city-ui-main (inert, bajo el velo) ni se ve ni se oye
     }, CITY_LOAD_MS);
     cityCreateWorld(c, sceneId).then(arrived, function () {
       if (CD !== c || cityGen !== g) return;
@@ -4632,7 +4634,7 @@ function cityKpPool(o) {
   var foreign = shuffle(others).slice(0, 3).map(function (t) { return { t: t, own: false }; });
   return shuffle(own.concat(foreign));
 }
-function cityTeachExplain(o, fresh) {
+function cityTeachExplain(o, fresh, focusI) {
   if (!CD) return;
   var m = mod(CD.scene), tp = m.tById[o.topic];
   if (fresh || !CD.teach || CD.teach.id !== o.id) CD.teach = { id: o.id, o: o, items: cityKpPool(o), picked: {}, checked: false };
@@ -4645,12 +4647,12 @@ function cityTeachExplain(o, fresh) {
   var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Enseñar a ' + o.name + ' · ' + tp.id) + '</span></div><h2 class="prompt">' + esc('¿Me explicas ' + tp.title + '?') + '</h2>' +
     '<p class="meta" id="city-count" aria-live="polite">' + n + ' de 3</p><ul class="vlist">' + rows + '</ul><div class="actions">' + act + '<button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>';
   var sh = cId('city-sheet');
-  if (CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus(sh.querySelector('button')); } else cityOpenSheet(html, 'button', o.id);
+  if (CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus((focusI !== undefined && sh.querySelector('[data-i="' + focusI + '"]')) || sh.querySelector('button')); } else cityOpenSheet(html, 'button', o.id);
 }
 function cityTeachPick(i) {
   var T = CD && CD.teach; if (!T || T.checked || !T.items[i]) return;
   if (T.picked[i]) delete T.picked[i]; else if (Object.keys(T.picked).length < 3) T.picked[i] = true; else return;
-  cityTeachExplain(T.o, false);
+  cityTeachExplain(T.o, false, i);   // el foco sigue en el botón pulsado
 }
 function cityTeachGo() {
   var T = CD && CD.teach; if (!T || T.checked || Object.keys(T.picked).length !== 3) return;
@@ -4812,7 +4814,7 @@ function cityAct(c, b) {
   if (c === 'quit' || c === 'home') { if (CD) citySave(); go('home'); }
   else if (c === 'mods') go('module', { mod: cityModTarget() });
   else if (c === 'go-module') { if (CD) citySave(); go('module', { mod: b.dataset.id }); }
-  else if (c === 'err-retry') { var rid = b.dataset.id; cityHideError(); if (CD && cityHasDistrict(rid)) cityEnter(rid, cityArrival(rid)); }
+  else if (c === 'err-retry') { var rid = b.dataset.id; cityHideError(); cityReleaseUi(); if (CD && cityHasDistrict(rid)) cityEnter(rid, cityArrival(rid)); }
   else if (c === 'err-close') { cityHideError(); cFocus(cId('city-pause')); }
   else if (c === 'retry') { cityStop(); cityStart(); }
   else if (c === 'pause') { if (CD && CD.world) { if (CD.paused) cityClosePause(); else if (!CD.sheet) cityOpenPause(); } }

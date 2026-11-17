@@ -98,6 +98,12 @@ const TIP = { talk: 'Toca «Hablar con…» o pulsa E para aprender su tema.', c
     api(e).teleport(m1.x + 30, m1.z); api(e).teleport(m1.x, m1.z + 1); for (let i = 0; i < 300; i++) tickW(e, 16);
     ok('(c5) no se repite aunque vuelvas a acercarte ni en 300 cuadros', tip(e) === '');
     e.w.close();
+    // Esc en el prólogo cuenta como cerrarlo (si no, volvería a salir en cada entrada)
+    e = boot({ seed: base({ city: { prologue: false, scene: 'plaza' } }) }); await enterCity(e);
+    ok('(c0) quien entra por primera vez ve el prólogo', !$(e, '#city-sheet').hidden && /Prólogo 1 de 4/.test($(e, '#city-sheet').textContent));
+    e.w.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    ok('(c0b) Esc cierra el prólogo y lo deja como visto', $(e, '#city-sheet').hidden && saved(e.w).city.prologue === true, 'prologue=' + saved(e.w).city.prologue);
+    e.w.close();
     // la pista no tapa la hoja ni la pausa (en un teléfono de 320 px cubría "Cerrar"): con una abierta se oculta, sigue pendiente y al cerrar vuelve
     e = boot({ seed: base({ city: m2city() }) }); await enterCity(e);
     api(e).teleport(m1.x, m1.z + 1);

@@ -289,11 +289,11 @@ body.city-on{overflow:hidden}
 #city-pause,#city-run,#city-act{min-height:44px; min-width:44px}
 .city-objrow{flex:1 1 100%; margin:0; display:flex; align-items:center; gap:8px; font-weight:600; background:var(--surface); border-radius:10px; padding:4px 10px; pointer-events:none; width:fit-content; max-width:100%; flex-basis:auto}
 #city-arrow{display:inline-block; transition:transform .1s}
-@media (max-width:360px){.city-hud{gap:6px; padding-bottom:6px} .city-objrow{font-size:.9rem; padding:3px 8px}}   /* teléfono chico: el HUD no pasa del 25 % del alto (320×640) */
+@media (max-width:400px){.city-hud{gap:6px; padding-bottom:6px} .city-hud > .btn.sm{padding-left:9px; padding-right:9px} .city-hud .pill{font-size:.72rem; padding:2px 7px; white-space:nowrap} .city-objrow{font-size:.85rem; padding:3px 8px}}   /* teléfono chico: el HUD (con Correr y la pill de capas) no pasa del 25 % del alto en 320×640 */
 #city-act{position:absolute; right:max(16px, env(safe-area-inset-right)); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 64px)}
 #city-act[hidden]{display:none}
 #city-root.sheet-open #city-act{display:none}
-#city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600}
+#city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600; z-index:6}   /* sobre el velo (z 5) */
 #city-sheet{position:absolute; inset:0; overflow:auto; overscroll-behavior:contain; background:var(--surface); padding:max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); z-index:2}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
 #city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}

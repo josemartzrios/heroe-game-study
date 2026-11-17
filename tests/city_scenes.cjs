@@ -119,6 +119,7 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     e = boot({ seed: base() }); await enterCity(e);
     key(e, 'ArrowDown');   // se sostiene hacia la salida de M08 (a 5 m de la entrada) desde antes de cruzar el portal
     api(e).teleport(portal('M08').x, portal('M08').z); tickW(e);
+    ok('(l2) durante el fundido #city-live queda fuera del subárbol inert (si no, el lector no anuncia la llegada)', $(e, '#city-ui-main').hasAttribute('inert') && !$(e, '#city-live').closest('[inert]'), 'live dentro de inert=' + !!$(e, '#city-live').closest('[inert]'));
     const h0 = JSON.stringify(hero(e)); key(e, 'ArrowRight'); tickW(e); tickW(e);
     ok('(l) durante el fundido el héroe no se mueve ni se abre nada', JSON.stringify(hero(e)) === h0 && $(e, '#city-sheet').hidden, JSON.stringify(hero(e)));
     keyUp(e, 'ArrowRight');
@@ -136,10 +137,21 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     ok('(n) un foco que sigue en un nodo válido se conserva al llegar', !!runBtn && e.d.activeElement === $(e, '#city-run'), String(e.d.activeElement && e.d.activeElement.id));
     e.w.close();
 
+    // ---- la autorrepetición del teclado (keydown con repeat) no reactiva una tecla que se liberó al llegar ----
+    e = boot({ seed: base(), reduced: true }); await enterCity(e);
+    key(e, 'ArrowDown');
+    api(e).teleport(portal('M08').x, portal('M08').z); tickW(e); await sleep(SETTLE);
+    for (let i = 0; i < 40; i++) { e.w.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 'ArrowDown', repeat: true, bubbles: true, cancelable: true })); tickW(e, 16); }
+    ok('(m2) con la repetición automática de la tecla sostenida el héroe no avanza ni cruza la salida', e.st.scenes.join() === 'plaza,M08' && hero(e).z === M8.entry.z, 'z=' + hero(e).z + ' escenas=' + e.st.scenes.join());
+    keyUp(e, 'ArrowDown'); key(e, 'ArrowDown'); for (let i = 0; i < 6; i++) tickW(e, 16);
+    ok('(m3) soltar y volver a pulsar sí mueve al héroe', hero(e).z > M8.entry.z, 'z=' + hero(e).z);
+    e.w.close();
+
     // ---- creación lenta: "Abriendo Nodo Enlace…" ----
     e = boot({ seed: base(), pending: new Set(['M08']), reduced: true }); await enterCity(e);
     goNear(e, 'M08'); click(e.w, $(e, '#city-act')); await sleep(400);
-    ok('(o) si la escena tarda más de 250 ms aparece "Abriendo Nodo Enlace…"', ($(e, '#city-loadbox') || {}).textContent === 'Abriendo Nodo Enlace…', ($(e, '#city-loadbox') || {}).textContent);
+    ok('(o) si la escena tarda más de 250 ms aparece "Abriendo Nodo Enlace…"', ($(e, '#city-load') || {}).textContent === 'Abriendo Nodo Enlace…', ($(e, '#city-load') || {}).textContent);
+    ok('(o3) el aviso no queda dentro de un subárbol inert (se oye) y trae "Salir" (si la escena se cuelga hay salida)', !!$(e, '#city-loadbox') && !$(e, '#city-loadbox').closest('[inert]') && !!$(e, '#city-loadbox [data-c="quit"]'), 'inert=' + !!($(e, '#city-loadbox') && $(e, '#city-loadbox').closest('[inert]')));
     e.st.resolvers.M08(); await sleep(30);
     ok('(o2) al resolver desaparece el aviso y la vista queda en M08', !$(e, '#city-loadbox') && saved(e.w).city.scene === 'M08' && !$(e, '#city-ui-main').hasAttribute('inert'));
     e.w.close();
@@ -227,6 +239,18 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     click(e.w, [...e.d.querySelectorAll('[data-act="mod"]')].find((b) => b.dataset.id === 'M03')); await tick();
     ok('(v3) la página de un módulo sin distrito (M03) no tiene "Ir al distrito"', !$(e, '[data-act="district"]'));
     e.w.close();
+
+    // ---- Enseñar: elegir un punto clave redibuja la hoja pero el foco se queda en el botón que se pulsó ----
+    { const ap = M2.apprentices.find((a) => a.mode === 'explain');
+      e = boot({ seed: base({ topics: { ['M02:' + ap.topic]: [1, 1, 1, 1, 1, 1] }, city: { prologue: true, scene: 'M02', at: { x: ap.x, z: ap.z + 1 } } }), reduced: true }); await enterCity(e);
+      api(e).teleport(ap.x, ap.z + 1); key(e, 'e'); tickW(e);
+      const kp = e.d.querySelector('#city-sheet [data-c="kp"][data-i="2"]');
+      ok('(p) junto a un aprendiz con estrella se abre la hoja de Enseñar con sus puntos clave', !!kp && !$(e, '#city-sheet').hidden);
+      if (kp) { click(e.w, kp);
+        const ae = e.d.activeElement;
+        ok('(p2) tras elegir un punto clave el foco queda en ese mismo botón (no salta al primero)', !!ae && ae.dataset.c === 'kp' && ae.dataset.i === '2' && ae.getAttribute('aria-pressed') === 'true', ae && (ae.tagName + ' ' + ae.dataset.c + ' ' + ae.dataset.i));
+        ok('(p3) el contador dice "1 de 3"', $(e, '#city-count').textContent === '1 de 3', $(e, '#city-count').textContent); }
+      e.w.close(); }
 
     // ---- recorrido solo con teclado: plaza → portal (E) → mentor (E) → Esc → salida → plaza, sin foco en body ----
     e = boot({ seed: base(), reduced: true }); await enterCity(e);

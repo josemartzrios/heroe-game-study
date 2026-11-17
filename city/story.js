@@ -106,7 +106,7 @@ var CityStory = (function () {
   /* Espejo: copia d[LEGACY_ID] a los campos planos que leía el código anterior, para que una pestaña vieja no pierda el progreso de ese distrito. */
   function mirror(C) {
     var d = dOf(C, LEGACY_ID);
-    function copy(o) { var r = {}; if (plainObj(o)) Object.keys(o).forEach(function (k) { r[k] = o[k]; }); return r; }
+    function copy(o) { var r = {}; if (plainObj(o)) Object.keys(o).forEach(function (k) { if (k !== '__proto__') r[k] = o[k]; }); return r; }
     C.beaten = copy(d.beaten); C.repairs = copy(d.repairs); C.taught = copy(d.taught);
     return C;
   }

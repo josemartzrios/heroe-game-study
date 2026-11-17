@@ -13,7 +13,12 @@ const FORBID_ID = new Set(['__proto__', 'constructor', 'prototype', ...Object.ge
 const idOk = (id) => typeof id === 'string' && /^[a-z0-9_-]+$/.test(id) && !FORBID_ID.has(id);
 const aabb = (o) => ({ minX: o.x - o.w / 2, maxX: o.x + o.w / 2, minZ: o.z - o.d / 2, maxZ: o.z + o.d / 2 });
 
+/* Un distrito mal formado (falta un campo, un tipo raro) devuelve un error R0 legible en vez de lanzar una excepción a mitad de la build */
 export function checkDistrict(dist, mod, opts = {}) {
+  try { return checkDistrictRules(dist, mod, opts); }
+  catch (e) { return [`R0: ${dist && typeof dist === 'object' && typeof dist.id === 'string' ? dist.id : '?'}: datos mal formados (${String(e && e.message).slice(0, 120)})`]; }
+}
+function checkDistrictRules(dist, mod, opts) {
   const errs = [], forbidden = opts.forbidden || FORBIDDEN;
   const bad = (rule, msg) => errs.push(`R${rule}: ${dist.id}: ${msg}`);
   const topics = mod.topics.map((t) => t.id), byTopic = Object.fromEntries(mod.topics.map((t) => [t.id, t]));
@@ -26,7 +31,7 @@ export function checkDistrict(dist, mod, opts = {}) {
   if (dupes(dist.mentors.map((m) => m.name)).length) bad(1, 'nombres de mentor repetidos');
 
   // R2 criaturas: de 2 a 5 temas, los temas del módulo cubiertos una sola vez, >= 8 preguntas mcq+tf
-  const seen = {};
+  const seen = Object.create(null);   // sin prototipo: un id "__proto__" cuenta como cualquier otro
   for (const c of dist.creatures) {
     if (c.topics.length < 2 || c.topics.length > 5) bad(2, `criatura ${c.id}: debe tener de 2 a 5 temas (tiene ${c.topics.length})`);
     for (const t of c.topics) { seen[t] = (seen[t] || 0) + 1; if (!topics.includes(t)) bad(2, `criatura ${c.id}: tema inexistente ${t}`); }
@@ -113,7 +118,7 @@ export function checkPlaza(D, opts = {}) {
   const near = (p) => boxes.some((b) => { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); return Math.hypot(p.x - cx, p.z - cz) < 0.6; });
 
   // R9 portales: uno por distrito de ORDER (sin repetir y sin portales de más), todos los distritos existentes en ORDER, back libre
-  const seen = {};
+  const seen = Object.create(null);   // sin prototipo: un id "__proto__" cuenta como cualquier otro
   for (const p of P.portals) seen[p.dist] = (seen[p.dist] || 0) + 1;
   for (const k of Object.keys(seen)) { if (seen[k] > 1) bad(9, `portal repetido: ${k}`); if (!D.order.includes(k)) bad(9, `portal de ${k}, que no está en ORDER`); }
   for (const k of D.order) if (!seen[k]) bad(9, `el distrito ${k} de ORDER no tiene portal`);

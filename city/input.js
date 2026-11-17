@@ -58,7 +58,7 @@ var CityInput = (function () {
       if (typing()) return;
       if (k === '+' || k === '=') { if (!e.repeat) zoomS += 1; return; }
       if (k === '-' || k === '_') { if (!e.repeat) zoomS -= 1; return; }
-      if (KEYS[k] || k === 'shift') { down[k] = true; return; }
+      if (KEYS[k] || k === 'shift') { if (!e.repeat) down[k] = true; return; }   // la repetición automática de una tecla sostenida no cuenta: tras releaseAll() no la reactiva
       if (k === 'e' || k === 'enter') {
         var ae = doc.activeElement;
         if (k === 'enter' && ae && ae.tagName === 'BUTTON') return;

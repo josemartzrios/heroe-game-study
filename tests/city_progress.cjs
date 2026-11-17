@@ -135,6 +135,20 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       ok('al enseñar al octavo aprendiz de M02 con el jefe aprobado: restaurado y con el poder Planos', s.restored.M02 === true && s.powers.planos === true && !s.restored.M08, JSON.stringify([s.restored, s.powers]));
       e.w.close(); }
 
+    // 6b. la restauración que ocurre con la ciudad detenida (ronda fuera de ella) se celebra al entrar, no en una ronda futura
+    { const six = M8.apprentices.slice(0, 6).map((a) => a.id), seed = base({ boss: { M08: { best: 18, passed: true } }, city: { prologue: true, d: { M08: { taught: set(six.slice(0, 5)) } } } });
+      const e = boot(seed);
+      const q = e.w.eval('MODULES').find((m) => m.id === 'M08').questions.find((x) => x.topic === 'T01' && x.type === 'mcq');
+      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M08', back: { name: 'home' }, city: { kind: 'teach', id: six[5], mid: 'M08' } }, [q]);
+      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+      L.click(e.w, e.d.querySelector('[data-act="back"]'));
+      ok('6b la ronda terminó con la ciudad detenida y M08 quedó restaurado', !!saved(e.w).city.restored && saved(e.w).city.restored.M08 === true && e.d.querySelector('#city-root').hidden);
+      L.click(e.w, e.d.querySelector('[data-act="city"]'));
+      for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+      const sh = e.d.querySelector('#city-sheet');
+      ok('6b al entrar a la ciudad sale la celebración de Nodo Enlace (texto de los datos, sin poder)', !!sh && !sh.hidden && sh.textContent.includes('¡Distrito restaurado!') && sh.textContent.includes(M8.celebrate.text) && !/Poder nuevo/.test(sh.textContent), sh ? sh.textContent.slice(0, 200) : 'sin hoja');
+      e.w.close(); }
+
     // 7. partida nueva: plaza, M08 con route.done 0, sin respaldo
     { const e = boot(null);
       quick(e);
