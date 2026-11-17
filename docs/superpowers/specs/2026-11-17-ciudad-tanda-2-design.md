@@ -30,8 +30,16 @@ Que el mundo abierto cubra más temario: los portales de **M03 (Fundamentos de i
 
 ## Cambios de código (mínimos, encontrados en la revisión)
 
-1. **Criaturas distinguibles por distrito (`city/sprites2d.js`).** Hoy la forma sale de `(ci + di*3) % 6` y el color del cuerpo de una paleta fija de 6 morados: las criaturas de M03 y M10 saldrían idénticas a las de M02, y las de M01 a las de M08. Cambio: en todo distrito que no sea el primero, el cuerpo de la criatura usa el `colors.a` del distrito y la marca oscura su `colors.b`; la forma sigue rotando por índice dentro del distrito. **M02 conserva su aspecto exacto** (prueba). M08 cambia de morado a sus colores (verde y cian): se acepta.
-2. **El aviso de rango solo cuando sube (`city/view.js`, `cityCelebrate`).** Hoy siempre dice "Subes a X", aunque el rango no cambie (con 5 distritos y la tabla 0/1/3/6/8/11 pasa en la 2.ª, 4.ª y 5.ª restauración). Cambio: comparar el rango con el que había antes de esta restauración (mismo cálculo con los distritos de `mids` sin contar); si subió, "Subes a X."; si no, "Sigues como X.". La prueba roja ya existe en `tests/adv/tanda2_attack.cjs`.
+1. **Criaturas distinguibles por distrito (`city/sprites2d.js`, `city/check_district.mjs`).** Hoy la forma sale de `(ci + di*3) % 6` y el color del cuerpo de una paleta fija de 6 morados: las criaturas de M03 y M10 saldrían idénticas a las de M02, y las de M01 a las de M08. Cambio:
+   - El distrito "de referencia" es `D.order[0]` (M02), no el primero por posición en `districts`; ese conserva su aspecto exacto (cuerpo de la paleta morada, marca `#3a2470`, ojos `#ffd23f`).
+   - En los demás distritos: cuerpo = `colors.a`, rasgos (cuernos, franjas, patas) en oscuro `#12162e` para que la forma se lea, 2 píxeles de acento en `colors.b`, y ojos blancos `#ffffff` con pupila `#12162e`. La forma sigue rotando por índice dentro del distrito. M08 deja de ser morado: se acepta.
+   - `colors.a` y `colors.b` pasan a ser obligatorios con formato `#rrggbb` (regla nueva **R11** en `check_district.mjs`); `setData` nunca lanza: un distrito sin colores dibuja la paleta de referencia.
+   - Ningún `colors.a` de un distrito nuevo es uno de los 6 morados de la paleta de referencia.
+2. **El aviso de rango solo cuando sube (`city/view.js`, `cityCelebrate`; `city/story.js`, `rankOf`).** Hoy siempre dice "Subes a X", aunque el rango no cambie (con 5 distritos pasa en la 2.ª, 4.ª y 5.ª restauración). Cambio:
+   - Rango previo = `rankOf` contando solo los distritos de `CITY_DATA.districts` con `restored === true` que no estén en `mids` (recorriendo `Object.keys(CITY_DATA.districts)`, sin copiar `S.city.restored`).
+   - Si subió: "Subes a X.". Si no y hay un rango siguiente: "Sigues como X: te falta 1 distrito para Y." (o "te faltan N distritos"). Si ya es el máximo de los alcanzables: "Sigues como X.".
+   - `rankOf` cuenta solo claves propias de `restored` (hasOwnProperty).
+   - Límite aceptado: si en la misma ronda un distrito deja de estar restaurado (el jefe aprobado desaparece del guardado) y otro se restaura, el aviso puede decir "Subes" sin subir; normalizar el guardado no produce ese caso.
 3. **Colores propios visibles:** con `style: 'taller'` los edificios usan la paleta fija de M02 (`city/world2d.js:87`), así que los tres distritos nuevos usan **`style: 'red'`**, que pinta las fachadas con `colors.a`/`colors.b`. No hay cambio de código en `world2d.js`.
 
 ## Geometría (común a los tres)
@@ -75,7 +83,7 @@ Las reparaciones están solo en temas con ≥ 2 preguntas de escenario o error, 
 
 ### M01 — Ciudadela Escalable (Diseño de sistemas)
 
-- `colors` violeta `#b06cff` y cian `#5ce1ff`; `style: 'red'`; `seed` 17.
+- `colors` violeta rosado `#d580ff` y cian `#5ce1ff`; `style: 'red'`; `seed` 17.
 - **Mentores (T01–T19, `m01`–`m19`):** Adrián, Blanca, Camilo, Débora, Eduardo, Fernanda, Gerardo, Hilda, Ignacio, Josefina, Leandro, Marina, Norberto, Octavia, Pascual, Raquel, Samuel, Tania, Úrsula.
 - **Criaturas:**
 
@@ -124,7 +132,7 @@ Las reparaciones están solo en temas con ≥ 2 preguntas de escenario o error, 
   - `tests/city_scenes.cjs` ("Distritos 0 de 5").
   - `tests/migrate.cjs` M1 (el `d` normalizado trae los 5 distritos).
 - **Pruebas que usaban M03, M01 o M10 como portal sin distrito** (`city_move`, `city_story`, `city_scenes`, `validate_districts`): eligen el módulo sin distrito con `ORDER.find((m) => !districts[m])` en vez de fijarlo a mano, para no reescribirlas en cada tanda. Las que solo usan M01/M03 como claves de `boss` o `topics` (`migrate` fuera de M1, `adv/plan_districts_props`, `adv/review_attack`) no cambian.
-- `tests/adv/tanda2_attack.cjs` (ataques, propiedades y fuzzing con 5 distritos) queda verde con el cambio de código 2.
+- `tests/adv/tanda2_attack.cjs` (ataques, propiedades y fuzzing con 5 distritos) y `tests/adv/tanda2_plan_attack.cjs` (orden de distritos, distrito sin colores, rango previo) quedan verdes con los cambios de código 1 y 2.
 - `tests/xss_data.cjs` ya recorre todos los distritos: debe seguir verde.
 - Suite y ADV completas en verde. Humo en navegador (320 × 640 y laptop): entrar a cada distrito nuevo desde su portal, ver edificios y criaturas con sus colores, hablar con un mentor y volver a la plaza, sin errores de consola. Un paso extra con un guardado que ya tiene aprobado el jefe de M01: la Ciudadela marca 50 %, el objetivo no manda a la torre y se celebra al enseñar al 7.º aprendiz.
 

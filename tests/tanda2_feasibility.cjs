@@ -35,7 +35,7 @@ const SPEC = {
   },
   M01: {
     file: 'content.mjs', title: 'Diseño de sistemas', name: 'Ciudadela Escalable', topicCount: 19,
-    colors: { a: '#b06cff', b: '#5ce1ff' }, style: 'red', seed: 17, need: 7,
+    colors: { a: '#d580ff', b: '#5ce1ff' }, style: 'red', seed: 17, need: 7,
     mentors: 'Adrián, Blanca, Camilo, Débora, Eduardo, Fernanda, Gerardo, Hilda, Ignacio, Josefina, Leandro, Marina, Norberto, Octavia, Pascual, Raquel, Samuel, Tania, Úrsula',
     creatures: [
       ['latencia', 'Latencia Eterna', ['T01', 'T02', 'T03']],
@@ -121,6 +121,7 @@ function build(id, s, makeLayout) {
     ok(`${id}: modos de aprendiz válidos (explicar/corregir)`, s.apprentices.every((a) => MODE[a[2]]));
     ok(`${id}: colores en formato #rrggbb`, /^#[0-9a-f]{6}$/.test(s.colors.a) && /^#[0-9a-f]{6}$/.test(s.colors.b));
     ok(`${id}: style 'red' (con 'taller' los edificios ignoran los colores del distrito)`, s.style === 'red', s.style);
+    ok(`${id}: colors.a no es uno de los 6 morados de las criaturas de referencia`, !['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'].includes(s.colors.a), s.colors.a);
     ok(`${id}: no usa el ámbar de ventanas y muros (#ffd76a)`, s.colors.a !== '#ffd76a' && s.colors.b !== '#ffd76a');
     const long = s.repairs.filter((r) => r[1].length > 28).map((r) => r[1] + ' (' + r[1].length + ')');
     ok(`${id}: etiquetas de reparación de 28 caracteres como máximo`, long.length === 0, long.join(' | '));
