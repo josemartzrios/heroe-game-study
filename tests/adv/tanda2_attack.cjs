@@ -328,7 +328,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     for (; n < FUZZ_N && Date.now() - t0 < MAX_MS; n++) {
       const input = gen(r), a = Date.now(); let err = null;
       try { err = run(input); } catch (e) { err = 'lanza ' + String(e && e.message).replace(/\d+/g, '#'); }
-      if (!err && Date.now() - a > 50) err = 'lento (> 50 ms)';
+      if (!err && Date.now() - a > 250) err = 'lento (> 250 ms)';   // un cuelgue o un coste patológico; 50 ms fallaba con una pausa del recolector de basura
       if (err) { const k = String(err).slice(0, 160), s = safeStr(input); if (!sig[k]) sig[k] = { n: 0, min: s }; sig[k].n++; if (s.length < sig[k].min.length) sig[k].min = s; }
     }
     fuzzTotal += n; fuzzReport.push({ name, n, ms: Date.now() - t0, sig });
