@@ -69,6 +69,48 @@ const MIDS = Object.keys(D.districts);
   ok('tras inicializar con un documento sano ya funciona (no quedó nada en caché)', S.frame('hero', '', 'up', 0).w === 14);
   const c1 = { width: 28, height: 28, getContext() { return { clearRect() {}, drawImage() {} }; } }, thrower = fakeEnv(); thrower.doc.createElement = () => ({ width: 0, height: 0, getContext() { return null; } }); S.init(thrower.doc);
   ok('paintIcons con atlas imposible no lanza (las pantallas siguen funcionando)', (() => { try { S.paintIcons({ querySelectorAll() { return [c1]; } }); return true; } catch (e) { return false; } })()); }
+// ---- criaturas: colores del distrito (Tanda 2). El distrito de referencia es D.order[0] (M02) y conserva su aspecto exacto ----
+{ const BODY = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'];
+  const cell = (env, id) => { const f = S.frame('creature', id, 'down', 0); return env.rects.filter((r) => r[0] === f.img && r[2] >= f.sy && r[2] < f.sy + 14 && r[1] < 14).map((r) => ({ x: r[1], y: r[2] - f.sy, w: r[3], h: r[4], c: r[5] })); };
+  const bodyOf = (cl) => (cl.find((r) => r.w === 10 && r.h === 7) || {}).c;
+  const shapeOf = (cl) => cl.map((r) => [r.x, r.y, r.w, r.h].join()).join('|');
+  const palette = (cl) => [...new Set(cl.map((r) => r.c))].sort().join();
+  const fresh = (data) => { const env = fakeEnv(); S.init(env.doc); S.setData(data); return env; };
+  const SHADOW = 'rgba(0,0,0,0.30)';
+  { const env = fresh(D);
+    D.districts.M02.creatures.forEach((c, i) => {
+      const cl = cell(env, 'M02:' + c.id);
+      ok('(c1) M02:' + c.id + ' conserva su cuerpo, marca #3a2470 y ojos #ffd23f', bodyOf(cl) === BODY[i] && palette(cl) === [BODY[i], '#3a2470', '#ffd23f', '#12162e', SHADOW].sort().join(), palette(cl));
+    });
+    const m03 = cell(env, 'M03:' + D.districts.M03.creatures[0].id);
+    ok('(c2) la 1.ª criatura de M03: cuerpo #ff9f43, rasgos #12162e, acento #4d7cff, ojos #ffffff', bodyOf(m03) === '#ff9f43' && palette(m03) === ['#ff9f43', '#12162e', '#4d7cff', '#ffffff', SHADOW].sort().join(), palette(m03));
+    const sigs = [];
+    DMIDS.forEach((m) => D.districts[m].creatures.forEach((c) => { const cl = cell(env, m + ':' + c.id); sigs.push({ m, id: c.id, shape: shapeOf(cl), body: bodyOf(cl) }); }));
+    const clash = [];
+    for (let i = 0; i < sigs.length; i++) for (let j = i + 1; j < sigs.length; j++) if (sigs[i].m !== sigs[j].m && sigs[i].shape === sigs[j].shape && sigs[i].body === sigs[j].body) clash.push(sigs[i].m + ':' + sigs[i].id + ' = ' + sigs[j].m + ':' + sigs[j].id);
+    ok('(c3) ningún par de criaturas de distritos distintos comparte forma y color de cuerpo', clash.length === 0, clash.join(' | '));
+    // (c4) con los distritos en otro orden M02 sigue idéntica (D.order[0] manda, no la posición) y M10 lleva sus colores
+    const m02Std = D.districts.M02.creatures.map((c) => JSON.stringify(cell(env, 'M02:' + c.id)));   // antes de cambiar los datos: S guarda las listas de la última setData
+    const D3 = Object.assign({}, D, { districts: Object.fromEntries(['M10', 'M03', 'M02', 'M08', 'M01'].map((m) => [m, D.districts[m]])) });
+    const env3 = fresh(D3);
+    ok('(c4) con districts en otro orden las criaturas de M02 son idénticas (forma, colores y ojos)', D.districts.M02.creatures.every((c, i) => JSON.stringify(cell(env3, 'M02:' + c.id)) === m02Std[i]));
+    ok('(c4) y la 1.ª criatura de M10 lleva el cuerpo de su distrito', bodyOf(cell(env3, 'M10:' + D.districts.M10.creatures[0].id)) === D.districts.M10.colors.a);
+    S.setData(D); }
+  { // (c5) un distrito sin colors no hace lanzar setData y se dibuja con la paleta de referencia; con otros datos y colores sí se aplican
+    const X1 = { mentors: [{ id: 'm01' }], apprentices: [], creatures: [{ id: 'c1' }, { id: 'c2' }] };
+    const Da = { order: ['M02', 'X1'], districts: { M02: D.districts.M02, X1 } };
+    let thrown = null, env;
+    try { env = fresh(Da); } catch (e) { thrown = e; }
+    ok('(c5) setData con un distrito sin colors no lanza', thrown === null, String(thrown));
+    if (!thrown) {
+      const cl = cell(env, 'X1:c1');
+      ok('(c5) sus criaturas se dibujan con la paleta de referencia (marca #3a2470, ojos #ffd23f)', cl.some((r) => r.c === '#3a2470') && cl.some((r) => r.c === '#ffd23f'), palette(cl));
+      const Db = { order: ['M02', 'X1'], districts: { M02: D.districts.M02, X1: Object.assign({}, X1, { colors: { a: '#123456', b: '#abcdef' } }) } };
+      const env2 = fresh(Db);
+      ok('(c5) un setData posterior con los colores corregidos los aplica', bodyOf(cell(env2, 'X1:c1')) === '#123456', palette(cell(env2, 'X1:c1')));
+    }
+    S.setData(D); }
+}
 results.forEach((r) => { if (r[0] === 'FAIL') console.log(r.join(' | ')); });
 const fails = results.filter((r) => r[0] === 'FAIL').length;
 console.log(fails ? fails + ' FALLOS' : 'CITY_SPRITES OK (' + results.length + ')'); process.exit(fails ? 1 : 0);

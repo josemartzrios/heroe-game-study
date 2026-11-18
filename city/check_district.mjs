@@ -25,6 +25,10 @@ function checkDistrictRules(dist, mod, opts) {
   const count = (types, tid) => mod.questions.filter((q) => types.includes(q.type) && q.topic === tid).length;
   const dupes = (arr) => arr.filter((x, i) => arr.indexOf(x) !== i);
 
+  // R11 colores del distrito (los usan el mapa, el portal y las criaturas): #rrggbb
+  const hex = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  if (!dist.colors || !hex(dist.colors.a) || !hex(dist.colors.b)) bad(11, 'colors.a y colors.b deben ser colores #rrggbb');
+
   // R1 mentores: uno por tema, ninguno con tema inexistente, nombres únicos
   for (const t of topics) { const n = dist.mentors.filter((m) => m.topic === t).length; if (n !== 1) bad(1, `el tema ${t} debe tener exactamente un mentor (tiene ${n})`); }
   for (const m of dist.mentors) if (!topics.includes(m.topic)) bad(1, `${m.id}: tema inexistente ${m.topic}`);
