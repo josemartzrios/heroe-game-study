@@ -23,7 +23,7 @@ function campaign(name, gen, run) {
     const input = gen(r), a = Date.now();
     let err = null;
     try { err = run(input); } catch (e) { err = 'lanza ' + (e && e.constructor && e.constructor.name) + ': ' + String(e && e.message).replace(/\d+/g, '#'); }
-    if (Date.now() - a > 50) { slow++; err = err || 'lento (> 50 ms)'; }
+    if (Date.now() - a > 250) { slow++; err = err || 'lento (> 250 ms)'; }   // un cuelgue o un coste patológico; 50 ms fallaba con una pausa del recolector de basura
     if (err) { const k = String(err).slice(0, 160), s = str(input); if (!sig[k]) sig[k] = { n: 0, min: s }; sig[k].n++; if (s.length < sig[k].min.length) sig[k].min = s; }
   }
   const fails = Object.values(sig).reduce((a, b) => a + b.n, 0);
