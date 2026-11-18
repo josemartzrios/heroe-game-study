@@ -7,7 +7,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
 const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href);
 
 (async () => {
-  const { makeLayout } = await imp('city/layout.mjs');
+  const { makeLayout, people } = await imp('city/layout.mjs');
   const { district: M } = await imp('city/districts/m02.mjs');
   const fx = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'm02_coords.json'), 'utf8'));
 
@@ -36,6 +36,13 @@ const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href)
   ok('reserve excluye: ningún punto a menos de 7 m de la reserva', got.length > 0 && got.every((p) => Math.hypot(p.x, p.z) >= 7), got.length + ' puntos');
   ok('separación mínima 7 m entre puntos', got.every((p, i) => got.every((q, j) => i === j || Math.hypot(p.x - q.x, p.z - q.z) >= 7)));
 
+  // people(): ids, temas y orden fijo de lugares (mentores → criaturas → reparaciones → aprendices)
+  { const spots = []; const lay = { take() { const p = { x: spots.length, z: -spots.length }; spots.push(p); return { x: p.x, z: p.z }; } };
+    const P = people(lay, { mentors: ['Ana', 'Beto'], creatures: [{ id: 'bit', name: 'Bit', topics: ['T01', 'T02'] }], repairs: [['T02', 'el semáforo']], apprentices: [['Cleo', 'T01', 'explain']] });
+    ok('people(): mentores m01/m02 con temas T01/T02 y los primeros lugares', JSON.stringify(P.mentors) === JSON.stringify([{ id: 'm01', topic: 'T01', name: 'Ana', x: 0, z: -0 }, { id: 'm02', topic: 'T02', name: 'Beto', x: 1, z: -1 }]), JSON.stringify(P.mentors));
+    ok('people(): la criatura toma el lugar siguiente como área de 6 m', JSON.stringify(P.creatures[0]) === JSON.stringify({ id: 'bit', name: 'Bit', topics: ['T01', 'T02'], area: { x: 2, z: -2, r: 6 } }), JSON.stringify(P.creatures));
+    ok('people(): reparación r01 y aprendiz a01 después, en ese orden', JSON.stringify(P.repairs[0]) === JSON.stringify({ id: 'r01', topic: 'T02', label: 'el semáforo', x: 3, z: -3 }) && JSON.stringify(P.apprentices[0]) === JSON.stringify({ id: 'a01', topic: 'T01', name: 'Cleo', mode: 'explain', x: 4, z: -4 }), JSON.stringify([P.repairs, P.apprentices]));
+    ok('people(): toma exactamente un lugar por personaje', spots.length === 5); }
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
   console.log(fails ? `\n${fails} FALLOS` : '\nCITY_LAYOUT OK (' + results.length + ' comprobaciones)');
