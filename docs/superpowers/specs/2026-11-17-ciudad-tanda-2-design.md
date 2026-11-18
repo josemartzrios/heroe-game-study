@@ -145,3 +145,12 @@ Las reparaciones están solo en temas con ≥ 2 preguntas de escenario o error, 
 
 - Las coordenadas exactas (las da `makeLayout`) y el orden de `take()` (mentores → criaturas → reparaciones → aprendices, como en `m08.mjs`).
 - Cambiar un nombre o una etiqueta si choca con la lista de palabras prohibidas o con las reglas de contenido (anotado).
+
+## Cambios de la implementación
+
+- **Distritos:** `m03.mjs`, `m01.mjs` y `m10.mjs` se generaron desde las tablas de este spec; `tests/tanda2_feasibility.cjs` comprueba que cada archivo es idéntico a su tabla (datos, coordenadas y orden de `take()`).
+- **Criaturas (`city/sprites2d.js`):** la referencia es `D.order[0]`; el desfase de forma por distrito pasó de `di * 3` (posición en `districts`) a `3 × ordinal entre los distritos que no son la referencia` (mismos valores que antes para M08 con el orden estándar, sin depender de dónde esté M02 en el literal). Si `D` no trae `order`, la referencia es el primer distrito por posición. El ícono "Ponte a prueba" sigue mostrando la criatura morada de M02.
+- **R11:** `colors.a` y `colors.b` en `#rrggbb` (`city/check_district.mjs`).
+- **Aviso de rango (`cityRankLine` en `city/view.js`):** "Subes a X." solo si el rango subió; si no, "Sigues como X: te falta(n) N distrito(s) para Y." con Y = el siguiente rango con umbral ≤ número de distritos que existen, o "Sigues como X." si no hay uno. `rankOf` cuenta solo claves propias de `restored`.
+- **Pruebas:** las que contaban distritos calculan `OPEN`/`PEND`/`SIN`/`MIDS` desde los datos; dos pruebas frágiles se endurecieron (un `sleep` fijo en `city_scenes` y un umbral de 50 ms por entrada en el fuzz) y `city_base_attack` B8 continúa a resultados antes de comprobar la victoria. Los dos archivos adversariales de la tanda (`tests/adv/tanda2_attack.cjs`, `tanda2_plan_attack.cjs`) usan los datos reales.
+- **Humo en Chromium** (390 × 844, 320 × 640 y 1280 × 800): entrar a cada distrito desde su portal, mentor, criaturas, salida, el HUD ≤ 25 % del alto con la pill de la Ciudadela sin desbordarse, y la celebración de M01 (cabe en 320 px, "Subes a Junior.", se cierra con Escape sin dejar el foco en `body`): 111 comprobaciones en verde, 0 errores de consola. No hizo falta acortar "Ciudadela Escalable".
