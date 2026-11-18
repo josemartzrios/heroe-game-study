@@ -175,6 +175,33 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       ok('RF2b con need − 1 enseñados y el jefe aprobado, enseñar al siguiente restaura M01 sin poder nuevo', s.restored.M01 === true && keys(s.powers) === '[]', JSON.stringify([s.restored, s.powers]));
       e.w.close(); }
 
+    // 6d. la celebración solo anuncia una subida de rango cuando la hay (Review Focus 3)
+    { const RK = D.ranks, total = Object.keys(D.districts).length;
+      const teachOut = (e, mid, aid) => {   // enseñar con la ciudad detenida (la restauración queda pendiente) y volver al inicio
+        const q = e.w.eval('MODULES').find((m) => m.id === mid).questions.find((x) => x.type === 'mcq');
+        R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid, back: { name: 'home' }, city: { kind: 'teach', id: aid, mid } }, [q]);
+        answerOne(e.w, e.d, true); nextQ(e.w, e.d); L.click(e.w, e.d.querySelector('[data-act="back"]'));
+      };
+      const enter = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city"]')); for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0)); return (e.d.querySelector('#city-sheet') || {}).textContent || ''; };
+      const lastOne = (mid, n) => D.districts[mid].apprentices.slice(0, n).map((a) => a.id);
+      { const e = boot(base({ boss: { M02: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need - 1)) } } } }));
+        teachOut(e, 'M02', M2.apprentices[M2.need - 1].id);
+        const t = await enter(e);
+        ok('RF3a restaurar el 1.º distrito: "Subes a ' + RK[1][1] + '."', t.includes('Subes a ' + RK[1][1] + '.') && !t.includes('Sigues como'), t.slice(0, 200));
+        e.w.close(); }
+      { const e = boot(base({ boss: { M02: { best: 18, passed: true }, M08: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need)) }, M08: { taught: set(lastOne('M08', M8.need - 1)) } } } }));
+        teachOut(e, 'M08', M8.apprentices[M8.need - 1].id);
+        const t = await enter(e);
+        const nxt = RK.find((rk) => rk[0] > 2 && rk[0] <= total);
+        ok('RF3b restaurar el 2.º distrito (el rango no cambia): "Sigues como ' + RK[1][1] + ': te falta ' + (nxt[0] - 2) + ' distrito para ' + nxt[1] + '." y nunca "Subes a"', t.includes('Sigues como ' + RK[1][1] + ': te falta ' + (nxt[0] - 2) + ' distrito para ' + nxt[1] + '.') && !t.includes('Subes a'), t.slice(0, 220));
+        e.w.close(); }
+      { const e = boot(base({ boss: { M02: { best: 18, passed: true }, M08: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need - 1)) }, M08: { taught: set(lastOne('M08', M8.need - 1)) } } } }));
+        teachOut(e, 'M02', M2.apprentices[M2.need - 1].id); teachOut(e, 'M08', M8.apprentices[M8.need - 1].id);
+        const t = await enter(e);
+        ok('RF3c dos restauraciones acumuladas fuera de la ciudad (de 0 a 2): "Subes a ' + RK[1][1] + '." en una sola hoja', t.includes('Subes a ' + RK[1][1] + '.') && !t.includes('Sigues como'), t.slice(0, 220));
+        e.w.close(); }
+    }
+
     // 7. partida nueva: plaza, M08 con route.done 0, sin respaldo
     { const e = boot(null);
       quick(e);

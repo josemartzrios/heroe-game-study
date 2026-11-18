@@ -579,6 +579,18 @@ function cityTeachCorrect(o) {
   if (!qs.length || !CD) return;
   startRound({ kind: 'error', title: 'Enseñar', mid: CD.scene, back: { name: 'city' }, city: { kind: 'teach', id: o.id, mid: CD.scene } }, [qs[0]]);
 }
+/* Línea de rango de la celebración: "Subes a X." solo si el rango subió con esta restauración; si no, "Sigues como X: te falta(n) N distrito(s) para Y."
+   (Y = el siguiente rango alcanzable con los distritos que existen) o "Sigues como X." si ya no hay uno. El rango previo cuenta los restaurados que no están en mids. */
+function cityRankLine(mids) {
+  var rs = S.city.restored, own = Object.prototype.hasOwnProperty, ids = Object.keys(CITY_DATA.districts), now = [], prev = {}, next = null;
+  ids.forEach(function (id) { if (rs && own.call(rs, id) && rs[id] === true) { now.push(id); if (mids.indexOf(id) < 0) prev[id] = true; } });
+  var after = CityStory.rankOf(S.city, CITY_DATA), before = CityStory.rankOf({ restored: prev }, CITY_DATA);
+  if (after !== before) return 'Subes a ' + after + '.';
+  CITY_DATA.ranks.forEach(function (rk) { if (!next && rk[0] > now.length && rk[0] <= ids.length) next = rk; });
+  if (!next) return 'Sigues como ' + after + '.';
+  var miss = next[0] - now.length;
+  return 'Sigues como ' + after + ': ' + (miss === 1 ? 'te falta 1 distrito' : 'te faltan ' + miss + ' distritos') + ' para ' + next[1] + '.';
+}
 /* Celebración de uno o más distritos recién restaurados: el texto y el poder salen de los datos de cada distrito */
 function cityCelebrate(mids, pre) {
   var texts = [], powers = [], names = [];
@@ -590,7 +602,7 @@ function cityCelebrate(mids, pre) {
   });
   if (!names.length) return;
   var body = '<p>' + esc((pre ? pre + ' ' : '') + texts.join(' ')) + '</p>' +
-    '<p><b>' + esc((powers.length ? 'Poder nuevo: ' + powers.join(', ') + '. ' : '') + 'Subes a ' + CityStory.rankOf(S.city, CITY_DATA) + '.') + '</b></p>';
+    '<p><b>' + esc((powers.length ? 'Poder nuevo: ' + powers.join(', ') + '. ' : '') + cityRankLine(mids)) + '</b></p>';
   cityOpenSheet(citySheetHtml(names.join(' · '), names.length > 1 ? '¡Distritos restaurados!' : '¡Distrito restaurado!', body), '[data-c="sheetclose"]', 'celebracion');
 }
 function cityTower(o) {

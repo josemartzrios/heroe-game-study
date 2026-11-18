@@ -153,7 +153,7 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     goNear(e, 'M08'); click(e.w, $(e, '#city-act')); await sleep(400);
     ok('(o) si la escena tarda más de 250 ms aparece "Abriendo Nodo Enlace…"', ($(e, '#city-load') || {}).textContent === 'Abriendo Nodo Enlace…', ($(e, '#city-load') || {}).textContent);
     ok('(o3) el aviso no queda dentro de un subárbol inert (se oye) y trae "Salir" (si la escena se cuelga hay salida)', !!$(e, '#city-loadbox') && !$(e, '#city-loadbox').closest('[inert]') && !!$(e, '#city-loadbox [data-c="quit"]'), 'inert=' + !!($(e, '#city-loadbox') && $(e, '#city-loadbox').closest('[inert]')));
-    e.st.resolvers.M08(); await sleep(30);
+    e.st.resolvers.M08(); for (let i = 0; i < 100 && ($(e, '#city-loadbox') || !e.d.body.classList.contains('city-on')); i++) await sleep(20);   // espera la condición, no un tiempo fijo
     ok('(o2) al resolver desaparece el aviso y la vista queda en M08', !$(e, '#city-loadbox') && saved(e.w).city.scene === 'M08' && !$(e, '#city-ui-main').hasAttribute('inert'));
     e.w.close();
 

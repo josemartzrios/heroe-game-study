@@ -133,7 +133,7 @@ var CityStory = (function () {
   }
   function rankOf(C, D) {
     var n = 0, rs = plainObj(C.restored) ? C.restored : {};
-    Object.keys(D.districts).forEach(function (id) { if (rs[id] === true) n++; });
+    Object.keys(D.districts).forEach(function (id) { if (own.call(rs, id) && rs[id] === true) n++; });
     var name = D.ranks[0][1];
     D.ranks.forEach(function (rk) { if (n >= rk[0]) name = rk[1]; });
     return name;
