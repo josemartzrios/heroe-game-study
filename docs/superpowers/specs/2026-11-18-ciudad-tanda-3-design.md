@@ -3,7 +3,7 @@
 Continúa la Tanda 2 (`2026-11-17-ciudad-tanda-2-design.md`): mismo formato (§4.2 de `2026-11-12-ciudad-distritos-design.md`), mismas reglas de validación (R1–R11) y mismas **reglas de contenido**:
 - cada distrito con al menos un color propio, sin el ámbar `#ffd76a` ni los 6 morados de referencia;
 - etiquetas de reparación con artículo y de 28 caracteres o menos;
-- **nombres**: ningún nombre de mentor o aprendiz se repite ni se parece a otro de cualquier distrito. Se parece = mismo inicio de 4 letras sin acentos, o (regla ampliada en esta tanda) un nombre corto de 3 letras que es el inicio de otro (Gil/Gilda);
+- **nombres**: ningún nombre de mentor o aprendiz se repite ni se parece a otro de cualquier distrito. Se compara la **forma fonética** (sin acentos y en minúsculas; h muda; qu, c fuerte y k → k; ce/ci → se/si; ge/gi → je/ji; z → s; v → b; x → j; ll e y → i; letras dobles una sola vez) y se parecen si son iguales o comparten el inicio de k = min(4, largo de cada forma) letras con k ≥ 3 (Gil/Gilda, Ana/Hana, Javi/Xavier). No hay nombres de menos de 3 letras. Excepciones heredadas de las tandas 1 y 2: Carla/Karla y Elena/Helena;
 - criaturas y reparaciones no repiten la idea de las de otros distritos;
 - nombres de distrito sin artículo.
 
@@ -14,7 +14,7 @@ Que los portales de **M04 (Historia de la programación)**, **M06 (Programación
 ## Cómo se construye
 
 - Un archivo de datos por distrito (`city/districts/m04.mjs`, `m06.mjs`, `m07.mjs`) con `people()` y su registro en `city/districts.mjs` con el orden fijo `{ M02, M08, M03, M01, M10, M04, M06, M07 }`.
-- **Marco geométrico común en `city/layout.mjs`:** hoy M03, M01 y M10 copian el mismo marco (manzanas, calles, torre, entrada, salida, bounds y `makeLayout`). Se saca a una función `standardFrame()` que devuelve `{ lay, tower, entry, exit, bounds, streets, blocks }`, y la usan M03, M01, M10, M04, M06 y M07 (M02 y M08 tienen marcos propios y no cambian). Se comprueba que `CITY_DATA` y el HTML de los 5 distritos actuales quedan **idénticos byte a byte**.
+- **Marco geométrico común en `city/layout.mjs`:** hoy M03, M01 y M10 copian el mismo marco (manzanas, calles, torre, entrada, salida, bounds y `makeLayout`). Se saca a una función `standardFrame()` que devuelve `{ lay, tower, entry, exit, bounds, streets, blocks }` con **objetos nuevos en cada llamada** (dos distritos nunca comparten un objeto), y la usan M03, M01, M10, M04, M06 y M07 (M02 y M08 tienen marcos propios y no cambian). Se comprueba que `CITY_DATA` y el HTML de los 5 distritos actuales quedan **idénticos byte a byte**.
 - Sin otros cambios de código: el tinte de criaturas, R11, el aviso de rango y la plaza ya son genéricos. `style: 'red'`, `need` 7, 10 aprendices.
 
 ## Contenido
@@ -24,12 +24,12 @@ Que los portales de **M04 (Historia de la programación)**, **M06 (Programación
 - **Mentores (T01–T17):** Amparo, Bernardo, Claudia, Damián, Esperanza, Francisco, Genaro, Hortensia, Iñaki, Jacinta, Leopoldo, Mercedes, Nicanor, Ofelia, Prudencio, Remedios, Saúl.
 - **Criaturas:** `goto` GO TO Salvaje (T02, T03) · `paradigma` Paradigma Confundido (T01, T04, T05, T08, T09) · `impura` Función Impura (T06, T07) · `perforada` Tarjeta Perforada (T10–T12) · `compilador` Compilador Errante (T13–T15) · `bucle` Bucle Atascado (T16, T17).
 - **Reparaciones (`r01`–`r09`):** T01 "el catálogo de paradigmas" · T03 "el programa espagueti" · T05 "la clase sin encapsular" · T07 "la lambda sin retorno" · T09 "el flujo de eventos" · T11 "el ensamblador sin traducir" · T12 "la tarjeta de COBOL" · T15 "la máquina virtual parada" · T17 "los hilos bloqueados".
-- **Aprendices (`need` 7):** Ada T04 explicar · Boris T02 corregir · Cata T03 corregir · Dulce T06 explicar · Enzo T08 explicar · Flavio T10 corregir · Tobías T12 corregir · Hana T13 explicar · Nuria T14 corregir · Juan T16 explicar.
+- **Aprendices (`need` 7):** Ada T04 explicar · Boris T02 corregir · Cata T03 corregir · Dulce T06 explicar · Enzo T08 explicar · Flavio T10 corregir · Tobías T12 corregir · Mila T13 explicar · Nuria T14 corregir · Juan T16 explicar.
 - `celebrate`: "El Museo del Código vuelve a abrir: cada lenguaje cuenta su historia."
 
 ### M06 — Fábrica de Objetos (Programación orientada a objetos)
 - `colors` rosa `#ff9ec7` y verde claro `#b5ff8c`; `seed` 29.
-- **Mentores (T01–T14):** Agustín, Begoña, Cayetano, Dolores, Ezequiel, Fortunato, Graciela, Humberto, Isidro, Jazmín, Lucrecia, Mauricio, Nélida, Osvaldo.
+- **Mentores (T01–T14):** Agustín, Begoña, Casimiro, Dolores, Ezequiel, Fortunato, Graciela, Humberto, Isidro, Jazmín, Lucrecia, Mauricio, Nélida, Osvaldo.
 - **Criaturas:** `molde` Molde Vacío (T01, T02) · `atributo` Atributo Fugado (T03, T04) · `torcida` Herencia Torcida (T05, T06) · `contrato` Contrato Roto (T07, T14) · `acople` Acople Pegajoso (T08–T10) · `flecha` Flecha Perdida (T11–T13).
 - **Reparaciones (`r01`–`r09`):** T02 "la clase que nadie instancia" · T03 "el atributo expuesto" · T04 "el constructor olvidado" · T05 "el árbol de herencia" · T07 "el contrato incumplido" · T09 "el equipo desarmado" · T10 "el coche sin motor" · T13 "el diagrama sin flechas" · T14 "el método sin polimorfismo".
 - **Aprendices (`need` 7):** Ale T01 corregir · Bibi T02 explicar · Cira T03 corregir · Duna T05 explicar · Pía T06 corregir · Fiona T08 explicar · Goyo T10 corregir · Ulla T11 explicar · Jael T12 explicar · Sol T13 corregir.
@@ -40,7 +40,7 @@ Que los portales de **M04 (Historia de la programación)**, **M06 (Programación
 - **Mentores (T01–T13):** Amelia, Bautista, Constanza, Domingo, Eugenia, Fulgencio, Guadalupe, Hipólito, Ingrid, Jerónimo, Leonor, Moisés, Nora.
 - **Criaturas:** `dios` Clase Dios (T03, T04) · `rigido` Código Rígido (T05, T06) · `impostora` Subclase Impostora (T07, T08) · `gorda` Interfaz Gorda (T09, T10) · `mandon` Detalle Mandón (T11, T12) · `caos` Diseño Caótico (T01, T02, T13).
 - **Reparaciones (`r01`–`r09`):** T01 "el software frágil" · T02 "el acrónimo olvidado" · T04 "la clase que hace de todo" · T06 "el switch interminable" · T08 "el pato de juguete" · T09 "la interfaz gigante" · T10 "el control con mil botones" · T12 "la base de datos soldada" · T13 "el código que huele mal".
-- **Aprendices (`need` 7):** Asier T01 explicar · Blas T02 corregir · Cande T03 explicar · Dámaso T05 explicar · Elvira T06 corregir · Fidel T07 explicar · Gisela T08 corregir · Hilario T09 corregir · Ion T11 explicar · Javi T12 corregir.
+- **Aprendices (`need` 7):** Asier T01 explicar · Blas T02 corregir · Cande T03 explicar · Dámaso T05 explicar · Elvira T06 corregir · Fidel T07 explicar · Gisela T08 corregir · Hilario T09 corregir · Ion T11 explicar · Rubén T12 corregir.
 - `celebrate`: "Cinco Calles vuelve a ordenarse: cada principio SOLID tiene su calle."
 
 En los archivos `.mjs` los modos van como `'explain'` / `'correct'` (explicar / corregir).
