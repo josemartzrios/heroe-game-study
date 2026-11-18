@@ -22,8 +22,8 @@ const creatures = [
 ].map((c) => { const p = lay.take(); return { ...c, area: { x: p.x, z: p.z, r: 6 } }; });
 
 const REPAIRS = [['T03', 'la puerta sin cerradura'], ['T04', 'la contraseña en una nota'], ['T05', 'la cookie sin protección'], ['T06', 'el mensaje sin cifrar'],
-  ['T09', 'el formulario inyectable'], ['T10', 'el script escondido'], ['T12', 'el servidor de fábrica'], ['T16', 'la alarma sin registro'],
-  ['T18', 'el servidor bajo ataque']];
+  ['T09', 'el formulario inyectable'], ['T10', 'el script escondido'], ['T12', 'la clave de fábrica'], ['T16', 'la alarma sin registro'],
+  ['T18', 'la inundación de tráfico']];
 const repairs = REPAIRS.map(([topic, label], i) => ({ id: 'r' + pad(i + 1), topic, label, ...lay.take() }));
 
 const APPRENTICES = [['Aldo', 'T01', 'correct'], ['Bela', 'T02', 'explain'], ['Coral', 'T04', 'correct'], ['Dante', 'T06', 'explain'], ['Elsa', 'T08', 'correct'],

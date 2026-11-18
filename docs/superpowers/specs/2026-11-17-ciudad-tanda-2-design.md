@@ -63,7 +63,7 @@ Las reparaciones están solo en temas con ≥ 2 preguntas de escenario o error, 
 
 ### M03 — Barrio Byte (Fundamentos de internet)
 
-- `colors` naranja `#ff9f43` y azul eléctrico `#4d7cff`; `style: 'red'`; `seed` 13.
+- `colors` verde lima `#c6ff4d` y azul eléctrico `#4d7cff`; `style: 'red'`; `seed` 13.
 - **Mentores (T01–T18, `m01`–`m18`):** Abel, Bea, César, Dora, Ernesto, Frida, Gonzalo, Helena, Ismael, Jimena, Kevin, Lorena, Marco, Nadia, Omar, Pilar, Quique, Romina.
 - **Criaturas:**
 
@@ -79,7 +79,7 @@ Las reparaciones están solo en temas con ≥ 2 preguntas de escenario o error, 
 - **Reparaciones (`r01`–`r09`):** T01 "el panel de luces binario" · T04 "el cartel sin acentos" · T05 "la pantalla sin color" · T06 "la fibra del fondo del mar" · T08 "la pila de protocolos" · T11 "la URL mal escrita" · T13 "la petición sin respuesta" · T14 "el certificado vencido" · T17 "la página a medio dibujar".
 - **Aprendices (`a01`–`a10`, `need` 7):** Ari T02 explicar · Brenda T03 corregir · Coco T06 corregir · Dalia T07 explicar · Elio T09 explicar · Fede T10 corregir · Gema T12 corregir · Ivo T13 explicar · Jade T16 explicar · Kira T18 corregir.
 - **Torre:** jefe de M03.
-- `celebrate`: "El Barrio Byte vuelve a hablar el idioma de internet: cada paquete llega a su página."
+- `celebrate`: "El Barrio Byte vuelve a hablar el idioma de internet: cada página llega completa."
 
 ### M01 — Ciudadela Escalable (Diseño de sistemas)
 
@@ -117,7 +117,7 @@ Las reparaciones están solo en temas con ≥ 2 preguntas de escenario o error, 
   | `abierta` | Puerta Abierta | T08, T12, T14, T15 |
   | `tormenta` | Tormenta de Tráfico | T16, T18, T19, T20 |
 
-- **Reparaciones (`r01`–`r09`):** T03 "la puerta sin cerradura" · T04 "la contraseña en una nota" · T05 "la cookie sin protección" · T06 "el mensaje sin cifrar" · T09 "el formulario inyectable" · T10 "el script escondido" · T12 "el servidor de fábrica" · T16 "la alarma sin registro" · T18 "el servidor bajo ataque".
+- **Reparaciones (`r01`–`r09`):** T03 "la puerta sin cerradura" · T04 "la contraseña en una nota" · T05 "la cookie sin protección" · T06 "el mensaje sin cifrar" · T09 "el formulario inyectable" · T10 "el script escondido" · T12 "la clave de fábrica" · T16 "la alarma sin registro" · T18 "la inundación de tráfico".
 - **Aprendices (`a01`–`a10`, `need` 7):** Aldo T01 corregir · Bela T02 explicar · Coral T04 corregir · Dante T06 explicar · Elsa T08 corregir · Fina T11 corregir · Gilda T13 explicar · Irma T14 corregir · Juno T17 explicar · Lino T19 corregir.
 - **Torre:** jefe de M10.
 - `celebrate`: "La Muralla Cifrada vuelve a proteger la ciudad: nadie entra sin permiso."

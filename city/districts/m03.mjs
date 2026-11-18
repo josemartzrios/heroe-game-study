@@ -31,11 +31,11 @@ const APPRENTICES = [['Ari', 'T02', 'explain'], ['Brenda', 'T03', 'correct'], ['
 const apprentices = APPRENTICES.map(([name, topic, mode], i) => ({ id: 'a' + pad(i + 1), topic, name, mode, ...lay.take() }));
 
 export const district = {
-  id: 'M03', name: 'Barrio Byte', colors: { a: '#ff9f43', b: '#4d7cff' }, style: 'red', seed: 13,
+  id: 'M03', name: 'Barrio Byte', colors: { a: '#c6ff4d', b: '#4d7cff' }, style: 'red', seed: 13,
   bounds: { minX: -60, maxX: 60, minZ: -70, maxZ: 60 },
   entry, exit: { x: 0, z: 57, w: 6, d: 2 },
   streets: { x: STREET_X, z: STREET_Z },
   blocks: BLOCK_X.flatMap((x) => BLOCK_Z.map((z) => [x, z])),
   mentors, creatures, repairs, apprentices, tower, need: 7,
-  celebrate: { text: 'El Barrio Byte vuelve a hablar el idioma de internet: cada paquete llega a su página.' }
+  celebrate: { text: 'El Barrio Byte vuelve a hablar el idioma de internet: cada página llega completa.' }
 };

@@ -137,7 +137,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     const C = CS.normalizeCity(raw, D5, bossAll, TODAY);
     for (const m of NEW) { const d = C.d[m]; if (JSON.stringify(d) !== '{"beaten":{},"repairs":{},"taught":{}}') return m + ': ' + safeStr(d); if (C.restored[m]) return m + ' restaurado sin aprendices'; }
     if (!C.restored.M02 || !C.restored.M08) return 'perdió M02/M08: ' + safeStr(C.restored);
-    return CS.rankOf(C, D5) === 'Junior' || 'rango ' + CS.rankOf(C, D5);
+    return CS.rankOf(C, D5) === CS.rankName(2, D5) || 'rango ' + CS.rankOf(C, D5);
   });
   // ATAQUE: guardado futuro (Tanda 2) abierto por el código actual (rollback): scene 'M10' desconocida → plaza; d.M03 se descarta sin lanzar
   attack('rollback: guardado de D5 abierto con el CITY_DATA actual', () => {
@@ -166,7 +166,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     const r1 = CS.applyRestore(C, D5, bossAll), r2 = CS.applyRestore(C, D5, bossAll);
     if (r1.changed.join() !== MIDS.join()) return 'changed=' + r1.changed;
     if (r2.changed.length) return 'no idempotente: ' + r2.changed;
-    if (CS.rankOf(C, D5) !== 'Semi-senior') return 'rango ' + CS.rankOf(C, D5);
+    if (CS.rankOf(C, D5) !== CS.rankName(MIDS.length, D5)) return 'rango ' + CS.rankOf(C, D5);
     return JSON.stringify(C.powers) === '{"planos":true}' || 'powers=' + safeStr(C.powers);
   });
   // ATAQUE: jefe de un solo módulo aprobado → solo ese distrito (bossPassedOf recibe cada mid nuevo)
@@ -176,13 +176,13 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     if (!NEW.every((m) => asked.includes(m))) return 'no preguntó por ' + NEW.filter((m) => !asked.includes(m));
     return Object.keys(C.restored).join() === 'M10' || 'restored=' + safeStr(C.restored);
   });
-  // ATAQUE: need 7 exacto: 6 enseñados no restauran, 7 sí; restoration() 50/100 con el jefe
-  attack('need 7 en los nuevos: frontera 6/7 y porcentaje', () => {
+  // ATAQUE: frontera de need: need − 1 enseñados no restauran, need sí; restoration() 50/100 con el jefe
+  attack('need en los nuevos: frontera need − 1 / need y porcentaje', () => {
     for (const m of NEW) {
-      const a = ids(D5.districts[m].apprentices);
-      const C6 = CS.normalizeCity({ d: { [m]: { taught: ALLTRUE(a.slice(0, 6)) } } }, D5, bossAll, TODAY), C7 = CS.normalizeCity({ d: { [m]: { taught: ALLTRUE(a.slice(3, 10)) } } }, D5, bossAll, TODAY);
+      const a = ids(D5.districts[m].apprentices), need = D5.districts[m].need, part = Math.round(100 * (0.5 * (need - 1) / need + 0.5));
+      const C6 = CS.normalizeCity({ d: { [m]: { taught: ALLTRUE(a.slice(0, need - 1)) } } }, D5, bossAll, TODAY), C7 = CS.normalizeCity({ d: { [m]: { taught: ALLTRUE(a.slice(a.length - need)) } } }, D5, bossAll, TODAY);
       if (C6.restored[m] || !C7.restored[m]) return m + ' frontera rota';
-      if (CS.restoration(C6, D5, m, true) !== 93 || CS.restoration(C7, D5, m, true) !== 100 || CS.restoration(C7, D5, m, false) !== 50) return m + ' porcentaje ' + [CS.restoration(C6, D5, m, true), CS.restoration(C7, D5, m, true), CS.restoration(C7, D5, m, false)];
+      if (CS.restoration(C6, D5, m, true) !== part || CS.restoration(C7, D5, m, true) !== 100 || CS.restoration(C7, D5, m, false) !== 50) return m + ' porcentaje ' + [CS.restoration(C6, D5, m, true), CS.restoration(C7, D5, m, true), CS.restoration(C7, D5, m, false)];
     }
     return true;
   });

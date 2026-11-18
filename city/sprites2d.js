@@ -12,29 +12,32 @@ var CitySprites = (function () {
   var doc = null, atlas = {}, data = null;
 
   function init(d) { if (d !== doc) { doc = d; atlas = {}; } }
-  /* Genera las variantes desde CITY_DATA. Con los mismos datos no hace nada (los atlas siguen valiendo); con otros los descarta. */
-  function hexOk(c) { return typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c); }
+  function hexOk(c) { return typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c); }   // mismo formato que R11 (city/check_district.mjs)
+  function arr(x) { return Array.isArray(x) ? x : []; }
+  function fill(list, items) { list.length = 0; for (var i = 0; i < items.length; i++) list.push(items[i]); }
+  /* Genera las variantes desde CITY_DATA. Con los mismos datos no hace nada (los atlas siguen valiendo); con otros los descarta.
+     Se arma todo en listas nuevas y se copia al final: un distrito mal formado (null, listas que no son arrays, ids ausentes) no deja nada a medias.
+     La referencia es el primer id de D.order que es un distrito (o el primer distrito si no hay ninguno); los íconos de inicio salen de ella. */
   function setData(D) {
     if (D === data) return;
-    atlas = {};
-    PERSON.length = 0; CREATURE.length = 0; LOOK.length = 0; STYLE.length = 0; TINT.length = 0;
-    PERSON.push('iris'); LOOK.push('iris'); FIRST.mentor = ''; FIRST.apprentice = ''; FIRST.creature = '';
-    var mids = D && D.districts ? Object.keys(D.districts) : [];
-    var ref = D && D.order && D.order.length ? D.order[0] : mids[0], k = 0;   // la referencia es el primero del orden, no el primero por posición
+    var dist = D && D.districts && typeof D.districts === 'object' ? D.districts : {};
+    var mids = Object.keys(dist).filter(function (m) { return !!dist[m] && typeof dist[m] === 'object'; });
+    var order = D && Array.isArray(D.order) ? D.order : [], ref = null, i, k = 0;
+    for (i = 0; i < order.length && ref === null; i++) if (mids.indexOf(order[i]) >= 0) ref = order[i];
+    if (ref === null && mids.length) ref = mids[0];
+    var P = ['iris'], L = ['iris'], C = [], ST = [], TI = [], any = { mentor: '', apprentice: '', creature: '' }, fromRef = { mentor: '', apprentice: '', creature: '' };
+    function first(kind, v, isRef) { if (!any[kind]) any[kind] = v; if (isRef && !fromRef[kind]) fromRef[kind] = v; }
     mids.forEach(function (mid) {
-      var M = D.districts[mid], isRef = mid === ref, off = isRef ? 0 : 3 * (++k), col = M.colors;
-      function add(list, kind) {
-        list.forEach(function (o) { var v = mid + ':' + o.id; PERSON.push(v); LOOK.push(isRef ? o.id : v); if (!FIRST[kind]) FIRST[kind] = v; });
-      }
-      add(M.mentors || [], 'mentor');
-      add(M.apprentices || [], 'apprentice');
-      (M.creatures || []).forEach(function (c, ci) {
-        var v = mid + ':' + c.id; CREATURE.push(v); STYLE.push((ci + off) % 6);
-        TINT.push(!isRef && col && hexOk(col.a) && hexOk(col.b) ? [col.a, col.b] : null);
-        if (!FIRST.creature) FIRST.creature = v;
-      });
+      var M = dist[mid], isRef = mid === ref, off = isRef ? 0 : 3 * (++k), col = M.colors;   // 6 formas: cada distrito no-referencia rota 3
+      var tint = !isRef && col && hexOk(col.a) && hexOk(col.b) ? [col.a, col.b] : null;
+      function add(list, kind) { arr(list).forEach(function (o) { var id = String(o && o.id), v = mid + ':' + id; P.push(v); L.push(isRef ? id : v); first(kind, v, isRef); }); }
+      add(M.mentors, 'mentor');
+      add(M.apprentices, 'apprentice');
+      arr(M.creatures).forEach(function (c, ci) { var v = mid + ':' + String(c && c.id); C.push(v); ST.push((ci + off) % 6); TI.push(tint); first('creature', v, isRef); });
     });
-    data = D;   // solo al terminar: si algo lanzara, el siguiente setData con estos datos vuelve a construir
+    fill(PERSON, P); fill(LOOK, L); fill(CREATURE, C); fill(STYLE, ST); fill(TINT, TI);
+    FIRST.mentor = fromRef.mentor || any.mentor; FIRST.apprentice = fromRef.apprentice || any.apprentice; FIRST.creature = fromRef.creature || any.creature;
+    atlas = {}; data = D;
   }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
   function idx(list, v) { var i = list.indexOf(v); return i < 0 ? 0 : i; }

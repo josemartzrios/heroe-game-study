@@ -83,7 +83,7 @@ const MIDS = Object.keys(D.districts);
       ok('(c1) M02:' + c.id + ' conserva su cuerpo, marca #3a2470 y ojos #ffd23f', bodyOf(cl) === BODY[i] && palette(cl) === [BODY[i], '#3a2470', '#ffd23f', '#12162e', SHADOW].sort().join(), palette(cl));
     });
     const m03 = cell(env, 'M03:' + D.districts.M03.creatures[0].id);
-    ok('(c2) la 1.ª criatura de M03: cuerpo #ff9f43, rasgos #12162e, acento #4d7cff, ojos #ffffff', bodyOf(m03) === '#ff9f43' && palette(m03) === ['#ff9f43', '#12162e', '#4d7cff', '#ffffff', SHADOW].sort().join(), palette(m03));
+    ok('(c2) la 1.ª criatura de M03: cuerpo #c6ff4d, rasgos #12162e, acento #4d7cff, ojos #ffffff', bodyOf(m03) === '#c6ff4d' && palette(m03) === ['#c6ff4d', '#12162e', '#4d7cff', '#ffffff', SHADOW].sort().join(), palette(m03));
     const sigs = [];
     DMIDS.forEach((m) => D.districts[m].creatures.forEach((c) => { const cl = cell(env, m + ':' + c.id); sigs.push({ m, id: c.id, shape: shapeOf(cl), body: bodyOf(cl) }); }));
     const clash = [];

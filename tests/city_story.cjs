@@ -220,7 +220,7 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
     const early = (mid) => D.districts[mid].creatures.filter((c) => { const i = seen.indexOf(mid + ':creature:' + c.id); return i >= 0 && seen.slice(0, i).every((k) => !k.startsWith(mid + ':repair')); }).length;
     ok('nextObjective: partida completa en todos los distritos termina en "none", restaura todos, pasa por la ruta y pide las criaturas antes de los retos', o.kind === 'none' && MIDS.every((m) => C.restored[m] === true) && C.d.M08.route.done === 10 && early('M02') === 6 && early('M08') === 5, `fin=${o.kind} pasos=${n} M02=${early('M02')} M08=${early('M08')} done=${C.d.M08.route.done}`); }
   { const r = rng(21); let bad = 0;
-    for (const [sc, nTop] of [['M02', 23], ['M08', 15]]) for (let i = 0; i < 250; i++) {
+    for (const [sc, nTop] of MIDS.map((m) => [m, D.districts[m].mentors.length])) for (let i = 0; i < 250; i++) {
       const C = fresh(), st = ST(), Md = D.districts[sc]; C.prologue = r.bool(0.9); const p = r.int(0, 10) / 10;
       for (let k = 1; k <= nTop; k++) { st.learned[TOP(k)] = r.bool(p + 0.1); st.stars[TOP(k)] = st.learned[TOP(k)] && r.bool(p) ? r.int(1, 3) : 0; }
       Md.creatures.forEach((c) => { if (r.bool(p * 0.8)) st.beaten[c.id] = r.bool() ? TODAY : '2026-11-01'; });

@@ -17,7 +17,7 @@ const MODE = { explicar: 'explain', corregir: 'correct' };
 const SPEC = {
   M03: {
     file: 'content_m03.mjs', title: 'Fundamentos de internet', name: 'Barrio Byte', topicCount: 18,
-    colors: { a: '#ff9f43', b: '#4d7cff' }, style: 'red', seed: 13, need: 7,
+    colors: { a: '#c6ff4d', b: '#4d7cff' }, style: 'red', seed: 13, need: 7,
     mentors: 'Abel, Bea, César, Dora, Ernesto, Frida, Gonzalo, Helena, Ismael, Jimena, Kevin, Lorena, Marco, Nadia, Omar, Pilar, Quique, Romina',
     creatures: [
       ['bitflip', 'Bit Invertido', ['T01', 'T02', 'T03']],
@@ -33,7 +33,7 @@ const SPEC = {
     apprentices: [['Ari', 'T02', 'explicar'], ['Brenda', 'T03', 'corregir'], ['Coco', 'T06', 'corregir'], ['Dalia', 'T07', 'explicar'],
       ['Elio', 'T09', 'explicar'], ['Fede', 'T10', 'corregir'], ['Gema', 'T12', 'corregir'], ['Ivo', 'T13', 'explicar'],
       ['Jade', 'T16', 'explicar'], ['Kira', 'T18', 'corregir']],
-    celebrate: 'El Barrio Byte vuelve a hablar el idioma de internet: cada paquete llega a su página.'
+    celebrate: 'El Barrio Byte vuelve a hablar el idioma de internet: cada página llega completa.'
   },
   M01: {
     file: 'content.mjs', title: 'Diseño de sistemas', name: 'Ciudadela Escalable', topicCount: 19,
@@ -68,7 +68,7 @@ const SPEC = {
     ],
     repairs: [['T03', 'la puerta sin cerradura'], ['T04', 'la contraseña en una nota'], ['T05', 'la cookie sin protección'],
       ['T06', 'el mensaje sin cifrar'], ['T09', 'el formulario inyectable'], ['T10', 'el script escondido'],
-      ['T12', 'el servidor de fábrica'], ['T16', 'la alarma sin registro'], ['T18', 'el servidor bajo ataque']],
+      ['T12', 'la clave de fábrica'], ['T16', 'la alarma sin registro'], ['T18', 'la inundación de tráfico']],
     apprentices: [['Aldo', 'T01', 'corregir'], ['Bela', 'T02', 'explicar'], ['Coral', 'T04', 'corregir'], ['Dante', 'T06', 'explicar'],
       ['Elsa', 'T08', 'corregir'], ['Fina', 'T11', 'corregir'], ['Gilda', 'T13', 'explicar'], ['Irma', 'T14', 'corregir'],
       ['Juno', 'T17', 'explicar'], ['Lino', 'T19', 'corregir']],

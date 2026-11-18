@@ -29,11 +29,7 @@ function cityArrival(sceneId, from) {
   if (sceneId === 'plaza') { var p = from ? cityPortalOf(from) : null, b = p ? p.back : CITY_DATA.plaza.entry; return { x: b.x, z: b.z, yaw: b.yaw }; }
   var e = CITY_DATA.districts[sceneId].entry; return { x: e.x, z: e.z, yaw: e.yaw };
 }
-function cityRestoredN() {
-  var ids = Object.keys(CITY_DATA.districts), n = 0;
-  ids.forEach(function (id) { if (S.city.restored[id] === true) n++; });
-  return { done: n, total: ids.length };
-}
+function cityRestoredN() { return { done: CityStory.restoredIds(S.city, CITY_DATA).length, total: Object.keys(CITY_DATA.districts).length }; }
 /* ---------- lugares: interactuables de la escena activa ---------- */
 function cityBase() {
   var out = [], d, M, P = CITY_DATA.plaza;
@@ -582,12 +578,12 @@ function cityTeachCorrect(o) {
 /* Línea de rango de la celebración: "Subes a X." solo si el rango subió con esta restauración; si no, "Sigues como X: te falta(n) N distrito(s) para Y."
    (Y = el siguiente rango alcanzable con los distritos que existen) o "Sigues como X." si ya no hay uno. El rango previo cuenta los restaurados que no están en mids. */
 function cityRankLine(mids) {
-  var rs = S.city.restored, own = Object.prototype.hasOwnProperty, ids = Object.keys(CITY_DATA.districts), now = [], prev = {}, next = null;
-  ids.forEach(function (id) { if (rs && own.call(rs, id) && rs[id] === true) { now.push(id); if (mids.indexOf(id) < 0) prev[id] = true; } });
-  var after = CityStory.rankOf(S.city, CITY_DATA), before = CityStory.rankOf({ restored: prev }, CITY_DATA);
+  var now = CityStory.restoredIds(S.city, CITY_DATA), total = Object.keys(CITY_DATA.districts).length, next = null;
+  var prev = now.filter(function (id) { return mids.indexOf(id) < 0; });
+  var after = CityStory.rankName(now.length, CITY_DATA), before = CityStory.rankName(prev.length, CITY_DATA);
   if (after !== before) return 'Subes a ' + after + '.';
-  CITY_DATA.ranks.forEach(function (rk) { if (!next && rk[0] > now.length && rk[0] <= ids.length) next = rk; });
-  if (!next) return 'Sigues como ' + after + '.';
+  CITY_DATA.ranks.forEach(function (rk) { if (!next && rk[0] > now.length && rk[0] <= total) next = rk; });
+  if (!next) return 'Sigues como ' + after + '. Llevas ' + now.length + ' de ' + total + ' distritos restaurados.';
   var miss = next[0] - now.length;
   return 'Sigues como ' + after + ': ' + (miss === 1 ? 'te falta 1 distrito' : 'te faltan ' + miss + ' distritos') + ' para ' + next[1] + '.';
 }

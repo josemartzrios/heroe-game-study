@@ -122,6 +122,8 @@ export function checkPlaza(D, opts = {}) {
   const near = (p) => boxes.some((b) => { const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ)); return Math.hypot(p.x - cx, p.z - cz) < 0.6; });
 
   // R9 portales: uno por distrito de ORDER (sin repetir y sin portales de más), todos los distritos existentes en ORDER, back libre
+  const dupO = Array.isArray(D.order) ? D.order.filter((x, i) => D.order.indexOf(x) !== i) : [];
+  if (dupO.length) bad(9, 'ORDER con distritos repetidos: ' + dupO.join(', '));
   const seen = Object.create(null);   // sin prototipo: un id "__proto__" cuenta como cualquier otro
   for (const p of P.portals) seen[p.dist] = (seen[p.dist] || 0) + 1;
   for (const k of Object.keys(seen)) { if (seen[k] > 1) bad(9, `portal repetido: ${k}`); if (!D.order.includes(k)) bad(9, `portal de ${k}, que no está en ORDER`); }

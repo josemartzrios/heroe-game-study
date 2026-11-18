@@ -122,7 +122,7 @@ var CityStory = (function () {
     if (!plainObj(C.restored)) C.restored = {};
     C.powers = {};
     Object.keys(D.districts).forEach(function (mid) {
-      var ok = condition(C, D, mid, bossPassedOf), was = C.restored[mid] === true;
+      var ok = condition(C, D, mid, bossPassedOf), was = own.call(C.restored, mid) && C.restored[mid] === true;
       if (ok) {
         C.restored[mid] = true;
         var pw = D.districts[mid].celebrate && D.districts[mid].celebrate.power; if (pw) C.powers[pw.id] = true;
@@ -131,13 +131,13 @@ var CityStory = (function () {
     });
     return { changed: changed };
   }
-  function rankOf(C, D) {
-    var n = 0, rs = plainObj(C.restored) ? C.restored : {};
-    Object.keys(D.districts).forEach(function (id) { if (own.call(rs, id) && rs[id] === true) n++; });
-    var name = D.ranks[0][1];
-    D.ranks.forEach(function (rk) { if (n >= rk[0]) name = rk[1]; });
-    return name;
+  /* Distritos restaurados: solo claves propias === true de los distritos de los datos (un único conteo para el rango, el HUD y la celebración) */
+  function restoredIds(C, D) {
+    var rs = C && C.restored && typeof C.restored === 'object' ? C.restored : {};
+    return Object.keys(D.districts).filter(function (id) { return own.call(rs, id) && rs[id] === true; });
   }
+  function rankName(n, D) { var name = D.ranks[0][1]; D.ranks.forEach(function (rk) { if (n >= rk[0]) name = rk[1]; }); return name; }
+  function rankOf(C, D) { return rankName(restoredIds(C, D).length, D); }
   function apprenticesAvailable(C, D, mid, starsOf) {
     var t = plainObj(dOf(C, mid).taught) ? dOf(C, mid).taught : {};
     return D.districts[mid].apprentices.filter(function (a) { return t[a.id] !== true && starsOf(a.topic) >= 1; });
@@ -145,7 +145,7 @@ var CityStory = (function () {
   /* distrito recomendado: el primero de D.order que existe y no está restaurado */
   function recommended(C, D) {
     var rs = plainObj(C.restored) ? C.restored : {}, i;
-    for (i = 0; i < D.order.length; i++) if (own.call(D.districts, D.order[i]) && rs[D.order[i]] !== true) return D.order[i];
+    for (i = 0; i < D.order.length; i++) if (own.call(D.districts, D.order[i]) && !(own.call(rs, D.order[i]) && rs[D.order[i]] === true)) return D.order[i];
     return null;
   }
 
@@ -183,6 +183,6 @@ var CityStory = (function () {
     return { kind: 'none', id: null, label: '' };
   }
 
-  return { normalizeCity: normalizeCity, taughtCount: taughtCount, restoration: restoration, applyRestore: applyRestore, rankOf: rankOf, apprenticesAvailable: apprenticesAvailable, nextObjective: nextObjective, mirror: mirror, LEGACY_M02_RECT: LEGACY_M02_RECT, TIP_IDS: TIP_IDS };
+  return { normalizeCity: normalizeCity, taughtCount: taughtCount, restoration: restoration, applyRestore: applyRestore, rankOf: rankOf, restoredIds: restoredIds, rankName: rankName, apprenticesAvailable: apprenticesAvailable, nextObjective: nextObjective, mirror: mirror, LEGACY_M02_RECT: LEGACY_M02_RECT, TIP_IDS: TIP_IDS };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityStory;

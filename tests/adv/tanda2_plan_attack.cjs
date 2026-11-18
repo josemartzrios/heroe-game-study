@@ -1,6 +1,5 @@
 // Ataque a las dos decisiones de la Tanda 2 con el código REAL y los cinco distritos reales:
-//  (a) rango previo de la celebración = rankOf contando solo los restaurados de CITY_DATA.districts que no están en mids ("Subes" si difiere);
-//      story.js real (rankOf con claves propias) y la fórmula tal como la escribe cityRankLine.
+//  (a) aviso de rango de la celebración: cityRankLine REAL extraída de city/view.js con story.js real ("Subes" solo si el rango subió).
 //  (b) tinte de criaturas por distrito en city/sprites2d.js REAL: D.order[0] es la referencia, un distrito sin colores no rompe nada;
 //      el atlas falso registra fillStyle por celda.
 // Uso: node tests/adv/tanda2_plan_attack.cjs [RUNS=1000] [FUZZ_N=100000] [SEED=20261117]   (código 1 si algo rompe)
@@ -28,13 +27,13 @@ function prop(name, arb, pred) {
 }
 function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
-// ---------- la fórmula de cityRankLine: restaurados propios de los datos que no están en mids ----------
+// ---------- cityRankLine REAL (city/view.js), en el mismo reino que story.js ----------
+const VIEW_SRC = fs.readFileSync(path.join(root, 'city/view.js'), 'utf8');
+const RL_SRC = (VIEW_SRC.match(/\nfunction cityRankLine\(mids\) \{[\s\S]*?\n\}\n/) || [''])[0];
+const rankLineOf = vm.runInThisContext('(function (S, CITY_DATA, CityStory) {' + RL_SRC + ';return cityRankLine; })');
+function planSays(C, D, mids) { return /^Subes a /.test(rankLineOf({ city: C }, D, CS)(mids)) ? 'sube' : 'sigue'; }
+// rango previo según la definición del spec: restaurados propios de los datos que no están en mids (para la propiedad de monotonía)
 function copySpec(restored, mids, D) { var r = {}; Object.keys(D.districts).forEach(function (id) { if (restored && Object.prototype.hasOwnProperty.call(restored, id) && restored[id] === true && mids.indexOf(id) < 0) r[id] = true; }); return r; }
-// mensaje: 'Subes a X.' si rankOf(antes) !== rankOf(ahora), si no 'Sigues como X.'
-function planSays(C, D, mids) {
-  var ahora = CS.rankOf(C, D), antes = CS.rankOf({ restored: copySpec(C.restored, mids, D) }, D);
-  return antes !== ahora ? 'sube' : 'sigue';
-}
 // oráculo obviamente correcto: índice del rango por número de distritos de D restaurados (restored[id] === true como propiedad propia)
 function rankIdx(n, D) { let k = 0; D.ranks.forEach((rk, i) => { if (n >= rk[0]) k = i; }); return k; }
 function countOwn(restored, D, skip) { return Object.keys(D.districts).filter((id) => hasOwn(restored, id) && restored[id] === true && !(skip || []).includes(id)).length; }
