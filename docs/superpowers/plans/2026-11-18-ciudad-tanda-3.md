@@ -15,15 +15,15 @@
 - Datos exactos de las tablas del spec v2 (nombres —incluidos Mila, Casimiro y Rubén—, temas, etiquetas, colores, `style: 'red'`, `seed` 23/29/31, `need` 7, `celebrate.text`); modos `'explain'` / `'correct'`.
 - Registro en `city/districts.mjs`: `{ M02, M08, M03, M01, M10, M04, M06, M07 }`.
 - Marco común: `bounds` −60..60 × −70..60; entrada `{ x: 0, z: 52, yaw: 0 }`; salida `{ x: 0, z: 57, w: 6, d: 2 }`; torre `{ id: 'torre', x: 0, z: -64, w: 8, d: 8, h: 20 }`; manzanas x {−42, −14, 14, 42} × z {30, 2, −26, −54}; calles x {−28, 0, 28}, z {16, −12, −40}; `makeLayout` con `reserve` calculado desde torre y entrada, `xRange` [−52, 52], `zRange` [52, −68]. El orden de claves del objeto distrito no cambia (bounds, entry, exit, streets, blocks…), para que la salida sea idéntica.
-- **Regla de nombres** (spec): forma fonética sin acentos (h muda; qu/c fuerte/k → k; ce/ci → se/si; ge/gi → je/ji; z → s; v → b; x → j; ll/y → i; dobles una vez); se parecen si son iguales o comparten el inicio de k = min(4, largo de cada forma) con k ≥ 3; no hay nombres de menos de 3 letras; excepciones heredadas Carla/Karla y Elena/Helena. Vive en un solo helper.
+- **Regla de nombres** (spec): `phon(nombre)` aplica, en este orden y sobre el nombre sin acentos y en minúsculas: `ch` → marca; `qu` → k; `gu` antes de e/i → g; `c` antes de e/i → s; `c` → k; `g` antes de e/i → j; `h` se borra; la marca vuelve a `ch`; `z` → s; `v` → b; `x` → j; `ll` → i; `y` → i; letras dobles → una. Se parecen si las formas son iguales o comparten el inicio de k = min(4, largo de cada forma) con k ≥ 3. No hay nombres de menos de 3 letras (`nameClashes` también los reporta). Excepciones heredadas: Carla/Karla y Elena/Helena. Vive en un solo helper (`tests/district_rules.cjs`) y todas las pruebas lo importan.
 - Las pruebas nuevas o cambiadas no fijan conteos, nombres de rango ni listas de distritos a mano; el "módulo sin distrito" es `FIRST_WALL = ORDER.find(m => !districts[m])`.
-- Antes de probar, `node build.mjs`. **La SUITE nunca corre en paralelo con otras pruebas ni builds** (los fuzz con límite de tiempo fallan si la máquina está cargada).
+- Antes de probar, `node build.mjs`. **La SUITE nunca corre en paralelo con otras pruebas ni builds** (los fuzz con límite de tiempo fallan si la máquina está cargada), y todo `FALLO` se repite solo, sin carga, antes de darlo por real.
 - SUITE = `node build.mjs && node validate.mjs && for f in tests/*.cjs tests/adv/*.cjs; do case "$f" in tests/adv/lib.cjs|tests/adv/gen.cjs|tests/adv/runner.cjs) continue;; esac; node "$f" >/dev/null 2>&1 || echo "FALLO $f"; done; echo FIN` (verde = solo `FIN`). **Hasta la Task 2b**, la SUITE salta los archivos sin versionar de la revisión: `tests/tanda3_feasibility.cjs`, `tests/adv/tanda3_attack.cjs` y `tests/adv/tanda3_plan_attack.cjs` (hoy fallan a propósito).
 - Merge, push y deploy solo con confirmación del usuario.
 
 ## Review Focus
 
-1. **Guardado de la Tanda 2 que entra a la ciudad:** los distritos que no estaban aparecen vacíos, el HUD dice "Distritos 0 de N" y no se pierde nada. → Task 2b (`city_progress`, RF1 generalizado).
+1. **Guardado de la Tanda 2 que entra a la ciudad:** los distritos que no estaban aparecen vacíos, el HUD dice "Distritos 0 de N" y no se pierde nada. → Task 2a (`city_progress`, RF1 generalizado).
 2. **Rango con 8 distritos:** 3→4 "Sigues como Semi-senior: te faltan 2 distritos para Senior.", 5→6 "Subes a Senior.", 6→7 "Sigues como Senior: te falta 1 distrito para Arquitecto.", 7→8 "Subes a Arquitecto.". → Task 2b (`tanda3_attack` T6).
 3. **Distritos existentes intactos tras `standardFrame()`, sin objetos compartidos:** `CITY_DATA` idéntico byte a byte y dos marcos sin ningún objeto en común. → Task 1.
 4. **Criaturas de 8 distritos:** ningún par de distritos distintos comparte forma y color de cuerpo; M02 intacta. → Task 2b (`city_sprites` c3 recorre todos).
@@ -54,9 +54,9 @@ Un cambio de pruebas sin cambio de datos: antes y después la SUITE queda verde 
 
 **Files:**
 - Create: `tests/modules.cjs` (mapa id → `{ file, title }` de los 10 módulos, el mismo de `build.mjs:20-29`), `tests/district_rules.cjs` (`phon(name)`, `namesNear(a, b)`, `nameClashes(districts)` con las excepciones heredadas, `ownColorProblems(districts)`, y comprobaciones de seeds y nombres de distrito únicos)
-- Modify: `tests/tanda2_feasibility.cjs` (sin su sección "entre distritos": usa `district_rules` sobre `city.districts`; `build()` usa `standardFrame()` + `people()`), `tests/review_tanda2_gaps.cjs:104-110,123-140` (oráculo genérico con `total` = número de distritos; límites de `withRanks` con `total` y `total + 1`), `tests/adv/tanda2_impl_attack.cjs` (`MODS` desde `tests/modules.cjs` y las claves de `districts`; `FIRST_WALL` en lugar de `'M04'`/`'M06'`/`'M07'` en S3, K2 y `:231,260,281`; V2 con `total`), `tests/adv/tanda2_attack.cjs` (secuencia de la plaza con `ORDER.filter(m => districts[m])`; `FIRST_WALL` en `:239,242,284`), `tests/city_progress.cjs` (RF1 generalizado: los distritos que faltan en el guardado se calculan desde `D.districts` y el HUD se compara con su número)
+- Modify: `tests/migrate.cjs:46-48` (M1: `full.city.d` se arma con `Object.keys` de `city.districts`), `tests/tanda2_feasibility.cjs` (sin su sección "entre distritos": usa `district_rules` sobre `city.districts`; `build()` usa `standardFrame()` + `people()`), `tests/review_tanda2_gaps.cjs:98-110,123-140` (escenarios jsdom del 3.º, 4.º, 5.º y acumulados, y la tabla de líneas: oráculo genérico con `total` = número de distritos; límites de `withRanks` con `total` y `total + 1`), `tests/adv/tanda2_impl_attack.cjs` (`MODS` desde `tests/modules.cjs` y las claves de `districts`; `FIRST_WALL` en lugar de `'M04'` en S3 y K2 (en `:231,260,281` y en `tanda2_attack.cjs:239,242,284` `'M04'` es solo una clave basura de fuzz: se deja); V2 con `total`), `tests/adv/tanda2_attack.cjs` (secuencia de la plaza con `ORDER.filter(m => districts[m])`), `tests/city_progress.cjs` (RF1 generalizado: los distritos que faltan en el guardado se calculan desde `D.districts` y el HUD se compara con su número)
 
-- [ ] **Step 1: Escribir los helpers y adaptar las pruebas** como dice Files. En `district_rules.cjs`, una prueba propia: `namesNear('Ana','Hana')`, `namesNear('Javi','Xavier')`, `namesNear('Gil','Gilda')` verdaderos; `namesNear('Ana','Ada')`, `namesNear('Sol','Saúl')` falsos; las excepciones heredadas no se reportan.
+- [ ] **Step 1: Escribir los helpers y adaptar las pruebas** como dice Files. Prueba propia de `district_rules` (en `tests/district_rules_test.cjs`): `namesNear('Ana','Hana')`, `namesNear('Javi','Xavier')`, `namesNear('Gil','Gilda')` verdaderos; `namesNear('Ana','Ada')`, `namesNear('Sol','Saúl')` falsos; `nameClashes` no reporta las excepciones heredadas y sí reporta un nombre de 2 letras.
 - [ ] **Step 2: Mutación de control** — cambiar en una copia temporal un nombre de M10 por "Ana" y comprobar que `tanda2_feasibility` falla; deshacer.
 - [ ] **Step 3: Correr** — SUITE (saltando los `tanda3_*`) → `FIN`.
 - [ ] **Step 4: Commit** — `test(city): pruebas de distritos calculadas desde los datos y reglas entre distritos en un solo helper`
@@ -68,7 +68,7 @@ Un cambio de pruebas sin cambio de datos: antes y después la SUITE queda verde 
 **Files:**
 - Create: `city/districts/m04.mjs`, `m06.mjs`, `m07.mjs`
 - Modify: `city/districts.mjs`
-- Tests (agregar a git): `tests/tanda3_feasibility.cjs` (SPEC reemplazado entero desde el spec v2; `build()` con `standardFrame()` + `people()`; reglas entre distritos vía `district_rules`), `tests/adv/tanda3_attack.cjs` (`NEW = ['M04', 'M06', 'M07']`; `D8 = city` real; `D5 = city` sin `NEW`; conteos con `.length` y rangos con `rankName`; su C3 usa `district_rules`; T6 con los textos de Review Focus 2), `tests/adv/tanda3_plan_attack.cjs` (partes (b) regla de nombres vía `district_rules` y (c) `cityRankLine` real)
+- Tests (agregar a git): `tests/tanda3_feasibility.cjs` (SPEC reemplazado entero desde el spec v2; `build()` con `standardFrame()` + `people()`; reglas entre distritos vía `district_rules`; "existen todos los de `NEW` y los registrados", sin fijar un 8), `tests/adv/tanda3_attack.cjs` (`NEW = ['M04', 'M06', 'M07']`; `D8 = city` real; `D5 = city` sin `NEW`; conteos con `.length` y rangos con `rankName`; su C3 usa `district_rules`; T6 con los textos de Review Focus 2), `tests/adv/tanda3_plan_attack.cjs` (parte (b): las personas salen de `city.districts` real, sin `NEW_PEOPLE` copiado, y usa `district_rules`; B5 comprueba que un nombre de 2 letras se reporta como demasiado corto; parte (c) `cityRankLine` real)
 
 **Interfaces:**
 - Consumes: `standardFrame()` (Task 1), `people()`, `tests/district_rules.cjs` y `tests/modules.cjs` (Task 2a).
@@ -86,7 +86,7 @@ Un cambio de pruebas sin cambio de datos: antes y después la SUITE queda verde 
 
 **Files:**
 - Create (scratchpad, no se comitea): script Playwright (`npm i playwright@1.65.0 --ignore-scripts` en el scratchpad; `executablePath` = `~/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell`, que debe existir; borrar el directorio al terminar).
-- Modify: `README.md` (8 distritos, rango máximo Arquitecto, Tech Lead pide M11; enlace al spec), spec (sección final "Cambios de la implementación").
+- Modify: `README.md` (líneas 22 y 26: 8 distritos, rango máximo Arquitecto, Tech Lead pide M11; la lista de archivos incluye `m04`, `m06` y `m07`; enlace al spec), spec (sección final "Cambios de la implementación").
 
 - [ ] **Step 1: Humo** en 390 × 844, 320 × 640 y 1280 × 800, escuchando `console` (errores), `pageerror` y `requestfailed` (0 de cada uno):
   - Entrar por el portal de cada distrito nuevo, primer mentor, salida a la plaza.
