@@ -29,3 +29,16 @@ export function people(lay, { mentors, creatures, repairs, apprentices }) {
   const a = apprentices.map(([name, topic, mode], i) => ({ id: 'a' + pad(i + 1), topic, name, mode, ...lay.take() }));
   return { mentors: m, creatures: c, repairs: r, apprentices: a };
 }
+
+// Marco común de los distritos de las tandas 2 y 3 (el mapa de Nodo Enlace sin pads): límites, entrada, salida, torre, calles, 16 manzanas y el
+// reparto de lugares libres (lay), con la torre y la entrada reservadas. Todo es nuevo en cada llamada: dos distritos nunca comparten un objeto.
+// Los distritos desestructuran lo que usan (no hacer `...standardFrame()` en el literal: metería `lay` y cambiaría el orden de las claves).
+export function standardFrame() {
+  const tower = { id: 'torre', x: 0, z: -64, w: 8, d: 8, h: 20 }, entry = { x: 0, z: 52, yaw: 0 };
+  const streets = { x: [-28, 0, 28], z: [16, -12, -40] };
+  const lay = makeLayout({ reserve: [[tower.x, tower.z], [entry.x, entry.z]], streetX: streets.x, streetZ: streets.z, xRange: [-52, 52], zRange: [52, -68] });
+  return {
+    lay, tower, entry, exit: { x: 0, z: 57, w: 6, d: 2 }, bounds: { minX: -60, maxX: 60, minZ: -70, maxZ: 60 }, streets,
+    blocks: [-42, -14, 14, 42].flatMap((x) => [30, 2, -26, -54].map((z) => [x, z]))
+  };
+}

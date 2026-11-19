@@ -7,7 +7,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
 const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href);
 
 (async () => {
-  const { makeLayout, people } = await imp('city/layout.mjs');
+  const { makeLayout, people, standardFrame } = await imp('city/layout.mjs');
   const { district: M } = await imp('city/districts/m02.mjs');
   const fx = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'm02_coords.json'), 'utf8'));
 
@@ -43,6 +43,20 @@ const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href)
     ok('people(): la criatura toma el lugar siguiente como área de 6 m', JSON.stringify(P.creatures[0]) === JSON.stringify({ id: 'bit', name: 'Bit', topics: ['T01', 'T02'], area: { x: 2, z: -2, r: 6 } }), JSON.stringify(P.creatures));
     ok('people(): reparación r01 y aprendiz a01 después, en ese orden', JSON.stringify(P.repairs[0]) === JSON.stringify({ id: 'r01', topic: 'T02', label: 'el semáforo', x: 3, z: -3 }) && JSON.stringify(P.apprentices[0]) === JSON.stringify({ id: 'a01', topic: 'T01', name: 'Cleo', mode: 'explain', x: 4, z: -4 }), JSON.stringify([P.repairs, P.apprentices]));
     ok('people(): toma exactamente un lugar por personaje', spots.length === 5); }
+  // standardFrame(): el marco común de los distritos de las tandas 2 y 3 (mismo mapa que Nodo Enlace sin pads)
+  { const F = standardFrame();
+    const want = { bounds: { minX: -60, maxX: 60, minZ: -70, maxZ: 60 }, entry: { x: 0, z: 52, yaw: 0 }, exit: { x: 0, z: 57, w: 6, d: 2 }, tower: { id: 'torre', x: 0, z: -64, w: 8, d: 8, h: 20 }, streets: { x: [-28, 0, 28], z: [16, -12, -40] } };
+    ok('standardFrame(): bounds, entrada, salida, torre y calles del marco común', ['bounds', 'entry', 'exit', 'tower', 'streets'].every((k) => JSON.stringify(F[k]) === JSON.stringify(want[k])), JSON.stringify(F));
+    ok('standardFrame(): 16 manzanas con x {−42, −14, 14, 42} y z {30, 2, −26, −54}', F.blocks.length === 16 && JSON.stringify(F.blocks.slice(0, 4)) === '[[-42,30],[-42,2],[-42,-26],[-42,-54]]' && JSON.stringify(F.blocks[15]) === '[42,-54]', JSON.stringify(F.blocks));
+    ok('standardFrame(): el orden de claves es el que usan los distritos', Object.keys(F).join() === 'lay,tower,entry,exit,bounds,streets,blocks', Object.keys(F).join());
+    const G = standardFrame();
+    const shared = [];
+    const walk = (a, b, path) => { if (a && b && typeof a === 'object' && typeof b === 'object') { if (a === b) shared.push(path); for (const k of Object.keys(a)) walk(a[k], b[k], path + '.' + k); } };
+    walk(F, G, 'frame');
+    ok('standardFrame(): dos llamadas no comparten ningún objeto ni array', shared.length === 0, shared.slice(0, 4).join(', '));
+    const a1 = F.lay.take(), a2 = G.lay.take();
+    ok('standardFrame(): cada llamada da un lay nuevo (el primer take() de dos marcos es el mismo lugar)', JSON.stringify(a1) === JSON.stringify(a2) && a1.x === a2.x, JSON.stringify([a1, a2]));
+    ok('standardFrame(): el lay reserva torre y entrada (ningún lugar a menos de 7 m de ellas)', (() => { const L = standardFrame().lay, pts = []; try { for (;;) pts.push(L.take()); } catch (e) { /* sin lugares */ } return pts.length >= 45 && pts.every((p) => Math.hypot(p.x, p.z + 64) >= 7 && Math.hypot(p.x, p.z - 52) >= 7); })()); }
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
   console.log(fails ? `\n${fails} FALLOS` : '\nCITY_LAYOUT OK (' + results.length + ' comprobaciones)');
