@@ -1,5 +1,5 @@
 // Ataque a las suposiciones del spec 2026-11-17-ciudad-tanda-2-design.md (M03, M01, M10 "solo datos") sobre el código existente.
-// Ataca city/story.js, city/move.js y city/check_district.mjs con los cinco distritos reales (D5 = city/districts.mjs) y con la base de la Tanda 1
+// Ataca city/story.js, city/move.js y city/check_district.mjs con todos los distritos reales (D5 = city/districts.mjs) y con la base de la Tanda 1
 // (D2 = los mismos datos reducidos a M02 y M08) para los casos de guardado de la Tanda 1 y de vuelta atrás.
 // Partes: A adversariales con nombre, P propiedades fast-check (semilla fija), F fuzzing con semilla fija.
 // Uso: node tests/adv/tanda2_attack.cjs [RUNS=1000] [FUZZ_N=30000 por objetivo] [SEED=20261117] [MAX_S=60 por objetivo]   (código 1 si algo rompe)
@@ -34,14 +34,10 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
   const D2 = Object.assign({}, D5, { districts: { M02: D5.districts.M02, M08: D5.districts.M08 } });   // la Tanda 1: M03, M01 y M10 sin distrito (muros)
   const { checkDistrict, checkPlaza, FORBIDDEN } = await imp('city/check_district.mjs');
   const { expandModule } = await imp('content_expand.mjs');
-  const MODS = {
-    M01: expandModule('M01', 'Diseño de sistemas', await imp('content.mjs')),
-    M03: expandModule('M03', 'Fundamentos de internet', await imp('content_m03.mjs')),
-    M10: expandModule('M10', 'Ciberseguridad', await imp('content_m10.mjs')),
-    M02: expandModule('M02', 'Fundamentos de ingeniería de software', await imp('content_m02.mjs')),
-    M08: expandModule('M08', 'Redes informáticas', await imp('content_m08.mjs'))
-  };
-  const MIDS = Object.keys(D5.districts), R = D5.radius;
+  const MIDS = Object.keys(D5.districts), R = D5.radius, MODULES = require('../modules.cjs');
+  const MODS = {};
+  for (const m of MIDS) MODS[m] = expandModule(m, MODULES[m].title, await imp(MODULES[m].file));
+
 
   // =================== A. datos: reglas R1-R10 con el contenido real ===================
   for (const mid of NEW) {
@@ -52,21 +48,21 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     // ATAQUE: palabras prohibidas también en el texto de celebración (validate.mjs las aplica a todo el HTML)
     attack(mid + ': celebrate y nombre sin palabras prohibidas', () => { const t = D5.districts[mid].celebrate.text + ' ' + D5.districts[mid].name; const hit = FORBIDDEN.filter((re) => re.test(t)); return hit.length ? hit.join(',') : true; });
   }
-  // ATAQUE: la plaza con 5 portales abiertos (backs, rangos, ORDER) sigue cumpliendo R9/R10
+  // ATAQUE: la plaza con todos los portales abiertos (backs, rangos, ORDER) sigue cumpliendo R9/R10
   attack('checkPlaza(D5) sin errores', () => { const e = checkPlaza(D5); return e.length ? e.join(' | ') : true; });
-  // ATAQUE: el spec promete que ningún nombre de mentor o aprendiz se repite entre los 5 distritos
-  attack('nombres de mentor y aprendiz únicos entre los 5 distritos', () => {
+  // ATAQUE: el spec promete que ningún nombre de mentor o aprendiz se repite entre los distritos
+  attack('nombres de mentor y aprendiz únicos entre todos los distritos', () => {
     const seen = {}, dup = [];
     for (const mid of MIDS) for (const o of [...D5.districts[mid].mentors, ...D5.districts[mid].apprentices]) { const k = o.name.normalize('NFC').toLowerCase(); if (seen[k]) dup.push(o.name + '(' + seen[k] + '/' + mid + ')'); else seen[k] = mid; }
     return dup.length ? 'repetidos: ' + dup.join(', ') : true;
   });
   // ATAQUE: un nombre de distrito, criatura o etiqueta de reparación repetido entre distritos confundiría el HUD y la celebración
-  attack('nombres de distrito y de criatura únicos entre los 5 distritos', () => {
+  attack('nombres de distrito y de criatura únicos entre todos los distritos', () => {
     const all = MIDS.map((m) => D5.districts[m].name).concat(...MIDS.map((m) => D5.districts[m].creatures.map((c) => c.name)));
     const dup = all.filter((x, i) => all.indexOf(x) !== i); return dup.length ? dup.join(', ') : true;
   });
   // ATAQUE: ids de criatura repetidos entre distritos (las variantes de sprites usan mid:id, pero el reporte de batalla usa el id)
-  attack('ids de criatura únicos entre los 5 distritos', () => { const all = [].concat(...MIDS.map((m) => D5.districts[m].creatures.map((c) => c.id))); const dup = all.filter((x, i) => all.indexOf(x) !== i); return dup.length ? dup.join(',') : true; });
+  attack('ids de criatura únicos entre todos los distritos', () => { const all = [].concat(...MIDS.map((m) => D5.districts[m].creatures.map((c) => c.id))); const dup = all.filter((x, i) => all.indexOf(x) !== i); return dup.length ? dup.join(',') : true; });
   // ATAQUE: "solo datos": el registro del spec deja 'M03','M01','M10' en ORDER y con portal
   attack('cada distrito nuevo tiene portal en la plaza y está en ORDER', () => NEW.every((m) => D5.order.includes(m) && D5.plaza.portals.some((p) => p.dist === m)) || 'falta');
 
@@ -122,7 +118,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
   const ALLTRUE = (ids) => Object.fromEntries(ids.map((i) => [i, true]));
   const ids = (l) => l.map((x) => x.id);
   const bossAll = () => true;
-  // ATAQUE: guardado plano anterior a los distritos (sin d) con r01/a01 que existen en los 5: solo migra a M02
+  // ATAQUE: guardado plano anterior a los distritos (sin d) con r01/a01 que existen en todos: solo migra a M02
   attack('guardado plano: r01/a01/a10 solo migran a M02', () => {
     const raw = { prologue: true, beaten: { bit: TODAY, bitflip: TODAY, latencia: TODAY }, repairs: ALLTRUE(['r01', 'r08', 'r09']), taught: ALLTRUE(['a01', 'a07', 'a10']), at: { x: 0, z: -100, yaw: 1 } };
     const C = CS.normalizeCity(raw, D5, bossAll, TODAY);
@@ -131,7 +127,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     if (C.scene !== 'M02') return 'scene=' + C.scene;
     return true;
   });
-  // ATAQUE: guardado de la Tanda 1 (d con M02 y M08) cargado con 5 distritos: los nuevos nacen vacíos, sin route, sin restaurar
+  // ATAQUE: guardado de la Tanda 1 (d con M02 y M08) cargado con todos los distritos: los nuevos nacen vacíos, sin route, sin restaurar
   attack('guardado Tanda 1 en D5: M03/M01/M10 vacíos y sin route', () => {
     const raw = { prologue: true, scene: 'M08', at: { x: 10, z: 10 }, d: { M02: { taught: ALLTRUE(ids(D5.districts.M02.apprentices)) }, M08: { taught: ALLTRUE(ids(D5.districts.M08.apprentices)), route: { done: 10 } } } };
     const C = CS.normalizeCity(raw, D5, bossAll, TODAY);
@@ -159,7 +155,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
   // ATAQUE: r09 existe en M03/M10 pero no en M01 (8 reparaciones): d.M01.repairs.r09 se descarta
   attack('r09 en M01 (que tiene 8 reparaciones) se descarta', () => { const C = CS.normalizeCity({ d: { M01: { repairs: { r09: true, r08: true } } } }, D5, null, TODAY); return Object.keys(C.d.M01.repairs).join() === 'r08' || safeStr(C.d.M01.repairs); });
   // ATAQUE: restauración de varios distritos a la vez: changed en orden de registro, idempotente, rango y poderes
-  attack('applyRestore restaura los 5 a la vez y es idempotente', () => {
+  attack('applyRestore restaura todos a la vez y es idempotente', () => {
     const d = {}; MIDS.forEach((m) => { d[m] = { taught: ALLTRUE(ids(D5.districts[m].apprentices)) }; });
     const C = CS.normalizeCity({ d }, D5, () => false, TODAY);
     if (Object.keys(C.restored).length) return 'restauró sin jefe';
@@ -186,10 +182,11 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     }
     return true;
   });
-  attack('nextObjective en la plaza recorre M03 → M01 → M10', () => {
+  attack('nextObjective en la plaza recorre los distritos en el orden de ORDER', () => {
     const C = CS.normalizeCity({ prologue: true }, D5, null, TODAY), seq = [];
     for (const m of MIDS.concat(['fin'])) { const o = CS.nextObjective(C, D5, 'plaza', null); seq.push(o.id); if (m !== 'fin') C.restored[o.id] = true; }
-    return seq.join() === 'M02,M08,M03,M01,M10,' || 'secuencia=' + seq.join();
+    const want = D5.order.filter((m) => D5.districts[m]).join() + ',';
+    return seq.join() === want || 'secuencia=' + seq.join() + ' esperada=' + want;
   });
   // ATAQUE: nextObjective dentro de cada distrito nuevo con todo aprendido: sin route, pasa a reparaciones y aprendices con ids reales
   attack('nextObjective en M03/M01/M10: sin ruta, ids existentes', () => {
@@ -222,8 +219,8 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     const p = D5.plaza.portals.find((q) => q.dist === 'M03'), C = CS.normalizeCity({ scene: 'plaza', at: { x: p.x, z: p.z } }, D5, null, TODAY);
     return (C.scene === 'plaza' && C.at.x === p.back.x && C.at.z === p.back.z && CM.portalAt(D5, 'plaza', C.at.x, C.at.z) === null) || safeStr(C.at);
   });
-  // ATAQUE: mirror sigue copiando solo M02 con 5 distritos (una pestaña vieja no recibe a01 de M03)
-  attack('mirror con 5 distritos copia solo d.M02', () => {
+  // ATAQUE: mirror sigue copiando solo M02 con todos los distritos (una pestaña vieja no recibe a01 de M03)
+  attack('mirror con todos los distritos copia solo d.M02', () => {
     const C = CS.mirror(CS.normalizeCity({ d: { M02: { taught: { a02: true } }, M03: { taught: { a01: true } } } }, D5, null, TODAY));
     return JSON.stringify(C.taught) === '{"a02":true}' || safeStr(C.taught);
   });
@@ -245,7 +242,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
   const bossArb = fc.oneof(fc.subarray(MIDS).map((s) => (m) => s.includes(m)), fc.constant(() => true), fc.constant(null), fc.constant(() => { throw new Error('x'); }), fc.constant(() => 1));
   const bossRes = (b, m) => { try { return typeof b === 'function' && b(m) === true; } catch (e) { return false; } };
 
-  // REGLA: robustez + lista blanca: nunca lanza; d tiene exactamente los 5 mids; cada clave es un id propio del distrito
+  // REGLA: robustez + lista blanca: nunca lanza; d tiene exactamente los mids de los datos; cada clave es un id propio del distrito
   prop('normalizeCity(D5) robusta y con listas blancas por distrito', fc.tuple(saveArb, bossArb), ([raw, b]) => {
     const C = CS.normalizeCity(raw, D5, b, TODAY);
     assert.deepStrictEqual(Object.keys(C.d), MIDS);
@@ -259,7 +256,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     return true;
   });
   // REGLA: idempotencia tras ida y vuelta por JSON (lo que hacen save/load)
-  prop('normalize(JSON(normalize(x))) == normalize(x) con 5 distritos', fc.tuple(saveArb, bossArb), ([raw, b]) => {
+  prop('normalize(JSON(normalize(x))) == normalize(x) con todos los distritos', fc.tuple(saveArb, bossArb), ([raw, b]) => {
     const A = CS.normalizeCity(raw, D5, b, TODAY), B = CS.normalizeCity(JSON.parse(JSON.stringify(A)), D5, b, TODAY);
     assert.deepStrictEqual(B, A); return true;
   });
@@ -357,7 +354,7 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
     return s;
   }
   const bosses = [() => true, () => false, (m) => m === 'M03' || m === 'M10', null, () => { throw new Error('b'); }];
-  // ATAQUE (fuzz): guardado JSON mutado → normalizeCity + applyRestore + rankOf + nextObjective(plaza) con 5 distritos
+  // ATAQUE (fuzz): guardado JSON mutado → normalizeCity + applyRestore + rankOf + nextObjective(plaza) con todos los distritos
   campaign('normalizeCity/applyRestore/rankOf con guardados mutados', (r) => ({ s: genSave(r), b: Math.floor(r() * bosses.length) }), ({ s, b }) => {
     let raw; try { raw = JSON.parse(s); } catch (e) { raw = s; }
     const bp = bosses[b], C = CS.normalizeCity(raw, D5, bp, TODAY);

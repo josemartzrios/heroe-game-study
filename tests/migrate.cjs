@@ -35,6 +35,12 @@ function diff(a, b, p = '') {
   const yest = dstr(new Date(Date.now() - DAY));
 
   // ===== M. migrate() conserva un estado completo y válido =====
+  // un registro por cada distrito de los datos (el juego guarda todos; no se fija cuántos son)
+  const cityD = (() => {
+    const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'juego_estudio.html'), 'utf8'), cs = html.indexOf('var CITY_DATA = '), ce = html.indexOf(';\n', cs);
+    return Object.fromEntries(Object.keys(JSON.parse(html.slice(cs + 'var CITY_DATA = '.length, ce)).districts).map((id) => [id, { beaten: {}, repairs: {}, taught: {} }]));
+  })();
+  cityD.M02 = { beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true } }; cityD.M08.route = { done: 2 };
   const full = {
     v: 1, xp: 1234.5, days: { last: yest, count: 4 }, session: 7, lastActive: Date.now() - 3600000,
     topics: { 'M08:T04': [1, 0.5, 0, 1], 'M01:T01': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'M02:T03': [] },
@@ -44,8 +50,7 @@ function diff(a, b, p = '') {
     virtues: { constancia: 1700000000000, valentia: 1700000001000 },
     stats: { learnTopics: ['M01:T01', 'M01:T02'], cleared: 3, roundsNoPower: 2, bossFailed: { M08: true } },
     city: { prologue: true, run: true, tips: { talk: true }, scene: 'plaza', at: { x: 3, z: 5, yaw: 1 },
-      d: { M02: { beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true } }, M08: { beaten: {}, repairs: {}, taught: {}, route: { done: 2 } },
-        M03: { beaten: {}, repairs: {}, taught: {} }, M01: { beaten: {}, repairs: {}, taught: {} }, M10: { beaten: {}, repairs: {}, taught: {} } }, restored: {}, powers: {},
+      d: cityD, restored: {}, powers: {},
       beaten: { bit: yest }, repairs: { r01: true }, taught: { a01: true } }   // los tres últimos campos planos son el espejo de d.M02 que escribe save()
   };
   e = L.boot(JSON.stringify(full)); s = resave(e);

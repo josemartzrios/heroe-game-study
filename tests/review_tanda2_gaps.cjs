@@ -95,19 +95,31 @@ const CS = require('../city/story.js');
       e.w.close();
       return { t, rank, errs };
     };
-    { const r = await scenario(['M02', 'M08'], ['M03']);
-      ok('celebración: el 3.º distrito (M03) dice "Subes a ' + RK[2][1] + '." y nunca "Sigues como"', r.t.includes('Subes a ' + RK[2][1] + '.') && !r.t.includes('Sigues como') && r.t.includes(D.districts.M03.celebrate.text), r.t.slice(0, 260)); }
-    { const r = await scenario(['M02', 'M08', 'M03'], ['M01']);
-      ok('celebración: el 4.º distrito (M01) dice exactamente "Sigues como ' + RK[2][1] + '." (sin "te falta" ni "Subes a")', r.t.includes('Sigues como ' + RK[2][1] + '.') && !/te falta/.test(r.t) && !r.t.includes('Subes a'), r.t.slice(0, 260));
-      ok('celebración: el 4.º distrito no anuncia un poder (M01 no tiene) y muestra su texto', !/Poder nuevo/.test(r.t) && r.t.includes(D.districts.M01.celebrate.text) && r.t.includes('¡Distrito restaurado!'), r.t.slice(0, 260));
-      ok('celebración: tras el 4.º distrito el HUD sigue en ' + RK[2][1] + ' y sin errores', r.rank === RK[2][1] && r.errs.length === 0, r.rank + ' ' + r.errs.join('|')); }
-    { const r = await scenario(['M02', 'M08', 'M03', 'M01'], ['M10']);
-      ok('celebración: el 5.º distrito (M10) dice exactamente "Sigues como ' + RK[2][1] + '." (Senior pide 6 y solo hay 5)', r.t.includes('Sigues como ' + RK[2][1] + '.') && !/te falta/.test(r.t) && !r.t.includes('Subes a') && !r.t.includes(RK[3][1]), r.t.slice(0, 260));
-      ok('celebración: el 5.º distrito muestra el texto de M10 y sin errores', r.t.includes(D.districts.M10.celebrate.text) && r.errs.length === 0, r.errs.join('|')); }
-    { const r = await scenario(['M02', 'M08', 'M03'], ['M01', 'M10']);
-      ok('celebración: 4.º y 5.º acumulados (de 3 a 5) en una sola hoja: "Sigues como ' + RK[2][1] + '."', r.t.includes('¡Distritos restaurados!') && r.t.includes(D.districts.M01.name) && r.t.includes(D.districts.M10.name) && r.t.includes('Sigues como ' + RK[2][1] + '.') && !r.t.includes('Subes a'), r.t.slice(0, 260)); }
-    { const r = await scenario(['M02', 'M08'], ['M03', 'M01']);
-      ok('celebración: 3.º y 4.º acumulados (de 2 a 4) cruzan el umbral 3: "Subes a ' + RK[2][1] + '."', r.t.includes('Subes a ' + RK[2][1] + '.') && !r.t.includes('Sigues como'), r.t.slice(0, 260)); }
+    // oráculo de la línea de rango: n distritos restaurados ahora, k de ellos recién restaurados, TOTAL distritos en los datos
+    const TOTAL = MIDS.length, SEQ = D.order.filter((m) => D.districts[m]);   // SEQ: el orden en que la ciudad presenta los distritos
+    const rkName = (n) => RK.reduce((nm, r) => (n >= r[0] ? r[1] : nm), RK[0][1]);
+    const wantLine = (n, k) => {
+      if (rkName(n) !== rkName(n - k)) return 'Subes a ' + rkName(n) + '.';
+      const next = RK.find((r) => r[0] > n && r[0] <= TOTAL);
+      if (!next) return 'Sigues como ' + rkName(n) + '. Llevas ' + n + ' de ' + TOTAL + ' distritos restaurados.';
+      const miss = next[0] - n;
+      return 'Sigues como ' + rkName(n) + ': ' + (miss === 1 ? 'te falta 1 distrito' : 'te faltan ' + miss + ' distritos') + ' para ' + next[1] + '.';
+    };
+    const nth = async (k) => { const id = SEQ[k - 1], r = await scenario(SEQ.slice(0, k - 1), [id]); return { id, r, want: wantLine(k, 1) }; };
+    ok('hay al menos 5 distritos en los datos para los escenarios del 3.º al 5.º', SEQ.length >= 5 && SEQ.length === TOTAL, SEQ.join(','));
+    { const { id, r, want } = await nth(3);
+      ok('celebración: el 3.º distrito (' + id + ') dice exactamente "' + want + '" y su texto', r.t.includes(want) && r.t.includes(D.districts[id].celebrate.text) && (want.indexOf('Subes a') === 0 ? !r.t.includes('Sigues como') : !r.t.includes('Subes a')), r.t.slice(0, 260)); }
+    { const { id, r, want } = await nth(4);
+      ok('celebración: el 4.º distrito (' + id + ') dice exactamente "' + want + '" (sin "Subes a")', r.t.includes(want) && !r.t.includes('Subes a'), r.t.slice(0, 260));
+      ok('celebración: el 4.º distrito no anuncia un poder (' + id + ' no tiene) y muestra su texto', !/Poder nuevo/.test(r.t) && r.t.includes(D.districts[id].celebrate.text) && r.t.includes('¡Distrito restaurado!'), r.t.slice(0, 260));
+      ok('celebración: tras el 4.º distrito el HUD sigue en ' + rkName(4) + ' y sin errores', r.rank === rkName(4) && r.errs.length === 0, r.rank + ' ' + r.errs.join('|')); }
+    { const { id, r, want } = await nth(5);
+      ok('celebración: el 5.º distrito (' + id + ') dice exactamente "' + want + '" (sin "Subes a")', r.t.includes(want) && !r.t.includes('Subes a'), r.t.slice(0, 260));
+      ok('celebración: el 5.º distrito muestra el texto de ' + id + ' y sin errores', r.t.includes(D.districts[id].celebrate.text) && r.errs.length === 0, r.errs.join('|')); }
+    { const ids = SEQ.slice(3, 5), r = await scenario(SEQ.slice(0, 3), ids), want = wantLine(5, 2);
+      ok('celebración: 4.º y 5.º acumulados (de 3 a 5) en una sola hoja: "' + want + '"', r.t.includes('¡Distritos restaurados!') && ids.every((x) => r.t.includes(D.districts[x].name)) && r.t.includes(want) && !r.t.includes('Subes a'), r.t.slice(0, 260)); }
+    { const ids = SEQ.slice(2, 4), r = await scenario(SEQ.slice(0, 2), ids), want = wantLine(4, 2);
+      ok('celebración: 3.º y 4.º acumulados (de 2 a 4) cruzan el umbral 3: "' + want + '"', r.t.includes(want) && !r.t.includes('Sigues como'), r.t.slice(0, 260)); }
 
     // =================== 2. cityRankLine (city/view.js) como unidad, con story.js real ===================
     const viewSrc = fs.readFileSync(path.join(root, 'city', 'view.js'), 'utf8');
@@ -116,28 +128,29 @@ const CS = require('../city/story.js');
     const rankLine = m ? new Function('S', 'CITY_DATA', 'CityStory', m[0] + '\nreturn cityRankLine;') : null;
     const line = (restored, mids, data = D) => rankLine({ city: { restored } }, data, CS)(mids);
     if (rankLine) {
-      // con los datos reales: tabla exacta
+      // con los datos reales: los casos que no dependen de cuántos distritos hay
       ok('rankLine 0→1: "Subes a Junior."', line({ M02: true }, ['M02']) === 'Subes a Junior.', line({ M02: true }, ['M02']));
       ok('rankLine 1→2: singular "te falta 1 distrito"', line({ M02: true, M08: true }, ['M08']) === 'Sigues como Junior: te falta 1 distrito para Semi-senior.', line({ M02: true, M08: true }, ['M08']));
       ok('rankLine 2→3: "Subes a Semi-senior."', line({ M02: true, M08: true, M03: true }, ['M03']) === 'Subes a Semi-senior.');
-      ok('rankLine 3→4: "Sigues como Semi-senior. Llevas 4 de 5…" (Senior = 6 > 5 distritos)', line({ M02: true, M08: true, M03: true, M01: true }, ['M01']) === 'Sigues como Semi-senior. Llevas 4 de 5 distritos restaurados.', line({ M02: true, M08: true, M03: true, M01: true }, ['M01']));
-      ok('rankLine 4→5: "Sigues como Semi-senior. Llevas 5 de 5…"', line(set(MIDS), ['M10']) === 'Sigues como Semi-senior. Llevas 5 de 5 distritos restaurados.');
-      ok('rankLine 0→5 de una vez: "Subes a Semi-senior."', line(set(MIDS), MIDS.slice()) === 'Subes a Semi-senior.');
+      ok('rankLine todos de una vez: "Subes a ' + rkName(TOTAL) + '."', line(set(MIDS), MIDS.slice()) === 'Subes a ' + rkName(TOTAL) + '.', line(set(MIDS), MIDS.slice()));
       ok('rankLine: mids repetidos e inexistentes no cambian la línea (M08, M08, M99)', line({ M02: true, M08: true }, ['M08', 'M08', 'M99']) === 'Sigues como Junior: te falta 1 distrito para Semi-senior.');
       ok('rankLine: restored null no lanza', (() => { try { return typeof line(null, ['M02']) === 'string'; } catch (e) { return false; } })());
-      // todas las combinaciones reales (restaurados R, recién restaurados M ⊆ R, M no vacío): el plural no se alcanza con 5 distritos
-      const seen = new Set();
+      // todas las combinaciones reales (restaurados R, recién restaurados M ⊆ R, M no vacío) contra el oráculo
+      const bad = [], seen = new Set();
       for (let mask = 1; mask < 1 << MIDS.length; mask++) {
         const R0 = MIDS.filter((_, i) => mask & (1 << i));
-        for (let sub = 1; sub < 1 << R0.length; sub++) seen.add(line(set(R0), R0.filter((_, i) => sub & (1 << i))));
+        for (let sub = 1; sub < 1 << R0.length; sub++) {
+          const fresh = R0.filter((_, i) => sub & (1 << i)), got = line(set(R0), fresh), want = wantLine(R0.length, fresh.length);
+          seen.add(got); if (got !== want && bad.length < 3) bad.push(R0.length + '/' + fresh.length + ': "' + got + '" ≠ "' + want + '"');
+        }
       }
-      const want = ['Subes a Junior.', 'Subes a Semi-senior.', 'Sigues como Junior: te falta 1 distrito para Semi-senior.', 'Sigues como Semi-senior. Llevas 4 de 5 distritos restaurados.', 'Sigues como Semi-senior. Llevas 5 de 5 distritos restaurados.'];
-      ok('rankLine: con los 5 distritos reales solo salen estas 5 líneas y nunca el plural "te faltan"', seen.size === want.length && want.every((x) => seen.has(x)) && ![...seen].some((x) => /te faltan/.test(x)), [...seen].join(' | '));
-      // plural: solo con datos no reales (rangos de prueba o un restored sin normalizar)
+      ok('rankLine: las ' + (3 ** TOTAL - 2 ** TOTAL) + ' combinaciones (restaurados × recién restaurados) dan la línea del oráculo', bad.length === 0, bad.join(' | '));
+      ok('rankLine: salen líneas "Subes a", "te falta 1" y, si hay un rango por alcanzar, "te faltan N"', [...seen].some((x) => /^Subes a/.test(x)) && [...seen].some((x) => /te falta 1 distrito/.test(x)) && [...seen].some((x) => /^Sigues como [^:]+\. Llevas /.test(x) || /te faltan/.test(x)), [...seen].join(' | '));
+      // plural y límites con rangos de prueba (el número de distritos real es TOTAL)
       const withRanks = (ranks) => Object.assign({}, D, { ranks });
       ok('rankLine plural: con un rango a 4, de 1 a 2 dice "te faltan 2 distritos"', line({ M02: true, M08: true }, ['M08'], withRanks([[0, 'Becario'], [1, 'Junior'], [4, 'Senior']])) === 'Sigues como Junior: te faltan 2 distritos para Senior.', line({ M02: true, M08: true }, ['M08'], withRanks([[0, 'Becario'], [1, 'Junior'], [4, 'Senior']])));
-      ok('rankLine límite: un rango que pide justo los 5 distritos sí se anuncia', line({ M02: true, M08: true, M03: true }, ['M03'], withRanks([[0, 'Becario'], [1, 'Junior'], [5, 'Senior']])) === 'Sigues como Junior: te faltan 2 distritos para Senior.');
-      ok('rankLine límite: un rango que pide 6 (uno más que los distritos) no se anuncia', line({ M02: true, M08: true, M03: true }, ['M03'], withRanks([[0, 'Becario'], [1, 'Junior'], [6, 'Senior']])) === 'Sigues como Junior. Llevas 3 de 5 distritos restaurados.');
+      ok('rankLine límite: un rango que pide justo los ' + TOTAL + ' distritos sí se anuncia', line({ M02: true, M08: true, M03: true }, ['M03'], withRanks([[0, 'Becario'], [1, 'Junior'], [TOTAL, 'Senior']])) === 'Sigues como Junior: te faltan ' + (TOTAL - 3) + ' distritos para Senior.');
+      ok('rankLine límite: un rango que pide ' + (TOTAL + 1) + ' (uno más que los distritos) no se anuncia', line({ M02: true, M08: true, M03: true }, ['M03'], withRanks([[0, 'Becario'], [1, 'Junior'], [TOTAL + 1, 'Senior']])) === 'Sigues como Junior. Llevas 3 de ' + TOTAL + ' distritos restaurados.');
       ok('rankLine plural con un restored sin normalizar ({M08: "true"} no cuenta)', line({ M02: true, M08: 'true' }, ['M08']) === 'Sigues como Junior: te faltan 2 distritos para Semi-senior.', line({ M02: true, M08: 'true' }, ['M08']));
     }
 

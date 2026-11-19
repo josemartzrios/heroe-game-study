@@ -155,7 +155,8 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       const e = boot(seed);
       quick(e);   // fuerza save()
       const s = saved(e.w).city;
-      ok('RF1 guardado de la Tanda 1: tras guardar, M03, M01 y M10 existen vacíos', ['M03', 'M01', 'M10'].every((m) => s.d[m] && keys(s.d[m].beaten) === '[]' && keys(s.d[m].repairs) === '[]' && keys(s.d[m].taught) === '[]' && !('route' in s.d[m])), JSON.stringify(s.d));
+      const MISSING = Object.keys(D.districts).filter((m) => m !== 'M02' && m !== 'M08');   // los distritos que el guardado de la Tanda 1 no traía
+      ok('RF1 guardado de la Tanda 1: tras guardar, los distritos que faltaban (' + MISSING.join(', ') + ') existen vacíos', MISSING.length > 0 && MISSING.every((m) => s.d[m] && keys(s.d[m].beaten) === '[]' && keys(s.d[m].repairs) === '[]' && keys(s.d[m].taught) === '[]' && !('route' in s.d[m])), JSON.stringify(s.d));
       L.click(e.w, e.d.querySelector('[data-act="back"]'));
       for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
       ok('RF1 el HUD dice "Distritos 0 de N" con N = distritos de los datos y sin errores', e.d.querySelector('#city-rest').textContent === 'Distritos 0 de ' + NDIST && e.errors.length === 0, e.d.querySelector('#city-rest').textContent + ' ' + e.errors.join('|'));

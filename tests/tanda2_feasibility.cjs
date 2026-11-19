@@ -1,11 +1,12 @@
 // Factibilidad de datos del spec 2026-11-17-ciudad-tanda-2-design.md (M03, M01, M10) contra el contenido REAL.
-// Transcribe las tablas del spec, arma cada distrito con el marco geométrico del spec y city/layout.mjs (igual que
-// city/districts/m08.mjs pero sin pads) y pasa city/check_district.mjs (R1–R7). Solo lee datos; no depende de build.mjs.
+// Transcribe las tablas del spec, arma cada distrito con standardFrame() y people() de city/layout.mjs y pasa city/check_district.mjs (R1–R7);
+// las reglas entre todos los distritos registrados vienen de district_rules.cjs. Solo lee datos; no depende de build.mjs.
 const path = require('path');
 const { pathToFileURL } = require('url');
 const root = path.join(__dirname, '..');
 const imp = (f) => import(pathToFileURL(path.join(root, f)).href);
 const assert = require('assert');
+const R = require('./district_rules.cjs');
 const same = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catch (e) { return false; } };
 const results = [];
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
@@ -76,40 +77,27 @@ const SPEC = {
   }
 };
 
-// ---- Marco geométrico común (spec §Geometría) ----
-const BLOCK_X = [-42, -14, 14, 42], BLOCK_Z = [30, 2, -26, -54];
-const STREET_X = [-28, 0, 28], STREET_Z = [16, -12, -40];
-
-function build(id, s, makeLayout) {
-  const tower = { id: 'torre', x: 0, z: -64, w: 8, d: 8, h: 20 };
-  const entry = { x: 0, z: 52, yaw: 0 };
-  const lay = makeLayout({ reserve: [[tower.x, tower.z], [entry.x, entry.z]], streetX: STREET_X, streetZ: STREET_Z, xRange: [-52, 52], zRange: [52, -68], step: 8, min: 7 });
-  const take = () => lay.take();
-  const mentors = s.mentors.split(', ').map((name, i) => ({ id: 'm' + pad(i + 1), topic: T(i + 1), name, ...take() }));
-  const creatures = s.creatures.map(([cid, name, topics]) => { const p = take(); return { id: cid, name, topics, area: { x: p.x, z: p.z, r: 6 } }; });
-  const repairs = s.repairs.map(([topic, label], i) => ({ id: 'r' + pad(i + 1), topic, label, ...take() }));
-  const apprentices = s.apprentices.map(([name, topic, modo], i) => ({ id: 'a' + pad(i + 1), topic, name, mode: MODE[modo], ...take() }));
-  return {
-    id, name: s.name, colors: s.colors, style: s.style, seed: s.seed,
-    bounds: { minX: -60, maxX: 60, minZ: -70, maxZ: 60 },
-    entry, exit: { x: 0, z: 57, w: 6, d: 2 },
-    streets: { x: STREET_X, z: STREET_Z },
-    blocks: BLOCK_X.flatMap((x) => BLOCK_Z.map((z) => [x, z])),
-    mentors, creatures, repairs, apprentices, tower, need: s.need,
-    celebrate: { text: s.celebrate }
-  };
+function build(id, s, standardFrame, people) {
+  const { lay, tower, entry, exit, bounds, streets, blocks } = standardFrame();
+  const who = people(lay, {
+    mentors: s.mentors.split(', '),
+    creatures: s.creatures.map(([cid, name, topics]) => ({ id: cid, name, topics })),
+    repairs: s.repairs,
+    apprentices: s.apprentices.map(([name, topic, modo]) => [name, topic, MODE[modo]])
+  });
+  return { id, name: s.name, colors: s.colors, style: s.style, seed: s.seed, bounds, entry, exit, streets, blocks, ...who, tower, need: s.need, celebrate: { text: s.celebrate } };
 }
 
 (async () => {
-  const { makeLayout } = await imp('city/layout.mjs');
+  const { standardFrame, people } = await imp('city/layout.mjs');
   const { checkDistrict, FORBIDDEN } = await imp('city/check_district.mjs');
   const { expandModule } = await imp('content_expand.mjs');
   const { city } = await imp('city/districts.mjs');
 
-  // lugares disponibles en el marco sin pads (informativo y para "take() alcanza")
-  const probe = makeLayout({ reserve: [[0, -64], [0, 52]], streetX: STREET_X, streetZ: STREET_Z, xRange: [-52, 52], zRange: [52, -68], step: 8, min: 7 });
+  // lugares disponibles en el marco común (informativo y para "take() alcanza")
+  const probe = standardFrame().lay;
   let spots = 0; try { for (;;) { probe.take(); spots++; } } catch (e) { /* fin de lugares */ }
-  ok('marco: makeLayout sin pads da más de 44 lugares (spec)', spots > 44, `lugares=${spots}`);
+  ok('marco: standardFrame() da más de 44 lugares (spec)', spots > 44, `lugares=${spots}`);
 
   const built = {};
   for (const [id, s] of Object.entries(SPEC)) {
@@ -130,7 +118,7 @@ function build(id, s, makeLayout) {
 
     let dist = null;
     const needed = s.topicCount + s.creatures.length + s.repairs.length + s.apprentices.length;
-    try { dist = build(id, s, makeLayout); } catch (e) { /* sin lugares */ }
+    try { dist = build(id, s, standardFrame, people); } catch (e) { /* sin lugares */ }
     ok(`${id}: take() alcanza para ${needed} lugares sin pads ni ajustes`, !!dist, `lugares=${spots}`);
     if (!dist) continue;
     built[id] = dist;
@@ -161,33 +149,15 @@ function build(id, s, makeLayout) {
     ok(`${id}: sin palabras prohibidas (FORBIDDEN)`, hits.length === 0, hits.join(' | '));
   }
 
-  // ---- entre los cinco distritos ----
-  const five = { M02: city.districts.M02, M08: city.districts.M08, ...built };
-  ok('existen los cinco distritos para comparar', Object.keys(five).length === 5 && Object.values(five).every(Boolean), Object.keys(five).join(','));
-  const people = Object.entries(five).flatMap(([id, d]) => [...d.mentors, ...d.apprentices].map((p) => [p.name, id]));
-  const byName = {};
-  for (const [n, id] of people) (byName[n] = byName[n] || []).push(id);
-  const clash = Object.entries(byName).filter(([, ids]) => ids.length > 1).map(([n, ids]) => `${n}(${ids.join('/')})`);
-  ok('ningún nombre de mentor/aprendiz se repite entre M02, M08, M03, M01 y M10', clash.length === 0, clash.join(' '));
-  // también sin distinguir mayúsculas ni acentos (Óscar/Oscar)
-  const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const folded = people.map(([n]) => fold(n));
-  const fclash = [...new Set(folded.filter((n, i) => folded.indexOf(n) !== i))];
-  ok('nombres únicos también sin acentos ni mayúsculas', fclash.length === 0, fclash.join(' '));
-  // cada distrito tiene al menos un color que no usa ningún otro
-  for (const [id, d] of Object.entries(five)) {
-    const others = Object.entries(five).filter(([k]) => k !== id).flatMap(([, o]) => [o.colors.a, o.colors.b]);
-    ok(`${id}: tiene al menos un color propio`, !others.includes(d.colors.a) || !others.includes(d.colors.b), d.colors.a + ' ' + d.colors.b);
-  }
-  // nombres que se confunden: mismo inicio de 4 letras (sin acentos) entre personas distintas
-  const pre = (n) => fold(n).slice(0, 4);
-  const near = [];
-  for (let i = 0; i < people.length; i++) for (let j = i + 1; j < people.length; j++) if (pre(people[i][0]) === pre(people[j][0]) && people[i][0].length >= 4 && people[j][0].length >= 4) near.push(people[i][0] + '/' + people[j][0]);
-  ok('ningún nombre de mentor/aprendiz se parece a otro (mismo inicio de 4 letras)', near.length === 0, near.join(' '));
-  const seeds = Object.values(five).map((d) => d.seed);
-  ok('seed distinto en los cinco distritos', new Set(seeds).size === seeds.length, seeds.join(','));
-  const names = Object.values(five).map((d) => d.name);
-  ok('nombre de distrito distinto en los cinco', new Set(names).size === names.length, names.join(','));
+  // ---- entre todos los distritos registrados ----
+  const all = city.districts, ids = Object.keys(all);
+  ok('los distritos de la tabla están registrados', Object.keys(SPEC).every((id) => all[id]), ids.join(','));
+  const clash = R.nameClashes(all);
+  ok('ningún nombre de mentor/aprendiz se repite ni se parece a otro (regla fonética de district_rules)', clash.length === 0, clash.join(' '));
+  const own = R.ownColorProblems(all);
+  ok('cada distrito tiene al menos un color que no usa ningún otro', own.length === 0, own.join(' | '));
+  ok('seed distinto en todos los distritos', R.repeated(all, 'seed').length === 0, R.repeated(all, 'seed').join(','));
+  ok('nombre de distrito distinto en todos los distritos', R.repeated(all, 'name').length === 0, R.repeated(all, 'name').join(','));
 
   const fails = results.filter((r) => r[0] === 'FAIL'); results.forEach((r) => console.log(r.join(' ')));
   console.log(fails.length ? 'FALLAS ' + fails.length : 'TANDA 2 FACTIBLE OK (' + results.length + ')'); process.exit(fails.length ? 1 : 0);

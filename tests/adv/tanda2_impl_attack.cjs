@@ -78,14 +78,11 @@ function rankLineWith(D) {
   const D5 = (await imp('city/districts.mjs')).city;
   const { checkDistrict, checkPlaza } = await imp('city/check_district.mjs');
   const { expandModule } = await imp('content_expand.mjs');
-  const MODS = {
-    M01: expandModule('M01', 'Diseño de sistemas', await imp('content.mjs')),
-    M03: expandModule('M03', 'Fundamentos de internet', await imp('content_m03.mjs')),
-    M10: expandModule('M10', 'Ciberseguridad', await imp('content_m10.mjs')),
-    M02: expandModule('M02', 'Fundamentos de ingeniería de software', await imp('content_m02.mjs')),
-    M08: expandModule('M08', 'Redes informáticas', await imp('content_m08.mjs'))
-  };
-  const MIDS = Object.keys(D5.districts), DIST = D5.districts;
+  const MIDS = Object.keys(D5.districts), DIST = D5.districts, MODULES = require('../modules.cjs');
+  const MODS = {};
+  for (const m of MIDS) MODS[m] = expandModule(m, MODULES[m].title, await imp(MODULES[m].file));
+  const FIRST_WALL = D5.order.find((m) => !DIST[m]);   // el primer módulo del orden que todavía no tiene distrito (muro "Próximamente")
+
   const clone = (x) => JSON.parse(JSON.stringify(x));
   const mkD = (districts, extra) => Object.assign({ ranks: D5.ranks, order: D5.order, radius: D5.radius, plaza: D5.plaza, districts }, extra || {});
 
@@ -108,8 +105,8 @@ function rankLineWith(D) {
     return errs.length ? errs.join(' | ') : true;
   });
   // ATAQUE: D.order[0] que no es un distrito (p.ej. un muro "Próximamente" primero en ORDER): ningún distrito queda como referencia y M02 pierde su aspecto
-  await attack('S3 order ["M04", ...ORDER] (M04 sin distrito): M02 conserva el aspecto de referencia', () => {
-    const SP = SP_NEW(mkD(DIST, { order: ['M04'].concat(D5.order) }));
+  await attack('S3 order [muro, ...ORDER] (el primer módulo sin distrito primero): M02 conserva el aspecto de referencia', () => {
+    const SP = SP_NEW(mkD(DIST, { order: [FIRST_WALL].concat(D5.order) }));
     const lost = DIST.M02.creatures.filter((c) => !isRefLook(creatureCell(SP, 'M02:' + c.id))).map((c) => c.id);
     return lost.length ? lost.length + '/' + DIST.M02.creatures.length + ' criaturas de M02 teñidas con ' + DIST.M02.colors.a + ' (ningún distrito es la referencia)' : true;
   });
@@ -168,7 +165,7 @@ function rankLineWith(D) {
 
   // =================== K. check_district / checkPlaza ===================
   const r11 = (c) => !(c && hexOk(c.a) && hexOk(c.b));
-  // REGLA (oráculo): con los 5 distritos reales y colors arbitrario, la salida es exactamente [R11] o [] según el oráculo
+  // REGLA (oráculo): con los distritos reales y colors arbitrario, la salida es exactamente [R11] o [] según el oráculo
   prop('K-P1 checkDistrict: colors arbitrario → errores = R11 exacto según oráculo', fc.tuple(fc.constantFrom(...MIDS), fc.oneof(colorsArb, fc.anything())), ([m, colors]) => {
     const dist = Object.assign({}, DIST[m], { colors }), e = checkDistrict(dist, MODS[m]);
     const want = r11(colors) ? ['R11: ' + m + ': colors.a y colors.b deben ser colores #rrggbb'] : [];
@@ -182,12 +179,12 @@ function rankLineWith(D) {
   });
   // ATAQUE: ORDER[0] no es un distrito existente (la referencia de los sprites queda vacía) pero ORDER tiene portal para todos
   await attack('K2 checkPlaza: ORDER y portales reordenados con un muro primero siguen siendo válidos (documenta S3)', () => {
-    const D = mkD(DIST, { order: ['M04'].concat(D5.order.filter((m) => m !== 'M04')) }), e = checkPlaza(D);
+    const D = mkD(DIST, { order: [FIRST_WALL].concat(D5.order.filter((m) => m !== FIRST_WALL)) }), e = checkPlaza(D);
     return e.length === 0 || 'checkPlaza ya lo rechaza: ' + safeStr(e);
   });
-  // ATAQUE (fuzz): colors mutados byte a byte en los 5 distritos → checkDistrict nunca lanza y R11 coincide con el oráculo
+  // ATAQUE (fuzz): colors mutados byte a byte en todos los distritos → checkDistrict nunca lanza y R11 coincide con el oráculo
   const HEXCH = '0123456789abcdefABCDEFgG#xX \n\u0000‮٣０';
-  campaign('K-F checkDistrict con colors mutados en los 5 distritos', (r) => {
+  campaign('K-F checkDistrict con colors mutados en todos los distritos', (r) => {
     const m = pick(r, MIDS), mut = (s) => { s = String(s); const t = r(); if (t < 0.3) return s; const i = Math.floor(r() * (s.length + 1)); if (t < 0.55) return s.slice(0, i) + pick(r, HEXCH) + s.slice(i + 1); if (t < 0.75) return s.slice(0, i) + pick(r, HEXCH) + s.slice(i); if (t < 0.9) return s.slice(0, i) + s.slice(i + 1); return pick(r, [null, 0, true, [], {}, undefined]); };
     const c = DIST[m].colors, colors = r() < 0.9 ? { a: mut(c.a), b: mut(c.b) } : pick(r, [null, [], 'x', 0, { a: c.a }]);
     return { m, colors };
@@ -324,12 +321,13 @@ function rankLineWith(D) {
     const t = await enter(e); e.w.close();
     return (t.includes('Subes a Semi-senior.') && !t.includes('Sigues como') && e.errors.length === 0) || t.slice(0, 240) + ' ' + e.errors.join('|');
   });
-  // ATAQUE: 4.º y 5.º a la vez (3 → 5): no hay rango siguiente alcanzable con 5 distritos → "Sigues como Semi-senior." sin "te falta"
-  await attack('V2 jsdom: M01 y M10 a la vez (3 → 5) → "Sigues como Semi-senior." y título plural', async () => {
+  // ATAQUE: 4.º y 5.º a la vez (3 → 5): la línea es la del oráculo con el número real de distritos (sin "Subes a": el rango no cambia)
+  await attack('V2 jsdom: M01 y M10 a la vez (3 → 5) → la línea del oráculo y título plural', async () => {
     const e = boot(JSON.stringify(base({ boss: passed(MIDS), city: { prologue: true, d: { M02: { taught: allT('M02') }, M08: { taught: allT('M08') }, M03: { taught: allT('M03') }, M01: { taught: lessOne('M01') }, M10: { taught: lessOne('M10') } } } })));
     teachOut(e, 'M01', lastA('M01')); teachOut(e, 'M10', lastA('M10'));
     const t = await enter(e); e.w.close();
-    return (t.includes('Sigues como Semi-senior.') && !/Subes a|te falta/.test(t) && t.includes('¡Distritos restaurados!') && t.includes(DIST.M01.name) && t.includes(DIST.M10.name) && e.errors.length === 0) || t.slice(0, 260) + ' ' + e.errors.join('|');
+    const want = oracleLine({ M02: true, M08: true, M03: true, M01: true, M10: true }, ['M01', 'M10']);
+    return (t.includes(want) && !/Subes a/.test(t) && t.includes('¡Distritos restaurados!') && t.includes(DIST.M01.name) && t.includes(DIST.M10.name) && e.errors.length === 0) || 'esperaba "' + want + '": ' + t.slice(0, 260) + ' ' + e.errors.join('|');
   });
   // ATAQUE: guardado con restored/powers hostiles (todo restaurado, __proto__ propio) y nada enseñado: la celebración del 1.º real dice "Subes a Junior."
   await attack('V3 jsdom: restored hostil en el guardado no altera la línea de rango', async () => {
