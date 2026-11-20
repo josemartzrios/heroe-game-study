@@ -99,7 +99,6 @@ function build(id, s, standardFrame, people) {
   let spots = 0; try { for (;;) { probe.take(); spots++; } } catch (e) { /* fin de lugares */ }
   ok('marco: standardFrame() da más de 44 lugares (spec)', spots > 44, `lugares=${spots}`);
 
-  const built = {};
   for (const [id, s] of Object.entries(SPEC)) {
     const mod = expandModule(id, s.title, await imp(s.file));
     const ids = mod.topics.map((t) => t.id);
@@ -121,7 +120,6 @@ function build(id, s, standardFrame, people) {
     try { dist = build(id, s, standardFrame, people); } catch (e) { /* sin lugares */ }
     ok(`${id}: take() alcanza para ${needed} lugares sin pads ni ajustes`, !!dist, `lugares=${spots}`);
     if (!dist) continue;
-    built[id] = dist;
 
     const errs = checkDistrict(dist, mod);
     ok(`${id}: checkDistrict R1–R7 sin errores`, errs.length === 0, errs.join(' | '));

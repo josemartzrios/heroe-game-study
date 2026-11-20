@@ -6,7 +6,6 @@
 // Uso: node tests/adv/tanda3_plan_attack.cjs [RUNS=1000] [FUZZ_N=100000 por objetivo] [SEED=20261118] [MAX_S=60 por objetivo]   (código 1 si algo rompe)
 const fc = require('fast-check');
 const fs = require('fs');
-const os = require('os');
 const vm = require('vm');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -59,7 +58,6 @@ function rankLineWith(D) {
 
 (async () => {
   const REAL = (await imp(path.join(root, 'city/districts.mjs'))).city;
-  const REAL_JSON = JSON.stringify(REAL);
   const { makeLayout, standardFrame } = await imp(path.join(root, 'city/layout.mjs'));
 
   const refSpots = (() => { const l = makeLayout({ reserve: [[0, -64], [0, 52]], streetX: [-28, 0, 28], streetZ: [16, -12, -40], xRange: [-52, 52], zRange: [52, -68] }); const s = []; try { for (;;) s.push(l.take()); } catch (e) { /* fin */ } return s; })();
@@ -202,9 +200,8 @@ function rankLineWith(D) {
   }, ({ restored, mids }) => (FORMS.test(RL(restored, mids)) ? null : 'forma inválida: ' + RL(restored, mids)));
 
   // ---------------- salida ----------------
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* nada */ }
   results.forEach((r) => console.log(r.filter(Boolean).join(' ')));
   const fails = results.filter((r) => r[0] === 'FAIL');
   console.log(`\n${attacks} ataques, ${props} propiedades × ${RUNS}, ${fuzzTotal} entradas de fuzzing; ${fails.length} FAIL de ${results.length}`);
   process.exit(fails.length ? 1 : 0);
-})().catch((e) => { console.error(e); try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (x) { /* nada */ } process.exit(1); });
+})().catch((e) => { console.error(e); process.exit(1); });
