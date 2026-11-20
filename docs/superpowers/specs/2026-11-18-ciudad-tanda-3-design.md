@@ -70,3 +70,12 @@ Tabla 0/1/3/6/8/11: restaurar el 6.º da **Senior**, el 8.º **Arquitecto**; Tec
 ## Fuera de alcance
 
 Estilos visuales nuevos, el artículo del botón de portal, M05, M09 y M11.
+
+## Cambios de la implementación
+
+- **`standardFrame()`** quedó como el spec lo pide; `CITY_DATA` y el HTML de los 5 distritos de antes salieron idénticos byte a byte (comparados antes y después del refactor).
+- **Pruebas calculadas desde los datos:** `tests/modules.cjs` (id → archivo y título, contrastado con `build.mjs`) y `tests/district_rules.cjs` (regla de nombres, colores propios, seeds y nombres únicos) sirven a todas las pruebas de distritos; `migrate`, `review_tanda2_gaps`, `tanda2_*` y `city_progress` ya no fijan cuántos distritos hay. En la regla fonética, `gue/gui` conservan el sonido /g/ (el orden literal del spec las habría vuelto /j/) y una racha de letras repetidas cuenta como una.
+- **Humo en Chromium** (390 × 844, 320 × 640 y 1280 × 800; 46 comprobaciones, 0 errores de consola, `pageerror` ni `requestfailed`): los tres distritos se entran desde su portal, se habla con su primer mentor y se vuelve a la plaza; `#city-act` cabe en el ancho en los tres tamaños. Peor caso del HUD (dentro de M06 al 100 %, Arquitecto, nivel ≥ 5 con Correr, 320 × 640): `.city-hud` ocupa el 22 % del alto, `#city-rest` no se recorta y no hay desplazamiento horizontal. La hoja de celebración a 320 px (4.º: «Sigues como Semi-senior: te faltan 2 distritos para Senior.»; 8.º: «Subes a Arquitecto.») muestra título, línea de rango y Cerrar sin desplazar, no desborda y el foco cae en Cerrar; tras Escape queda en `#city-pause`.
+- **Criaturas:** en las 12 de M06 y M07 se ven los ojos y la marca de color, y la forma cambia dentro de cada distrito. La primera criatura de M08 y la de M04 tienen la misma forma y se distinguen solo por el color (verde frente a turquesa, ΔE ≈ 14): no se confunden, pero es el par más cercano.
+- **Atlas:** personas 112 × 3 094 px y criaturas 28 × 658 px con 8 distritos (como se esperaba, unos 3 100 px de alto).
+- **Entrar a un portal:** pisar el rectángulo del portal entra al distrito por sí solo; el botón «Entrar a …» aparece a menos de 4 m (comprobado a 3,6 m).
