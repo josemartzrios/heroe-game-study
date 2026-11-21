@@ -530,45 +530,86 @@ function cityPractice(id) {
   cityReleaseUi();
   startRound({ kind: 'quiz', title: 'Quiz', mid: CD.scene, back: { name: 'city' }, city: { kind: 'practice', id: id, mid: CD.scene } }, itemsFor('quiz', mod(CD.scene), o.topic));
 }
-/* Enseñar (explicar): el aprendiz pide explicación; hay que elegir los 3 puntos clave del tema entre 6 */
-function cityKpPool(o) {
-  var m = mod(CD.scene), own = shuffle(m.tById[o.topic].keyPoints).slice(0, 3).map(function (t) { return { t: t, own: true }; });
-  var others = []; m.topics.forEach(function (tp) { if (tp.id !== o.topic) tp.keyPoints.forEach(function (k) { others.push(k); }); });
-  var foreign = shuffle(others).slice(0, 3).map(function (t) { return { t: t, own: false }; });
-  return shuffle(own.concat(foreign));
+/* Enseñar escribiendo. CD.teach = { id, o, mode, step: 'write' | 'review', text, item, checks, miss, ready }; solo vive en memoria (el texto del jugador nunca se guarda).
+   Escribir no repinta la hoja: el listener `input` solo toca el contador y el botón. El texto va siempre por .value (nunca dentro del HTML). */
+function cityTeachNeed(T) { return T.mode === 'correct' ? CityTeach.MIN_WORDS_FIX : CityTeach.MIN_WORDS_EXPLAIN; }
+function cityTeachCount(T) {
+  var need = cityTeachNeed(T), left = need - CityTeach.norm(T.text).length;
+  if (left <= 0) return { ready: true, text: 'Listo' };
+  return { ready: false, text: (left === 1 ? 'Falta 1 palabra' : 'Faltan ' + left + ' palabras') + ' de ' + need };
 }
-function cityTeachExplain(o, fresh, focusI) {
-  if (!CD) return;
-  var m = mod(CD.scene), tp = m.tById[o.topic];
-  if (fresh || !CD.teach || CD.teach.id !== o.id) CD.teach = { id: o.id, o: o, items: cityKpPool(o), picked: {}, checked: false };
-  var T = CD.teach, n = Object.keys(T.picked).length;
-  var rows = T.items.map(function (it, i) {
-    var on = !!T.picked[i], bad = T.checked && on && !it.own;
-    return '<li><button class="btn kp' + (bad ? ' bad' : '') + '" data-act="cx" data-c="kp" data-i="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '"' + (T.checked ? ' disabled' : '') + '>' + fmt(it.t) + (bad ? ' <strong>De otro tema</strong>' : '') + '</button></li>';
+function cityTeachChip(T) { return '<div class="chips"><span class="chip">' + esc('Enseñar a ' + T.o.name + ' · ' + T.o.topic) + '</span></div>'; }
+function cityTeachActions(first) { return '<div class="actions">' + first + '<button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div>'; }
+function cityTeachWriteHtml(T, tp) {
+  var c = cityTeachCount(T), miss = '';
+  if (T.miss) miss = '<div class="teach-miss" role="status" tabindex="-1"><strong>' + esc(T.mode === 'correct' ? 'Revisa la versión correcta' : 'Te faltó:') + '</strong>' +
+    (T.mode === 'correct' ? '' : '<ul class="kp">' + T.miss.map(function (k) { return '<li>' + fmt(k) + '</li>'; }).join('') + '</ul>') + '</div>';
+  var title = '¿Me explicas ' + tp.title + '?';
+  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">' + esc(title) + '</h2>' + miss +
+    '<label class="teach-label" for="city-teach-text">Explícalo con tus palabras</label>' +
+    '<textarea id="city-teach-text" rows="8" maxlength="' + CityTeach.MAX_CHARS + '" autocapitalize="sentences" autocorrect="off" spellcheck="false" autocomplete="off" aria-describedby="city-count"></textarea>' +
+    '<p class="meta" id="city-count">' + esc(c.text) + '</p>' +
+    cityTeachActions('<button class="btn primary" data-act="cx" data-c="teach-send"' + (c.ready ? '' : ' disabled') + '>Revisar</button>') + '</article>';
+}
+function cityTeachReviewHtml(T, tp) {
+  var kps = tp.keyPoints, n = T.checks.filter(Boolean).length, need = Math.min(CityTeach.PASS_POINTS, kps.length);
+  var rows = kps.map(function (k, i) {
+    return '<li><label class="vitem teach-chk"><input type="checkbox" data-k="' + i + '"' + (T.checks[i] ? ' checked' : '') + '><span>' + fmt(k) + (T.checks[i] ? ' <strong class="st">Lo detecté</strong>' : '') + '</span></label></li>';
   }).join('');
-  var act = T.checked ? '<button class="btn primary" data-act="cx" data-c="retry-teach">Reintentar</button>' : '<button class="btn primary" data-act="cx" data-c="teach-go"' + (n === 3 ? '' : ' disabled') + '>Explicar</button>';
-  var html = '<article class="qcard"><div class="chips"><span class="chip">' + esc('Enseñar a ' + o.name + ' · ' + tp.id) + '</span></div><h2 class="prompt">' + esc('¿Me explicas ' + tp.title + '?') + '</h2>' +
-    '<p class="meta" id="city-count" aria-live="polite">' + n + ' de 3</p><ul class="vlist">' + rows + '</ul><div class="actions">' + act + '<button class="btn" data-act="cx" data-c="sheetclose">Cerrar</button></div></article>';
+  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">Esto es lo que entendí</h2>' +
+    '<p class="meta">' + esc(n === 1 ? 'Detecté 1 punto de ' + kps.length : 'Detecté ' + n + ' de ' + kps.length + ' puntos') + '</p>' +
+    '<fieldset class="teach-pts"><legend>' + esc('Marca al menos ' + need + ' puntos que sí explicaste') + '</legend><ul class="vlist">' + rows + '</ul></fieldset>' +
+    cityTeachActions('<button class="btn primary" data-act="cx" data-c="teach-ok">Confirmar</button><button class="btn" data-act="cx" data-c="teach-edit">Reescribir</button>') + '</article>';
+}
+/* Pinta el paso actual de CD.teach; where: dónde cae el foco ('h2' al abrir, 'first' en la revisión, 'miss' tras fallar, 'text' al reescribir) */
+function cityTeachPaint(where, opening) {
+  var T = CD && CD.teach; if (!T) return;
+  var tp = mod(CD.scene).tById[T.o.topic];
+  var html = T.step === 'review' ? cityTeachReviewHtml(T, tp) : cityTeachWriteHtml(T, tp);
   var sh = cId('city-sheet');
-  if (CD.sheet && sh) { sh.innerHTML = html; citySheetLabel(sh); cFocus((focusI !== undefined && sh.querySelector('[data-i="' + focusI + '"]')) || sh.querySelector('button')); } else cityOpenSheet(html, 'button', o.id);
+  if (opening || !CD.sheet || !sh) cityOpenSheet(html, '.prompt', T.id);
+  else { sh.innerHTML = html; citySheetLabel(sh); sh.scrollTop = 0; }
+  var ta = cId('city-teach-text'); if (ta) ta.value = T.text;
+  T.ready = T.step === 'write' && cityTeachCount(T).ready;
+  if (where === 'text' && ta) { cFocus(ta); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) {} }
+  else if (where === 'miss') cFocus(sh.querySelector('.teach-miss') || sh.querySelector('.prompt'));
+  else if (where === 'first') cFocus(sh.querySelector('input[type="checkbox"]') || sh.querySelector('.prompt'));
+  else cFocus(sh.querySelector('.prompt'));
 }
-function cityTeachPick(i) {
-  var T = CD && CD.teach; if (!T || T.checked || !T.items[i]) return;
-  if (T.picked[i]) delete T.picked[i]; else if (Object.keys(T.picked).length < 3) T.picked[i] = true; else return;
-  cityTeachExplain(T.o, false, i);   // el foco sigue en el botón pulsado
+function cityTeachOpen(o) {
+  if (!CD) return;
+  if (!CD.teach || CD.teach.id !== o.id) CD.teach = { id: o.id, o: o, mode: 'explain', step: 'write', text: '', item: null, checks: null, miss: null, ready: false };
+  CD.teach.step = 'write'; CD.teach.miss = null;
+  cityTeachPaint('h2', true);
 }
-function cityTeachGo() {
-  var T = CD && CD.teach; if (!T || T.checked || Object.keys(T.picked).length !== 3) return;
-  var good = Object.keys(T.picked).every(function (i) { return T.items[i].own; });
-  if (!good) { T.checked = true; cityTeachExplain(T.o, false); return; }
+function cityTeachSend() {
+  var T = CD && CD.teach; if (!T || T.step !== 'write' || !cityTeachCount(T).ready) return;
+  T.checks = CityTeach.explainCheck(T.text, mod(CD.scene).tById[T.o.topic].keyPoints);
+  T.step = 'review'; cityTeachPaint('first');
+}
+function cityTeachConfirm() {
+  var T = CD && CD.teach; if (!T || T.step !== 'review') return;   // el doble toque llega con CD.teach ya nulo
+  var sh = cId('city-sheet'), boxes = sh ? [].slice.call(sh.querySelectorAll('input[type="checkbox"]')) : [];
+  var kps = mod(CD.scene).tById[T.o.topic].keyPoints, need = Math.min(CityTeach.PASS_POINTS, kps.length);
+  var done = boxes.filter(function (b) { return b.checked; }).length;
+  if (done >= need) { cityTeachDone(T.o); return; }
+  T.miss = kps.filter(function (k, i) { return !(boxes[i] && boxes[i].checked); });
+  T.step = 'write'; cityTeachPaint('miss');
+}
+function cityTeachEdit() {
+  var T = CD && CD.teach; if (!T || T.step !== 'review') return;
+  T.step = 'write'; T.miss = null; cityTeachPaint('text');
+}
+/* Aprobar (los dos modos): enseñado, XP, restauración y celebración u hoja de éxito */
+function cityTeachDone(o) {
   touch();
   var gainXp = teachXp(); S.xp += gainXp;
-  cityD(CD.scene).taught[T.o.id] = true;
+  cityD(CD.scene).taught[o.id] = true;
   var rs = CityStory.applyRestore(S.city, CITY_DATA, bossPassedOf);
   checkVirtues(); save();
   CD.teach = null;
-  if (rs.changed.length) { cityRestorePending = []; cityRefresh(); cityCelebrate(rs.changed, '¡Gracias, ' + T.o.name + ' lo entendió!'); }
-  else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(T.o.name + ' lo entendió gracias a ti. +' + gainXp + ' XP.') + '</p>'), '[data-c="sheetclose"]', T.o.id);
+  if (rs.changed.length) { cityRestorePending = []; cityRefresh(); cityCelebrate(rs.changed, '¡Gracias, ' + o.name + ' lo entendió!'); }
+  else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(o.name + ' lo entendió gracias a ti. +' + gainXp + ' XP' + (S.virtues.liderazgo ? ' (incluye +' + LEAD_XP + ' de Liderazgo)' : '') + '.') + '</p>'), '[data-c="sheetclose"]', o.id);
 }
 function cityTeachCorrect(o) {
   var qs = shuffle(ofType(mod(CD.scene), 'error', o.topic));
@@ -642,7 +683,7 @@ function cityOpen(o) {
   } else if (o.kind === 'mentor') {
     cityLesson(o);
   } else if (o.kind === 'apprentice') {
-    if (o.mode === 'correct') cityTeachCorrect(o); else cityTeachExplain(o, true);
+    if (o.mode === 'correct') cityTeachCorrect(o); else cityTeachOpen(o);
   } else if (o.kind === 'tower') {
     cityTower(o);
   } else if (o.kind === 'portal') {
@@ -749,9 +790,9 @@ function cityAct(c, b) {
   else if (c === 'route-next') { if (CD && CD.route && CD.route.flow && CD.route.active) CD.route.flow.next(); }
   else if (c === 'route-replay') cityRouteReplay();
   else if (c === 'route-reset') cityRouteReset();
-  else if (c === 'kp') cityTeachPick(parseInt(b.dataset.i, 10));
-  else if (c === 'teach-go') cityTeachGo();
-  else if (c === 'retry-teach') { if (CD && CD.teach) cityTeachExplain(CD.teach.o, true); }
+  else if (c === 'teach-send') cityTeachSend();
+  else if (c === 'teach-ok') cityTeachConfirm();
+  else if (c === 'teach-edit') cityTeachEdit();
   else if (c === 'practice') cityPractice(b.dataset.id);
   else if (c === 'lesson') { var lo = cityItem(b.dataset.id); if (CD && lo) { cityClosePause(); cityOpen(lo); } }
   else if (c === 'run') { S.city.run = !S.city.run; save(); b.setAttribute('aria-pressed', S.city.run ? 'true' : 'false'); }
@@ -761,6 +802,17 @@ cityRootEl().addEventListener('click', function (e) {
   if (!b || b.disabled || V.name !== 'city') return;
   cityAct(b.dataset.c, b);
 });
+/* Escribir al enseñar: solo el contador y el botón; la hoja no se repinta (el teclado del móvil no puede perder el foco) */
+cityRootEl().addEventListener('input', function (e) {
+  var ta = e.target, T = CD && CD.teach;
+  if (!ta || ta.id !== 'city-teach-text' || !T || T.step !== 'write') return;
+  T.text = ta.value;
+  var c = cityTeachCount(T), cnt = cId('city-count'), go = cId('city-sheet').querySelector('[data-c="teach-send"]');
+  if (cnt && cnt.textContent !== c.text) cnt.textContent = c.text;
+  if (go) go.disabled = !c.ready;
+  if (c.ready && !T.ready) { var lv = cId('city-live'); if (lv) lv.textContent = 'Ya puedes revisar.'; }
+  T.ready = c.ready;
+});
 window.addEventListener('resize', function () { if (CD && CD.world && !CD.suspended) { CD.world.resize(); cityRotateCheck(); } });
 if (window.__CITY_TEST__ === true) {
   window.__CITY_TEST_API__ = {
@@ -769,6 +821,7 @@ if (window.__CITY_TEST__ === true) {
       CD.hero = { x: x, z: z, yaw: CD.hero.yaw, vx: 0, vz: 0, speed: 0 }; CD.safe = { x: x, z: z, yaw: CD.hero.yaw };
       cityObjUpdate(false); cityUpdateNear(true); cityAnnounce();
     },
-    objective: function () { return cityObjective(); }
+    objective: function () { return cityObjective(); },
+    teach: function (id) { var o = cityItem(id); if (CD && o && o.kind === 'apprentice') cityTeachDone(o); }
   };
 }

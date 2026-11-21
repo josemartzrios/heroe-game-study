@@ -350,11 +350,6 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       const allT = Array.from({ length: 23 }, (_, i) => 'T' + String(i + 1).padStart(2, '0'));
       const ap = (id) => D4.apprentices.find((a) => a.id === id);
       const near = (e, o, dz = 1) => api(e).teleport(o.x, o.z + dz);
-      const clean = (s) => s.replace(/`/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
-      const pressed = (e) => [...e.d.querySelectorAll('#city-sheet [data-c="kp"][aria-pressed="true"]')];
-      const kps = (e) => [...e.d.querySelectorAll('#city-sheet [data-c="kp"]')];
-      const ownKp = (e, tid) => { const set = new Set(M4(e.w).topics.find((x) => x.id === tid).keyPoints.map(clean)); return (b) => set.has(clean(b.textContent.replace(/De otro tema/, ''))); };
-      const pick = (e, n, own, tid) => { const isOwn = ownKp(e, tid); for (let k = 0; k < n; k++) { const b = kps(e).find((x) => isOwn(x) === own && x.getAttribute('aria-pressed') === 'false'); click(e.w, b); } };
       // aparición de aprendices
       { const e4 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e4); near(e4, ap('a01'));
         ok('(q) sin estrellas en T05 no aparece el aprendiz de T05', $(e4, '#city-act').hidden);
@@ -363,25 +358,23 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         ok('(q) con 1 estrella en T05 aparece: "Enseñar a Abril"', $(e5, '#city-act').textContent === 'Enseñar a Abril', $(e5, '#city-act').textContent);
         e5.w.close(); }
       // explicar
+      const TXT = 'La ram es volatil y el hdd es lento pero barato para guardar muchas cosas hoy';   // T05: detecta ram, volatil e hdd
+      const typeIn = (e, t) => { const ta = $(e, '#city-teach-text'); ta.value = t; ta.dispatchEvent(new e.w.Event('input', { bubbles: true })); };
+      const boxes = (e) => [...e.d.querySelectorAll('#city-sheet input[type="checkbox"]')];
       { const e4 = boot({ seed: base({ city: { prologue: true }, topics: six(['T05']) }), rndSeed: 12345 }); await enter(e4); const a1 = ap('a01'), T5 = M4(e4.w).topics.find((x) => x.id === 'T05');
         near(e4, a1); click(e4.w, $(e4, '#city-act'));
-        const sh = () => $(e4, '#city-sheet');
-        ok('(q) explicar: "¿Me explicas {título}?" con 6 casillas y contador "0 de 3"', sh().textContent.includes('¿Me explicas ' + T5.title + '?') && kps(e4).length === 6 && /0 de 3/.test($(e4, '#city-count').textContent) && $(e4, '#city-count').getAttribute('aria-live') === 'polite');
-        ok('(q) 3 del tema y 3 de otros', kps(e4).filter(ownKp(e4, 'T05')).length === 3);
-        const exp = () => btnText(e4, /^Explicar$/, '#city-sheet');
-        pick(e4, 2, true, 'T05');
-        ok('(q) con 2 elegidos "Explicar" está desactivado', exp().disabled === true && /2 de 3/.test($(e4, '#city-count').textContent));
-        pick(e4, 1, false, 'T05'); // 3.ª (ajena) ya elegida: la 4.ª se bloquea
-        const before = pressed(e4).length; click(e4.w, kps(e4).find((b) => b.getAttribute('aria-pressed') === 'false'));
-        ok('(q) una 4.ª selección no cambia nada y el contador sigue en "3 de 3"', before === 3 && pressed(e4).length === 3 && /3 de 3/.test($(e4, '#city-count').textContent));
-        const set0 = kps(e4).map((b) => clean(b.textContent)).sort().join('|');
-        click(e4.w, exp());
-        ok('(q) al fallar se marca "De otro tema" en los ajenos con texto', /De otro tema/.test(sh().textContent) && !saved(e4.w).city.d.M02.taught.a01);
-        click(e4.w, btnText(e4, /^Reintentar$/, '#city-sheet'));
-        const set1 = kps(e4).map((b) => clean(b.textContent)).sort().join('|');
-        ok('(q) Reintentar vuelve a sortear el conjunto de los 6', set0 !== set1 && pressed(e4).length === 0);
-        const xp0 = saved(e4.w).xp; pick(e4, 3, true, 'T05'); click(e4.w, exp());
-        ok('(q) con 3 correctos: +15 XP y taught.a01', saved(e4.w).xp === xp0 + 15 && saved(e4.w).city.d.M02.taught.a01 === true, saved(e4.w).xp - xp0);
+        const sh = () => $(e4, '#city-sheet'), send = () => btnText(e4, /^Revisar$/, '#city-sheet');
+        ok('(q) explicar: "¿Me explicas {título}?" con un cuadro de texto y el contador "Faltan 12 palabras de 12" sin aria-live', sh().textContent.includes('¿Me explicas ' + T5.title + '?') && !!$(e4, '#city-teach-text') && $(e4, '#city-count').textContent === 'Faltan 12 palabras de 12' && !$(e4, '#city-count').hasAttribute('aria-live'));
+        typeIn(e4, 'ram volatil hdd');
+        ok('(q) con 3 palabras "Revisar" está desactivado y el contador dice "Faltan 9 palabras de 12"', send().disabled === true && $(e4, '#city-count').textContent === 'Faltan 9 palabras de 12');
+        typeIn(e4, TXT); click(e4.w, send());
+        ok('(q) al revisar quedan premarcados los 3 puntos detectados', boxes(e4).filter((b) => b.checked).length === 3, boxes(e4).filter((b) => b.checked).length);
+        boxes(e4).find((b) => b.checked).checked = false; click(e4.w, btnText(e4, /^Confirmar$/, '#city-sheet'));
+        ok('(q) con menos de 3 marcados vuelve a escribir con "Te faltó:", el mismo texto y sin enseñar', /Te faltó:/.test(sh().textContent) && $(e4, '#city-teach-text').value === TXT && !saved(e4.w).city.d.M02.taught.a01);
+        click(e4.w, send()); click(e4.w, btnText(e4, /^Reescribir$/, '#city-sheet'));
+        ok('(q) Reescribir conserva el texto', $(e4, '#city-teach-text').value === TXT);
+        const xp0 = saved(e4.w).xp; click(e4.w, send()); click(e4.w, btnText(e4, /^Confirmar$/, '#city-sheet'));
+        ok('(q) con 3 marcados: +15 XP y taught.a01', saved(e4.w).xp === xp0 + 15 && saved(e4.w).city.d.M02.taught.a01 === true, saved(e4.w).xp - xp0);
         ok('(q) tras enseñar, el aprendiz se va', (click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')), near(e4, a1), $(e4, '#city-act').hidden));
         e4.w.close(); }
       // corregir
@@ -406,7 +399,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
         const e4 = boot({ seed: base({ boss: { M02: { best: 20, passed: true } }, topics: six(['T09']), city: { prologue: true, taught } }), rndSeed: 7 }); await enter(e4);
         ok('(q) 7 enseñados y jefe aprobado: aún Becario y sin restaurar', $(e4, '#city-rank').textContent === 'Becario' && e4.st.lastOpts.state().flags.restored === false);
         near(e4, D5); click(e4.w, $(e4, '#city-act'));
-        if (D5.mode === 'explain') { pick(e4, 3, true, 'T09'); click(e4.w, btnText(e4, /^Explicar$/, '#city-sheet')); }
+        if (D5.mode === 'explain') { typeIn(e4, 'Se puede leer escribir ejecutar y la notacion numerica 777 con chmod para permisos de archivos'); click(e4.w, btnText(e4, /^Revisar$/, '#city-sheet')); click(e4.w, btnText(e4, /^Confirmar$/, '#city-sheet')); }
         else { answerRight(e4.w, e4.d); click(e4.w, $(e4, '[data-act="back"]')); await tick(); }
         ok('(q) enseñar al 8.º: celebración con Planos y Junior', /Planos/.test($(e4, '#city-sheet').textContent) && /Junior/.test($(e4, '#city-sheet').textContent), $(e4, '#city-sheet').textContent.slice(0, 100));
         ok('(q) queda restored.M02, powers.planos y "Junior" en el HUD', saved(e4.w).city.restored.M02 === true && saved(e4.w).city.powers.planos === true && (click(e4.w, btnText(e4, /^Cerrar$/, '#city-sheet')), $(e4, '#city-rank').textContent === 'Junior'));
@@ -506,13 +499,12 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
     // (v) Liderazgo: +5 XP al enseñar (solo si ya se tenía)
     { const D6 = (await import('../city/districts.mjs')).city.districts.M02, a1 = D6.apprentices[0], a2 = D6.apprentices[1];
       const six = (id) => ({ ['M02:' + id]: [1, 1, 1, 1, 1, 1] });
-      const clean = (s) => s.replace(/`/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
       const e6 = boot({ seed: base({ virtues: { liderazgo: 1700000000000 }, city: { prologue: true }, topics: six('T05') }), rndSeed: 99 }); await enter(e6);
       api(e6).teleport(a1.x, a1.z + 1); click(e6.w, $(e6, '#city-act'));
-      const own = new Set(e6.w.eval('MODULES').find((m) => m.id === 'M02').topics.find((x) => x.id === 'T05').keyPoints.map(clean));
-      for (let k = 0; k < 3; k++) click(e6.w, [...e6.d.querySelectorAll('#city-sheet [data-c="kp"]')].find((b) => own.has(clean(b.textContent)) && b.getAttribute('aria-pressed') === 'false'));
-      const x0 = saved(e6.w).xp; click(e6.w, btnText(e6, /^Explicar$/, '#city-sheet'));
-      ok('(v) explicar con Liderazgo: +20 XP y la hoja dice "+20 XP"', saved(e6.w).xp === x0 + 20 && /\+20 XP/.test($(e6, '#city-sheet').textContent), (saved(e6.w).xp - x0) + ' ' + $(e6, '#city-sheet').textContent.slice(0, 60));
+      { const ta = $(e6, '#city-teach-text'); ta.value = 'La ram es volatil y el hdd es lento pero barato para guardar muchas cosas hoy'; ta.dispatchEvent(new e6.w.Event('input', { bubbles: true })); }
+      click(e6.w, btnText(e6, /^Revisar$/, '#city-sheet'));
+      const x0 = saved(e6.w).xp; click(e6.w, btnText(e6, /^Confirmar$/, '#city-sheet'));
+      ok('(v) explicar con Liderazgo: +20 XP y la hoja dice "+20 XP (incluye +5 de Liderazgo)"', saved(e6.w).xp === x0 + 20 && /\+20 XP \(incluye \+5 de Liderazgo\)/.test($(e6, '#city-sheet').textContent), (saved(e6.w).xp - x0) + ' ' + $(e6, '#city-sheet').textContent.slice(0, 60));
       e6.w.close();
       const e7 = boot({ seed: base({ virtues: { liderazgo: 1700000000000 }, city: { prologue: true }, topics: six('T06') }) }); await enter(e7);
       api(e7).teleport(a2.x, a2.z + 1); const y0 = saved(e7.w).xp; click(e7.w, $(e7, '#city-act'));

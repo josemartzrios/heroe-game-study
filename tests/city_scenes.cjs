@@ -242,16 +242,15 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     ok('(v3) la página de un módulo sin distrito no tiene "Ir al distrito"', !$(e, '[data-act="district"]'));
     e.w.close();
 
-    // ---- Enseñar: elegir un punto clave redibuja la hoja pero el foco se queda en el botón que se pulsó ----
+    // ---- Enseñar: escribir no repinta la hoja ni mueve el foco del cuadro de texto ----
     { const ap = M2.apprentices.find((a) => a.mode === 'explain');
       e = boot({ seed: base({ topics: { ['M02:' + ap.topic]: [1, 1, 1, 1, 1, 1] }, city: { prologue: true, scene: 'M02', at: { x: ap.x, z: ap.z + 1 } } }), reduced: true }); await enterCity(e);
       api(e).teleport(ap.x, ap.z + 1); key(e, 'e'); tickW(e);
-      const kp = e.d.querySelector('#city-sheet [data-c="kp"][data-i="2"]');
-      ok('(p) junto a un aprendiz con estrella se abre la hoja de Enseñar con sus puntos clave', !!kp && !$(e, '#city-sheet').hidden);
-      if (kp) { click(e.w, kp);
-        const ae = e.d.activeElement;
-        ok('(p2) tras elegir un punto clave el foco queda en ese mismo botón (no salta al primero)', !!ae && ae.dataset.c === 'kp' && ae.dataset.i === '2' && ae.getAttribute('aria-pressed') === 'true', ae && (ae.tagName + ' ' + ae.dataset.c + ' ' + ae.dataset.i));
-        ok('(p3) el contador dice "1 de 3"', $(e, '#city-count').textContent === '1 de 3', $(e, '#city-count').textContent); }
+      const ta = $(e, '#city-sheet #city-teach-text');
+      ok('(p) junto a un aprendiz con estrella se abre la hoja de Enseñar con su cuadro de texto', !!ta && !$(e, '#city-sheet').hidden);
+      if (ta) { ta.focus(); ta.value = 'una dos tres'; ta.dispatchEvent(new e.w.Event('input', { bubbles: true }));
+        ok('(p2) tras escribir el foco sigue en el mismo cuadro de texto (no se repinta la hoja)', e.d.activeElement === ta && $(e, '#city-teach-text') === ta, e.d.activeElement && e.d.activeElement.tagName);
+        ok('(p3) el contador dice "Faltan 9 palabras de 12"', $(e, '#city-count').textContent === 'Faltan 9 palabras de 12', $(e, '#city-count').textContent); }
       e.w.close(); }
 
     // ---- recorrido solo con teclado: plaza → portal (E) → mentor (E) → Esc → salida → plaza, sin foco en body ----

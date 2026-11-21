@@ -151,12 +151,11 @@ const finite = (h) => ['x', 'z', 'speed'].every((k) => Number.isFinite(h[k]));
       e.w.close(); }
     { e = boot({ seed: base({ topics: six(['T05']) }) }); await enter(e);
       api(e).teleport(a01.x, a01.z + 1); click(e.w, $(e, '#city-act'));
-      const own = new Set(e.w.eval('MODULES').find((m) => m.id === 'M02').topics.find((t) => t.id === 'T05').keyPoints.map(norm));
-      const kps = () => [...e.d.querySelectorAll('#city-sheet [data-c="kp"]')];
-      for (let k = 0; k < 3; k++) click(e.w, kps().find((b) => own.has(norm(b.textContent)) && b.getAttribute('aria-pressed') === 'false'));
-      const go = cx(e, 'teach-go'); const xp0 = saved(e.w).xp;
+      { const ta = $(e, '#city-teach-text'); ta.value = 'La ram es volatil y el hdd es lento pero barato para guardar muchas cosas hoy'; ta.dispatchEvent(new e.w.Event('input', { bubbles: true })); }
+      click(e.w, cx(e, 'teach-send'));
+      const go = cx(e, 'teach-ok'); const xp0 = saved(e.w).xp;
       click(e.w, go); click(e.w, go);
-      ok('3d doble clic en Explicar: el XP se suma una sola vez (+15)', saved(e.w).xp - xp0 === 15 && saved(e.w).city.taught.a01 === true, String(saved(e.w).xp - xp0));
+      ok('3d doble clic en Confirmar: el XP se suma una sola vez (+15)', saved(e.w).xp - xp0 === 15 && saved(e.w).city.taught.a01 === true, String(saved(e.w).xp - xp0));
       click(e.w, cx(e, 'sheetclose'));
       api(e).teleport(a01.x, a01.z + 1);
       ok('3e enseñar a un aprendiz ya enseñado: ya no se ofrece', $(e, '#city-act').hidden);
