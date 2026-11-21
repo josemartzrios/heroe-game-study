@@ -41,6 +41,12 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
   expectRule('R2 criatura con < 8 preguntas mcq+tf', mutate((d) => d, dropTypes(mod8, (q) => (q.topic === 'T11' || q.topic === 'T15') && (q.type === 'mcq' || q.type === 'tf'))), 'R2', /espia/);
   expectRule('R3 reparación con un tema de 1 pregunta', mutate((d) => { d.repairs[0].topic = 'T01'; }), 'R3', /r01/);
   expectRule('R4 aprendiz correct sin preguntas error', mutate((d) => d, dropTypes(mod8, (q) => q.topic === 'T02' && q.type === 'error')), 'R4', /a02/);
+  const noBold = { ...mod8, topics: mod8.topics.map((t) => (t.id === 'T01' ? { ...t, keyPoints: t.keyPoints.map((kp) => kp.replace(/\*\*/g, '')) } : t)) };
+  expectRule('R4 aprendiz explain sobre un tema sin negritas', mutate((d) => d, noBold), 'R4', /puntos clave con negritas/);
+  const noTerms = { ...mod8, questions: mod8.questions.filter((q) => !(q.topic === 'T02' && q.type === 'error')).concat([{ id: 'X', topic: 'T02', type: 'error', difficulty: 1, prompt: 'Este fragmento contiene un error:\n“Alfa beta gamma”\n¿Cuál es el error?', options: ['Alfa beta gamma', 'otra cosa'], answer: 0, explanation: 'Versión correcta: Alfa beta gamma.' }]) };
+  expectRule('R4 aprendiz correct cuyo único error no da términos', mutate((d) => d, noTerms), 'R4', /pregunta error con términos/);
+  { const errs = mutate((d) => { d.apprentices[0].topic = 'T99'; });
+    ok('R4 tema inexistente: avisa «tema inexistente» y no lanza ni da R0', errs.some((e) => /^R4:.*tema inexistente/.test(e)) && !errs.some((e) => e.indexOf('R0:') === 0), errs.join(' || ')); }
   expectRule('R4 aprendiz con nombre de mentor', mutate((d) => { d.apprentices[0].name = d.mentors[0].name; }), 'R4', /nombre/);
   expectRule('R4 need mayor que los aprendices', mutate((d) => { d.need = 10; }), 'R4', /need/);
   expectRule('R5 id __proto__', mutate((d) => { d.mentors[0].id = '__proto__'; }), 'R5', /__proto__/);

@@ -4,10 +4,12 @@
 //   opts.forbidden: lista de RegExp de palabras prohibidas (por defecto FORBIDDEN).
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 // Palabras prohibidas (IP ajena): validate.mjs las aplica a todo el archivo y aquí a nombres y etiquetas.
 export const FORBIDDEN = [/Marvel/i, /DC Comics/i, /LEGO/i, /Spider/i, /Batman/i, /Superman/i, /Cyclops/i, /Wolverine/i, /Hulk/i, /Iron Man/i, /\bThor\b/, /Wonder Woman/i, /\bFlash\b/, /Avengers/i, /X-Men/i];
 
+const CityTeach = createRequire(import.meta.url)('./teach.js');
 const CM = vm.runInNewContext(fs.readFileSync(new URL('./move.js', import.meta.url), 'utf8') + '\n;CityMove');
 const FORBID_ID = new Set(['__proto__', 'constructor', 'prototype', ...Object.getOwnPropertyNames(Object.prototype)]);
 const idOk = (id) => typeof id === 'string' && /^[a-z0-9_-]+$/.test(id) && !FORBID_ID.has(id);
@@ -27,6 +29,7 @@ function checkDistrictRules(dist, mod, opts) {
   const topics = mod.topics.map((t) => t.id), byTopic = Object.fromEntries(mod.topics.map((t) => [t.id, t]));
   const count = (types, tid) => mod.questions.filter((q) => types.includes(q.type) && q.topic === tid).length;
   const dupes = (arr) => arr.filter((x, i) => arr.indexOf(x) !== i);
+  const fixable = (q) => { const it = CityTeach.fixItem(q); return !!it && CityTeach.fixTerms(it).length > 0; };   // un error se puede corregir escribiendo
 
   // R11 colores del distrito (los usan el mapa, el portal y las criaturas): #rrggbb
   const hex = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
@@ -51,14 +54,19 @@ function checkDistrictRules(dist, mod, opts) {
   if (dupes(dist.repairs.map((r) => r.topic)).length) bad(3, 'reparaciones con temas repetidos');
   for (const r of dist.repairs) if (count(['scenario', 'error'], r.topic) < 2) bad(3, `${r.id}: el tema ${r.topic} necesita >= 2 preguntas scenario+error`);
 
-  // R4 aprendices: temas distintos y existentes, modo válido, 'correct' solo con preguntas error, nombres únicos y propios, need <= aprendices
+  // R4 aprendices: temas distintos y existentes, modo válido, enseñables escribiendo (explain: >= min(3, n) puntos con negritas; correct: un error con términos), nombres únicos y propios, need <= aprendices
   if (dupes(dist.apprentices.map((a) => a.topic)).length) bad(4, 'aprendices con temas repetidos');
   if (dupes(dist.apprentices.map((a) => a.name)).length) bad(4, 'nombres de aprendiz repetidos');
   const mentorNames = new Set(dist.mentors.map((m) => m.name));
   for (const a of dist.apprentices) {
-    if (!topics.includes(a.topic)) bad(4, `${a.id}: tema inexistente ${a.topic}`);
+    const known = topics.includes(a.topic) && hasOwn(byTopic, a.topic);
+    if (!known) bad(4, `${a.id}: tema inexistente ${a.topic}`);
     if (a.mode !== 'explain' && a.mode !== 'correct') bad(4, `${a.id}: modo inválido`);
-    if (a.mode === 'correct' && count(['error'], a.topic) < 1) bad(4, `${a.id}: 'correct' necesita >= 1 pregunta error en ${a.topic}`);
+    if (known && a.mode === 'explain') {
+      const kps = byTopic[a.topic].keyPoints, k = Math.min(CityTeach.PASS_POINTS, kps.length);
+      if (kps.filter((kp) => CityTeach.keyTerms(kp).length).length < k) bad(4, `${a.id}: 'explain' necesita >= ${k} puntos clave con negritas en ${a.topic}`);
+    }
+    if (known && a.mode === 'correct' && !mod.questions.some((q) => q.type === 'error' && q.topic === a.topic && fixable(q))) bad(4, `${a.id}: 'correct' necesita una pregunta error con términos en ${a.topic}`);
     if (mentorNames.has(a.name)) bad(4, `${a.id}: el nombre ${a.name} choca con un mentor`);
   }
   if (!Number.isInteger(dist.need) || dist.need < 1 || dist.need > dist.apprentices.length) bad(4, `need (${dist.need}) debe ser un entero de 1 a ${dist.apprentices.length} (aprendices)`);
