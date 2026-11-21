@@ -41,10 +41,11 @@ for (const a of ['/*__CITY__*/', '/*__CITY_VIEW__*/']) if (!out.includes(a)) thr
 out = out.replace('/*__CITY__*/', () => 'var CITY_DATA = ' + JSON.stringify(cityData).replace(/</g, '\\u003c') + ';\n  /*__CITY_CODE__*/');
 const cityMove = fs.readFileSync(new URL('./city/move.js', import.meta.url), 'utf8');
 const cityStory = fs.readFileSync(new URL('./city/story.js', import.meta.url), 'utf8');
+const cityTeach = fs.readFileSync(new URL('./city/teach.js', import.meta.url), 'utf8');
 const cityInput = fs.readFileSync(new URL('./city/input.js', import.meta.url), 'utf8');
 const cityRoute = fs.readFileSync(new URL('./city/route.js', import.meta.url), 'utf8');
 const cityRouteView = fs.readFileSync(new URL('./city/route_view.js', import.meta.url), 'utf8');
-out = out.replace('/*__CITY_CODE__*/', () => cityMove + '\n' + cityStory + '\n' + cityInput + '\n' + cityRoute + '\n  /*__CITY_CODE__*/');
+out = out.replace('/*__CITY_CODE__*/', () => cityMove + '\n' + cityStory + '\n' + cityTeach + '\n' + cityInput + '\n' + cityRoute + '\n  /*__CITY_CODE__*/');
 const cityView = fs.readFileSync(new URL('./city/view.js', import.meta.url), 'utf8');
 const citySprites = fs.readFileSync(new URL('./city/sprites2d.js', import.meta.url), 'utf8');
 const cityWorld2d = fs.readFileSync(new URL('./city/world2d.js', import.meta.url), 'utf8');
