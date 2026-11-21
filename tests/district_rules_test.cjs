@@ -15,6 +15,10 @@ for (const [a, b] of [['Ana', 'Ada'], ['Sol', 'Saúl'], ['Guido', 'Jido'], ['Che
 ok('phon: gue/gui conservan /g/ y ge/gi suenan /j/', R.phon('Miguel') === 'migel' && R.phon('Gil') === 'jil' && R.phon('Guido') === 'gido', [R.phon('Miguel'), R.phon('Gil'), R.phon('Guido')].join());
 ok('phon: letras repetidas, h muda, qu y ch', R.phon('Aaron') === 'aron' && R.phon('Hugo') === 'ugo' && R.phon('Quique') === 'kike' && R.phon('Chema') === 'chema', [R.phon('Aaron'), R.phon('Hugo'), R.phon('Quique'), R.phon('Chema')].join());
 
+// namesNear: los caracteres invisibles y el ancho completo no esconden un nombre
+for (const [a, b] of [['Ana', 'A​na'], ['Ana', 'A­na'], ['Ana', 'Ａｎａ'], ['Ana', 'An﻿a']])
+  ok(`namesNear('${a}', ${JSON.stringify(b)}) es verdadero`, R.namesNear(a, b) && R.namesNear(b, a), R.phon(a) + ' / ' + R.phon(b));
+
 // nameClashes
 const P = (...names) => names.map((name) => ({ name }));
 const D = (id, mentors, apprentices, colors, seed, name) => [id, { mentors: P(...mentors), apprentices: P(...apprentices), colors: colors || { a: '#111111', b: '#222222' }, seed: seed || 1, name: name || id }];
@@ -31,6 +35,9 @@ ok('nameClashes: Carla con otro Karla distinto (no heredado) sí se reporta', R.
 ok('ownColorProblems: un distrito con los dos colores de otros se reporta', R.ownColorProblems(dist(
   D('A', [], [], { a: '#111111', b: '#222222' }), D('B', [], [], { a: '#111111', b: '#333333' }), D('C', [], [], { a: '#444444', b: '#222222' }), D('E', [], [], { a: '#111111', b: '#222222' }))).length === 2);
 ok('ownColorProblems: con un color propio no hay problema', R.ownColorProblems(dist(D('A', [], [], { a: '#111111', b: '#222222' }), D('B', [], [], { a: '#111111', b: '#333333' }))).length === 0);
+ok('nameClashes: los invisibles no cuentan como letras (una letra visible es un nombre corto)', R.nameClashes(dist(D('A', ['A​​'], []))).some((x) => /menos de 3 letras/.test(x)));
+ok('ownColorProblems: los colores en mayúsculas cuentan como los mismos', R.ownColorProblems(dist(
+  D('A', [], [], { a: '#aabbcc', b: '#223344' }), D('B', [], [], { a: '#AABBCC', b: '#223344' }))).length === 2);
 ok('repeated: seeds y nombres repetidos', R.repeated(dist(D('A', [], [], null, 5, 'X'), D('B', [], [], null, 5, 'Y')), 'seed').join() === '5' && R.repeated(dist(D('A', [], [], null, 1, 'X'), D('B', [], [], null, 2, 'X')), 'name').join() === 'X'
   && R.repeated(dist(D('A', [], [], null, 1, 'X'), D('B', [], [], null, 2, 'Y')), 'seed').length === 0);
 

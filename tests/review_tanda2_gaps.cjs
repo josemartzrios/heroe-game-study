@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const L = require('./adv/lib.cjs');
+const RANK = require('./rankline.cjs');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'juego_estudio.html'), 'utf8');
 const KEY = 'estudio_isw_v1';
@@ -122,12 +123,9 @@ const CS = require('../city/story.js');
       ok('celebración: 3.º y 4.º acumulados (de 2 a 4) cruzan el umbral 3: "' + want + '"', r.t.includes(want) && !r.t.includes('Sigues como'), r.t.slice(0, 260)); }
 
     // =================== 2. cityRankLine (city/view.js) como unidad, con story.js real ===================
-    const viewSrc = fs.readFileSync(path.join(root, 'city', 'view.js'), 'utf8');
-    const m = viewSrc.match(/\nfunction cityRankLine\(mids\) \{[\s\S]*?\n\}\n/);
-    ok('cityRankLine existe en city/view.js', !!m);
-    const rankLine = m ? new Function('S', 'CITY_DATA', 'CityStory', m[0] + '\nreturn cityRankLine;') : null;
-    const line = (restored, mids, data = D) => rankLine({ city: { restored } }, data, CS)(mids);
-    if (rankLine) {
+    ok('cityRankLine existe en city/view.js', !!RANK.SRC);
+    const line = (restored, mids, data = D) => RANK.rankLineFn({ city: { restored } }, data)(mids);
+    if (RANK.SRC) {
       // con los datos reales: los casos que no dependen de cuántos distritos hay
       ok('rankLine 0→1: "Subes a Junior."', line({ M02: true }, ['M02']) === 'Subes a Junior.', line({ M02: true }, ['M02']));
       ok('rankLine 1→2: singular "te falta 1 distrito"', line({ M02: true, M08: true }, ['M08']) === 'Sigues como Junior: te falta 1 distrito para Semi-senior.', line({ M02: true, M08: true }, ['M08']));

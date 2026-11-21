@@ -7,8 +7,8 @@ const MENTOR_NAMES = ['Amparo', 'Bernardo', 'Claudia', 'Damián', 'Esperanza', '
   'Ofelia', 'Prudencio', 'Remedios', 'Saúl'];
 
 const CREATURES = [
+  { id: 'paradigma', name: 'Paradigma Confundido', topics: ['T01', 'T04', 'T05', 'T08', 'T09'] },   // primera: el objetivo guiado empieza en T01
   { id: 'goto', name: 'GO TO Salvaje', topics: ['T02', 'T03'] },
-  { id: 'paradigma', name: 'Paradigma Confundido', topics: ['T01', 'T04', 'T05', 'T08', 'T09'] },
   { id: 'impura', name: 'Función Impura', topics: ['T06', 'T07'] },
   { id: 'perforada', name: 'Tarjeta Perforada', topics: ['T10', 'T11', 'T12'] },
   { id: 'compilador', name: 'Compilador Errante', topics: ['T13', 'T14', 'T15'] },

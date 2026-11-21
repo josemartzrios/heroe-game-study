@@ -62,17 +62,9 @@ const PAL = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'];
 const isRefLook = (cell) => cell.includes('#ffd23f') && PAL.includes(cell[1]);   // ojos amarillos y paleta morada
 const hexOk = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 
-// ---------- cityRankLine real (view.js) en vm ----------
-const VIEW_SRC = fs.readFileSync(path.join(root, 'city/view.js'), 'utf8');
+// ---------- cityRankLine real (view.js), cargada por tests/rankline.cjs ----------
 const HTML_SRC = fs.readFileSync(path.join(root, 'juego_estudio.html'), 'utf8');
-const grabFn = (src, name) => { const m = src.match(new RegExp('^function ' + name + '\\([\\s\\S]*?\\n}', 'm')); return m ? m[0] : null; };
-const RANKLINE_SRC = grabFn(VIEW_SRC, 'cityRankLine');
-function rankLineWith(D) {
-  // mismo reino que story.js (runInThisContext): un {} creado en otro contexto vm no pasaría plainObj y falsearía el rango previo
-  const S = { city: { restored: {} } };
-  const fn = vm.runInThisContext('(function (S, CITY_DATA, CityStory) {\n' + RANKLINE_SRC + '\n;return cityRankLine; })')(S, D, CS);
-  return (restored, mids) => { S.city = { restored }; return fn(mids); };
-}
+const { grabFn, SRC: RANKLINE_SRC, rankLineWith } = require('../rankline.cjs');
 
 (async () => {
   const D5 = (await imp('city/districts.mjs')).city;
@@ -83,7 +75,6 @@ function rankLineWith(D) {
   for (const m of MIDS) MODS[m] = expandModule(m, MODULES[m].title, await imp(MODULES[m].file));
   const FIRST_WALL = D5.order.find((m) => !DIST[m]);   // el primer módulo del orden que todavía no tiene distrito (muro "Próximamente")
 
-  const clone = (x) => JSON.parse(JSON.stringify(x));
   const mkD = (districts, extra) => Object.assign({ ranks: D5.ranks, order: D5.order, radius: D5.radius, plaza: D5.plaza, districts }, extra || {});
 
   // =================== S. sprites2d ===================

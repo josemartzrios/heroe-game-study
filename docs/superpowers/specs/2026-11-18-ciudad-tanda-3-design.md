@@ -22,7 +22,7 @@ Que los portales de **M04 (Historia de la programación)**, **M06 (Programación
 ### M04 — Museo del Código (Historia de la programación)
 - `colors` turquesa `#2ee6c5` y rosa fuerte `#ff5ca8`; `seed` 23.
 - **Mentores (T01–T17):** Amparo, Bernardo, Claudia, Damián, Esperanza, Francisco, Genaro, Hortensia, Iñaki, Jacinta, Leopoldo, Mercedes, Nicanor, Ofelia, Prudencio, Remedios, Saúl.
-- **Criaturas:** `goto` GO TO Salvaje (T02, T03) · `paradigma` Paradigma Confundido (T01, T04, T05, T08, T09) · `impura` Función Impura (T06, T07) · `perforada` Tarjeta Perforada (T10–T12) · `compilador` Compilador Errante (T13–T15) · `bucle` Bucle Atascado (T16, T17).
+- **Criaturas (en este orden: la primera marca por dónde empieza el objetivo guiado y, con ella, qué lugares toma `people()`):** `paradigma` Paradigma Confundido (T01, T04, T05, T08, T09) · `goto` GO TO Salvaje (T02, T03) · `impura` Función Impura (T06, T07) · `perforada` Tarjeta Perforada (T10–T12) · `compilador` Compilador Errante (T13–T15) · `bucle` Bucle Atascado (T16, T17).
 - **Reparaciones (`r01`–`r09`):** T01 "el catálogo de paradigmas" · T03 "el programa espagueti" · T05 "la clase sin encapsular" · T07 "la lambda sin retorno" · T09 "el flujo de eventos" · T11 "el ensamblador sin traducir" · T12 "la tarjeta de COBOL" · T15 "la máquina virtual parada" · T17 "los hilos bloqueados".
 - **Aprendices (`need` 7):** Ada T04 explicar · Boris T02 corregir · Cata T03 corregir · Dulce T06 explicar · Enzo T08 explicar · Flavio T10 corregir · Tobías T12 corregir · Mila T13 explicar · Nuria T14 corregir · Juan T16 explicar.
 - `celebrate`: "El Museo del Código vuelve a abrir: cada lenguaje cuenta su historia."
@@ -38,7 +38,7 @@ Que los portales de **M04 (Historia de la programación)**, **M06 (Programación
 ### M07 — Cinco Calles (Principios SOLID)
 - `colors` melocotón `#ffd1a1` y violeta `#e05cff`; `seed` 31. (El salmón anterior quedaba muy cerca del rojo de Muralla Cifrada y del rojo de error.)
 - **Mentores (T01–T13):** Amelia, Bautista, Constanza, Domingo, Eugenia, Fulgencio, Guadalupe, Hipólito, Ingrid, Jerónimo, Leonor, Moisés, Nora.
-- **Criaturas:** `dios` Clase Dios (T03, T04) · `rigido` Código Rígido (T05, T06) · `impostora` Subclase Impostora (T07, T08) · `gorda` Interfaz Gorda (T09, T10) · `mandon` Detalle Mandón (T11, T12) · `caos` Diseño Caótico (T01, T02, T13).
+- **Criaturas (en este orden, como en M04):** `caos` Diseño Caótico (T01, T02, T13) · `dios` Clase Dios (T03, T04) · `rigido` Código Rígido (T05, T06) · `impostora` Subclase Impostora (T07, T08) · `gorda` Interfaz Gorda (T09, T10) · `mandon` Detalle Mandón (T11, T12).
 - **Reparaciones (`r01`–`r09`):** T01 "el software frágil" · T02 "el acrónimo olvidado" · T04 "la clase que hace de todo" · T06 "el switch interminable" · T08 "el pato de juguete" · T09 "la interfaz gigante" · T10 "el control con mil botones" · T12 "la base de datos soldada" · T13 "el código que huele mal".
 - **Aprendices (`need` 7):** Asier T01 explicar · Blas T02 corregir · Cande T03 explicar · Dámaso T05 explicar · Elvira T06 corregir · Fidel T07 explicar · Gisela T08 corregir · Hilario T09 corregir · Ion T11 explicar · Rubén T12 corregir.
 - `celebrate`: "Cinco Calles vuelve a ordenarse: cada principio SOLID tiene su calle."
@@ -79,3 +79,11 @@ Estilos visuales nuevos, el artículo del botón de portal, M05, M09 y M11.
 - **Criaturas:** en las 12 de M06 y M07 se ven los ojos y la marca de color, y la forma cambia dentro de cada distrito. La primera criatura de M08 y la de M04 tienen la misma forma y se distinguen solo por el color (verde frente a turquesa, ΔE ≈ 14): no se confunden, pero es el par más cercano.
 - **Atlas:** personas 112 × 3 094 px y criaturas 28 × 658 px con 8 distritos (como se esperaba, unos 3 100 px de alto).
 - **Entrar a un portal:** pisar el rectángulo del portal entra al distrito por sí solo; el botón «Entrar a …» aparece a menos de 4 m (comprobado a 3,6 m).
+
+## Cambios tras la revisión de 7 agentes (2026-11-20)
+
+- **Validadores más estrictos** (`city/check_district.mjs`, `city/layout.mjs`): R9 también valida la boca de cada portal abierto (entera dentro de los bounds de la plaza, sin tocar la sede ni el muro de un portal cerrado y sin solaparse con otra boca); R6 compara los nombres sin caracteres invisibles y con el ancho completo normalizado (`NFKC` y `\p{Cf}`); `makeLayout` lanza un error con `step` ≤ 0 o con rangos infinitos en vez de colgar la build. Cada caso tiene su prueba en `validate_districts`, `city_layout` y `district_rules_test`.
+- **Helpers de pruebas** (`tests/district_rules.cjs`): `fold` quita invisibles y normaliza el ancho completo; `ownColorProblems` compara en minúsculas (R11 acepta `#AABBCC`).
+- **Orden de criaturas:** en M04 `paradigma` va primera y en M07 `caos`, para que el objetivo guiado empiece en T01 como en los otros seis distritos (antes M04 empezaba en T02 y M07 en T03). Los lugares que toma `people()` cambian en consecuencia; las tablas de arriba ya llevan el orden nuevo.
+- **Botón «Entrar a …» / «Habla con …» (`#city-act`):** era una `.btn` en fila de ancho casi completo con el texto partido en dos columnas y el joystick encima (en todos los teléfonos, no solo a 320 px). Ahora apila el texto y su ancho máximo lo deja a la derecha del joystick; medido en Chromium a 320 × 568, 360 × 640, 412 × 915 y 1280 × 800: solape 0 px² (antes 8 467 a 11 244 px²).
+- **Pruebas:** `tests/city_at.cjs` (`cityAt(city, TANDA3)`) fija las pruebas de la Tanda 3 a sus 8 distritos para que registrar M05 o M09 no las rompa; `tests/city_sprites.cjs` vigila que los atlas midan ≤ 4 096 px por lado (con 11 distritos el de personas lo pasaría y habrá que partirlo en columnas); `tests/rankline.cjs` y `tests/feasibility_lib.cjs` reúnen lo que estaba copiado en 3–5 archivos; se quitaron las pruebas duplicadas o que no probaban código del proyecto.

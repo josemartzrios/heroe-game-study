@@ -36,6 +36,14 @@ const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href)
   ok('reserve excluye: ningún punto a menos de 7 m de la reserva', got.length > 0 && got.every((p) => Math.hypot(p.x, p.z) >= 7), got.length + ' puntos');
   ok('separación mínima 7 m entre puntos', got.every((p, i) => got.every((q, j) => i === j || Math.hypot(p.x - q.x, p.z - q.z) >= 7)));
 
+  // entradas que harían un bucle sin fin: se rechazan con un error en vez de colgar la build
+  for (const [como, args] of [['paso 0', { step: 0 }], ['paso negativo', { step: -8 }], ['paso no numérico', { step: 'x' }], ['xRange infinito', { xRange: [0, Infinity] }],
+    ['xRange que empieza en -Infinity', { xRange: [-Infinity, 0] }], ['zRange infinito', { zRange: [0, -Infinity] }], ['zRange con NaN', { zRange: [NaN, 0] }]]) {
+    let e = null; try { makeLayout({ streetX: [0], streetZ: [0], xRange: [-8, 8], zRange: [8, -8], ...args }); } catch (x) { e = x; }
+    ok('makeLayout lanza con ' + como, e && /makeLayout/.test(e.message), e && e.message);
+  }
+  ok('makeLayout acepta que falte el rango de una dirección sin calles (solo filas o solo columnas)', (() => { try { return makeLayout({ streetX: [], streetZ: [0], xRange: [0, 8] }).take().x === 0 && makeLayout({ streetX: [0], streetZ: [], zRange: [0, -8] }).take().z === 0; } catch (e) { return false; } })());
+  ok('makeLayout sigue aceptando un rango de un solo punto y el paso por defecto', (() => { const L = makeLayout({ streetX: [0], streetZ: [], xRange: [0, 0], zRange: [0, 0] }); return L.take().x === 0; })());
   // people(): ids, temas y orden fijo de lugares (mentores → criaturas → reparaciones → aprendices)
   { const spots = []; const lay = { take() { const p = { x: spots.length, z: -spots.length }; spots.push(p); return { x: p.x, z: p.z }; } };
     const P = people(lay, { mentors: ['Ana', 'Beto'], creatures: [{ id: 'bit', name: 'Bit', topics: ['T01', 'T02'] }], repairs: [['T02', 'el semáforo']], apprentices: [['Cleo', 'T01', 'explain']] });

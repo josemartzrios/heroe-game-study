@@ -6,12 +6,12 @@ const { lay, tower, entry, exit, bounds, streets, blocks } = standardFrame();
 const MENTOR_NAMES = ['Amelia', 'Bautista', 'Constanza', 'Domingo', 'Eugenia', 'Fulgencio', 'Guadalupe', 'Hipólito', 'Ingrid', 'Jerónimo', 'Leonor', 'Moisés', 'Nora'];
 
 const CREATURES = [
+  { id: 'caos', name: 'Diseño Caótico', topics: ['T01', 'T02', 'T13'] },   // primera: el objetivo guiado empieza en T01
   { id: 'dios', name: 'Clase Dios', topics: ['T03', 'T04'] },
   { id: 'rigido', name: 'Código Rígido', topics: ['T05', 'T06'] },
   { id: 'impostora', name: 'Subclase Impostora', topics: ['T07', 'T08'] },
   { id: 'gorda', name: 'Interfaz Gorda', topics: ['T09', 'T10'] },
-  { id: 'mandon', name: 'Detalle Mandón', topics: ['T11', 'T12'] },
-  { id: 'caos', name: 'Diseño Caótico', topics: ['T01', 'T02', 'T13'] }
+  { id: 'mandon', name: 'Detalle Mandón', topics: ['T11', 'T12'] }
 ];
 
 const REPAIRS = [['T01', 'el software frágil'], ['T02', 'el acrónimo olvidado'], ['T04', 'la clase que hace de todo'], ['T06', 'el switch interminable'],

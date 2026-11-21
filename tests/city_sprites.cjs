@@ -29,6 +29,7 @@ const D = (await import('../city/districts.mjs')).city;
   const DMIDS = Object.keys(D.districts), NC = DMIDS.reduce((n, m) => n + D.districts[m].creatures.length, 0), NP = 1 + DMIDS.reduce((n, m) => n + D.districts[m].mentors.length + D.districts[m].apprentices.length, 0);
 S.setData(D);
 const MIDS = Object.keys(D.districts);
+const LIMIT = 4096;
 { const env = fakeEnv(); S.init(env.doc);
   const faces = ['up', 'down', 'left', 'right'], seen = new Set(); let img0 = null, same = true;
   faces.forEach((f) => [0, 1].forEach((s) => { const r = S.frame('hero', '', f, s); if (img0 === null) img0 = r.img; same = same && r.img === img0 && r.w === 14 && r.h === 14; seen.add(r.sx + ',' + r.sy); }));
@@ -41,6 +42,8 @@ const MIDS = Object.keys(D.districts);
   ok('un variant desconocido usa el primero del tipo', a.sx === b.sx && a.sy === b.sy);
   ok('las criaturas de todos los distritos ocupan celdas distintas y se llaman mid:id', new Set(S.kinds.creature.map((id) => { const r = S.frame('creature', id, 'down', 0); return r.sx + ',' + r.sy; })).size === NC && S.kinds.creature.length === NC && S.kinds.creature[0] === 'M02:bit' && S.kinds.creature[D.districts.M02.creatures.length] === 'M08:ruido', S.kinds.creature.join(','));
   ok('hay una variante de persona por Iris, mentor y aprendiz de todos los distritos, con la forma mid:id', S.kinds.person.length === NP && S.kinds.person[0] === 'iris' && S.kinds.person[1] === 'M02:m01' && S.kinds.person[24] === 'M02:a01' && S.kinds.person[36] === 'M08:m01' && S.kinds.person[51] === 'M08:a01', S.kinds.person.length + ' ' + S.kinds.person.slice(0, 3).join(','));
+  { const big = ['person', 'creature'].map((k) => [k, S.frame(k, S.kinds[k][0], 'down', 0).img]).filter(([, c]) => c.width > LIMIT || c.height > LIMIT);
+    ok('los atlas de personas y criaturas miden como mucho ' + LIMIT + ' px por lado (tope de textura de los móviles de gama baja); con más distritos hay que partirlos en columnas', big.length === 0, big.map(([k, c]) => k + ' ' + c.width + '×' + c.height).join(', ')); }
   ok('el mismo id en dos distritos (m01) tiene celdas distintas', (() => { const a = S.frame('person', 'M02:m01', 'down', 0), b = S.frame('person', 'M08:m01', 'down', 0); return a.sy !== b.sy; })());
   ok('setData con los mismos datos no reconstruye (los atlas ya creados siguen valiendo) y con otros datos los descarta', (() => { const r1 = S.frame('person', 'M02:m01', 'down', 0); S.setData(D); const r2 = S.frame('person', 'M02:m01', 'down', 0); const D2 = { districts: { X1: { mentors: [{ id: 'm01' }], apprentices: [], creatures: [{ id: 'c1' }] } } }; S.setData(D2); const ok1 = S.kinds.person.join() === 'iris,X1:m01' && S.kinds.creature.join() === 'X1:c1'; S.setData(D); return r1.img === r2.img && ok1 && S.kinds.person.length === NP; })());
   ok('todos los fillStyle son hex o rgba válidos', env.fills.length > 100 && env.fills.every((c) => /^#[0-9a-f]{6}$/i.test(c) || /^rgba\(/.test(c)), env.fills.filter((c) => !/^#[0-9a-f]{6}$/i.test(c)).slice(0, 3).join());

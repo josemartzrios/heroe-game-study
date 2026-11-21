@@ -1,7 +1,8 @@
 // Reglas entre distritos en un solo lugar: nombres de personas que suenan igual, colores propios, seeds y nombres de distrito únicos.
 // Las importan tanda2_feasibility, tanda3_feasibility, adv/tanda3_attack y adv/tanda3_plan_attack (probadas en district_rules_test.cjs).
 
-const fold = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// Sin invisibles (ancho cero, guion blando), con ancho completo en su forma normal, sin acentos y en minúsculas.
+const fold = (s) => String(s).normalize('NFKC').replace(/\p{Cf}/gu, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // Cómo suena un nombre en español, sin acentos y en minúsculas. El orden importa: ch es un sonido propio (marca \u0001, no pasa por c ni h);
 // gue/gui suenan /ge/ /gi/ (marca \u0002, no pasan por g+e/i → j); luego c y g suaves, h muda, z → s, v → b, x → j, ll/y → i y letras repetidas → una.
@@ -36,11 +37,12 @@ function nameClashes(districts) {
   return out;
 }
 
-// Distritos cuyos dos colores los usa también otro distrito (cada uno debe tener al menos un color propio).
+// Distritos cuyos dos colores los usa también otro distrito (cada uno debe tener al menos un color propio; #AABBCC y #aabbcc son el mismo).
+const lower = (c) => String(c).toLowerCase();
 function ownColorProblems(districts) {
   return Object.entries(districts).filter(([id, d]) => {
-    const others = Object.entries(districts).filter(([k]) => k !== id).flatMap(([, o]) => [o.colors.a, o.colors.b]);
-    return others.includes(d.colors.a) && others.includes(d.colors.b);
+    const others = Object.entries(districts).filter(([k]) => k !== id).flatMap(([, o]) => [lower(o.colors.a), lower(o.colors.b)]);
+    return others.includes(lower(d.colors.a)) && others.includes(lower(d.colors.b));
   }).map(([id, d]) => id + ' ' + d.colors.a + ' ' + d.colors.b);
 }
 

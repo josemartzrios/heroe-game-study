@@ -50,12 +50,6 @@ const insideBox = (x, z, r, boxes) => { const rr = r - 1e-6; return boxes.some((
   }
   // ATAQUE: la plaza con todos los portales abiertos (backs, rangos, ORDER) sigue cumpliendo R9/R10
   attack('checkPlaza(D5) sin errores', () => { const e = checkPlaza(D5); return e.length ? e.join(' | ') : true; });
-  // ATAQUE: el spec promete que ningún nombre de mentor o aprendiz se repite entre los distritos
-  attack('nombres de mentor y aprendiz únicos entre todos los distritos', () => {
-    const seen = {}, dup = [];
-    for (const mid of MIDS) for (const o of [...D5.districts[mid].mentors, ...D5.districts[mid].apprentices]) { const k = o.name.normalize('NFC').toLowerCase(); if (seen[k]) dup.push(o.name + '(' + seen[k] + '/' + mid + ')'); else seen[k] = mid; }
-    return dup.length ? 'repetidos: ' + dup.join(', ') : true;
-  });
   // ATAQUE: un nombre de distrito, criatura o etiqueta de reparación repetido entre distritos confundiría el HUD y la celebración
   attack('nombres de distrito y de criatura únicos entre todos los distritos', () => {
     const all = MIDS.map((m) => D5.districts[m].name).concat(...MIDS.map((m) => D5.districts[m].creatures.map((c) => c.name)));

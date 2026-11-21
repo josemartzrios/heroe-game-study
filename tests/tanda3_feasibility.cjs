@@ -10,13 +10,10 @@ const imp = (f) => import(pathToFileURL(path.join(root, f)).href);
 const assert = require('assert');
 const R = require('./district_rules.cjs');
 const MODULES = require('./modules.cjs');
+const F = require('./feasibility_lib.cjs');
 const same = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catch (e) { return false; } };
 const results = [];
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
-const pad = (n) => String(n).padStart(2, '0');
-const T = (n) => 'T' + pad(n);
-const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => T(a + i));
-const MODE = { explicar: 'explain', corregir: 'correct' };
 
 // ---- Tablas del spec v2 (transcritas tal cual) ----
 const SPEC = {
@@ -25,8 +22,8 @@ const SPEC = {
     colors: { a: '#2ee6c5', b: '#ff5ca8' }, style: 'red', seed: 23, need: 7,
     mentors: 'Amparo, Bernardo, Claudia, Damián, Esperanza, Francisco, Genaro, Hortensia, Iñaki, Jacinta, Leopoldo, Mercedes, Nicanor, Ofelia, Prudencio, Remedios, Saúl',
     creatures: [
-      ['goto', 'GO TO Salvaje', ['T02', 'T03']],
       ['paradigma', 'Paradigma Confundido', ['T01', 'T04', 'T05', 'T08', 'T09']],
+      ['goto', 'GO TO Salvaje', ['T02', 'T03']],
       ['impura', 'Función Impura', ['T06', 'T07']],
       ['perforada', 'Tarjeta Perforada', ['T10', 'T11', 'T12']],
       ['compilador', 'Compilador Errante', ['T13', 'T14', 'T15']],
@@ -65,12 +62,12 @@ const SPEC = {
     colors: { a: '#ffd1a1', b: '#e05cff' }, style: 'red', seed: 31, need: 7,
     mentors: 'Amelia, Bautista, Constanza, Domingo, Eugenia, Fulgencio, Guadalupe, Hipólito, Ingrid, Jerónimo, Leonor, Moisés, Nora',
     creatures: [
+      ['caos', 'Diseño Caótico', ['T01', 'T02', 'T13']],
       ['dios', 'Clase Dios', ['T03', 'T04']],
       ['rigido', 'Código Rígido', ['T05', 'T06']],
       ['impostora', 'Subclase Impostora', ['T07', 'T08']],
       ['gorda', 'Interfaz Gorda', ['T09', 'T10']],
-      ['mandon', 'Detalle Mandón', ['T11', 'T12']],
-      ['caos', 'Diseño Caótico', ['T01', 'T02', 'T13']]
+      ['mandon', 'Detalle Mandón', ['T11', 'T12']]
     ],
     repairs: [['T01', 'el software frágil'], ['T02', 'el acrónimo olvidado'], ['T04', 'la clase que hace de todo'],
       ['T06', 'el switch interminable'], ['T08', 'el pato de juguete'], ['T09', 'la interfaz gigante'],
@@ -81,20 +78,6 @@ const SPEC = {
     celebrate: 'Cinco Calles vuelve a ordenarse: cada principio SOLID tiene su calle.'
   }
 };
-
-const PURPLES = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'];
-const AMBER = '#ffd76a';
-
-function build(id, s, standardFrame, people) {
-  const { lay, tower, entry, exit, bounds, streets, blocks } = standardFrame();
-  const who = people(lay, {
-    mentors: s.mentors.split(', '),
-    creatures: s.creatures.map(([cid, name, topics]) => ({ id: cid, name, topics })),
-    repairs: s.repairs,
-    apprentices: s.apprentices.map(([name, topic, modo]) => [name, topic, MODE[modo]])
-  });
-  return { id, name: s.name, colors: s.colors, style: s.style, seed: s.seed, bounds, entry, exit, streets, blocks, ...who, tower, need: s.need, celebrate: { text: s.celebrate } };
-}
 
 (async () => {
   const { standardFrame, people } = await imp('city/layout.mjs');
@@ -108,51 +91,22 @@ function build(id, s, standardFrame, people) {
   for (const [id, s] of Object.entries(SPEC)) {
     const { file, title } = MODULES[id];
     const mod = expandModule(id, title, await imp(file));
-    const ids = mod.topics.map((t) => t.id);
-    const want = range(1, s.topicCount);
-    ok(`${id}: el módulo real "${title}" tiene ${s.topicCount} temas T01..T${s.topicCount} en orden`, JSON.stringify(ids) === JSON.stringify(want), ids.join(','));
-    ok(`${id}: un nombre de mentor por tema (${s.topicCount})`, s.mentors.split(', ').length === s.topicCount, String(s.mentors.split(', ').length));
-    ok(`${id}: ids de criatura únicos`, new Set(s.creatures.map((c) => c[0])).size === s.creatures.length);
+    F.shape(ok, id, s, mod);
     ok(`${id}: 6 criaturas`, s.creatures.length === 6, String(s.creatures.length));
     ok(`${id}: 9 reparaciones r01–r09`, s.repairs.length === 9, String(s.repairs.length));
     ok(`${id}: 10 aprendices a01–a10`, s.apprentices.length === 10, String(s.apprentices.length));
     ok(`${id}: need 7`, s.need === 7, String(s.need));
-    ok(`${id}: modos de aprendiz válidos (explicar/corregir)`, s.apprentices.every((a) => MODE[a[2]]));
-    ok(`${id}: colores en formato #rrggbb`, /^#[0-9a-f]{6}$/.test(s.colors.a) && /^#[0-9a-f]{6}$/.test(s.colors.b), s.colors.a + ' ' + s.colors.b);
-    ok(`${id}: style 'red'`, s.style === 'red', s.style);
-    ok(`${id}: ningún color es uno de los 6 morados de las criaturas de referencia`, !PURPLES.includes(s.colors.a) && !PURPLES.includes(s.colors.b), s.colors.a + ' ' + s.colors.b);
-    ok(`${id}: no usa el ámbar de ventanas y muros (${AMBER})`, s.colors.a !== AMBER && s.colors.b !== AMBER);
     ok(`${id}: nombre de distrito sin artículo`, !/^(el|la|los|las|un|una|unos|unas) /i.test(s.name), s.name);
-    const long = s.repairs.filter((r) => r[1].length > 28).map((r) => r[1] + ' (' + r[1].length + ')');
-    ok(`${id}: etiquetas de reparación de 28 caracteres como máximo`, long.length === 0, long.join(' | '));
-    const noArt = s.repairs.filter((r) => !/^(el|la|los|las|un|una|unos|unas) /.test(r[1])).map((r) => r[1]);
-    ok(`${id}: etiquetas de reparación empiezan con artículo`, noArt.length === 0, noArt.join(' | '));
-
     let dist = null;
     const needed = s.topicCount + s.creatures.length + s.repairs.length + s.apprentices.length;
-    try { dist = build(id, s, standardFrame, people); } catch (e) { /* sin lugares */ }
+    try { dist = F.build(id, s, standardFrame, people); } catch (e) { /* sin lugares */ }
     ok(`${id}: take() alcanza para ${needed} lugares sin pads`, !!dist, `lugares=${spots}`);
     if (!dist) continue;
 
     const errs = checkDistrict(dist, mod);
     ok(`${id}: checkDistrict R1–R7 y R11 sin errores`, errs.length === 0, errs.join(' | '));
 
-    // detalle por regla (informativo; mismo criterio que checkDistrict)
-    const count = (types, tid) => mod.questions.filter((q) => types.includes(q.type) && q.topic === tid).length;
-    for (const c of dist.creatures) {
-      const n = c.topics.reduce((a, t) => a + count(['mcq', 'tf'], t), 0);
-      ok(`${id} criatura ${c.id}: >= 8 preguntas mcq+tf`, n >= 8, `n=${n}`);
-    }
-    for (const r of dist.repairs) ok(`${id} reparación ${r.id} ${r.topic}: scenario+error >= 2`, count(['scenario', 'error'], r.topic) >= 2,
-      `scenario=${count(['scenario'], r.topic)} error=${count(['error'], r.topic)}`);
-    for (const a of dist.apprentices.filter((x) => x.mode === 'correct')) ok(`${id} aprendiz ${a.name} (${a.topic}) corregir: error >= 1`, count(['error'], a.topic) >= 1,
-      `error=${count(['error'], a.topic)}`);
-
-    // palabras prohibidas en todo el texto del distrito (nombres, etiquetas, celebración)
-    const texts = [dist.name, dist.celebrate.text, ...dist.mentors.map((m) => m.name), ...dist.creatures.map((c) => c.name),
-      ...dist.repairs.map((r) => r.label), ...dist.apprentices.map((a) => a.name)];
-    const hits = texts.filter((t) => FORBIDDEN.some((re) => re.test(t)));
-    ok(`${id}: sin palabras prohibidas (FORBIDDEN)`, hits.length === 0, hits.join(' | '));
+    F.detail(ok, id, dist, mod, FORBIDDEN);
 
     // archivo real idéntico a la tabla (falla hasta que exista y esté registrado)
     const file2 = `city/districts/${id.toLowerCase()}.mjs`;

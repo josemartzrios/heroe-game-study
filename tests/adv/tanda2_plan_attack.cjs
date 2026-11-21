@@ -28,10 +28,8 @@ function prop(name, arb, pred) {
 function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
 // ---------- cityRankLine REAL (city/view.js), en el mismo reino que story.js ----------
-const VIEW_SRC = fs.readFileSync(path.join(root, 'city/view.js'), 'utf8');
-const RL_SRC = (VIEW_SRC.match(/\nfunction cityRankLine\(mids\) \{[\s\S]*?\n\}\n/) || [''])[0];
-const rankLineOf = vm.runInThisContext('(function (S, CITY_DATA, CityStory) {' + RL_SRC + ';return cityRankLine; })');
-function planSays(C, D, mids) { return /^Subes a /.test(rankLineOf({ city: C }, D, CS)(mids)) ? 'sube' : 'sigue'; }
+const { rankLineFn } = require('../rankline.cjs');
+function planSays(C, D, mids) { return /^Subes a /.test(rankLineFn({ city: C }, D)(mids)) ? 'sube' : 'sigue'; }
 // rango previo según la definición del spec: restaurados propios de los datos que no están en mids (para la propiedad de monotonía)
 function copySpec(restored, mids, D) { var r = {}; Object.keys(D.districts).forEach(function (id) { if (restored && Object.prototype.hasOwnProperty.call(restored, id) && restored[id] === true && mids.indexOf(id) < 0) r[id] = true; }); return r; }
 // oráculo obviamente correcto: índice del rango por número de distritos de D restaurados (restored[id] === true como propiedad propia)
@@ -144,7 +142,6 @@ function mark(cell) { const shadow = cell[0], b = cell[1]; return cell.find((c) 
   })();
 
   // =================== (b) Task 2: tinta por criatura ===================
-  const PAL = ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'];
   const BASE = loadSprites(SPR_SRC); BASE.init(fakeDoc()); BASE.setData(mkD(ORDER5));
   const baseM02 = m02.creatures.map((c) => creatureCell(BASE, 'M02:' + c.id));
   const plan = (D) => { const SP = loadSprites(PLAN_SRC); SP.init(fakeDoc()); SP.setData(D); return SP; };

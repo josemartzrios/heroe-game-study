@@ -1,6 +1,6 @@
 // Ataque a la Tanda 3 (M04, M06, M07 "solo datos, sin cambios de código") con los distritos REALES de city/districts.mjs.
-// D8 = la ciudad real; D5 = la misma sin M04/M06/M07 (el estado de la Tanda 2) para atacar la migración.
-//  C  contenido/validación: checkDistrict de los 3 nuevos con el contenido real, checkPlaza(D8), reglas de nombres entre todos (district_rules).
+// D8 = la ciudad real reducida a los 8 distritos de la Tanda 3 (tests/city_at.cjs); D5 = la misma sin M04/M06/M07 (el estado de la Tanda 2) para atacar la migración.
+//  C  contenido/validación: checkDistrict de los 3 nuevos con el contenido real y checkPlaza(D8) (las reglas entre distritos las prueba tanda3_feasibility).
 //  T  city/story.js con 8 distritos: guardados de la Tanda 2, rangos (máximo Arquitecto), applyRestore de varios, objetivo de la plaza por ORDER,
 //     simulación de partida en cada distrito nuevo y posiciones de la plaza con los 3 portales recién abiertos.
 //  S  city/sprites2d.js real (vm): atlas, aspecto de los 5 de antes intacto, forma (ci + 3k) % 6, ninguna criatura de otro distrito igual o casi igual.
@@ -15,6 +15,7 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const CS = require('../../city/story.js');
 const CM = require('../../city/move.js');
+const { TANDA3, cityAt } = require('../city_at.cjs');
 
 const RUNS = +(process.argv[2] || 1000), FUZZ_N = +(process.argv[3] || 100000), SEED = +(process.argv[4] || 20261118), MAX_MS = 1000 * +(process.argv[5] || 60);
 const TODAY = '2026-11-18';
@@ -62,7 +63,6 @@ function cellOps(SP, kind, variant) {
   return f.img.ops.filter(([, x, y]) => x >= f.sx && x < f.sx + f.w && y >= f.sy && y < f.sy + f.h).map(([c, x, y, w, h]) => [c, x - f.sx, y - f.sy, w, h]);
 }
 const geom = (ops) => ops.map((o) => o.slice(1).join(',')).join(';');
-const hexOk = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 
 // ---------- CIEDE2000 (para "casi el mismo color") ----------
 function lab(h) {
@@ -83,18 +83,11 @@ function de00(h1, h2) {
   return Math.sqrt((dL / SL) ** 2 + (dC / SC) ** 2 + (dH / SH) ** 2 + RT * (dC / SC) * (dH / SH));
 }
 
-// ---------- cityRankLine real (view.js) ----------
-const VIEW_SRC = fs.readFileSync(path.join(root, 'city/view.js'), 'utf8');
-const grabFn = (src, name) => { const m = src.match(new RegExp('^function ' + name + '\\([\\s\\S]*?\\n}', 'm')); return m ? m[0] : null; };
-const RANKLINE_SRC = grabFn(VIEW_SRC, 'cityRankLine');
-function rankLineWith(D) {
-  const S = { city: { restored: {} } };
-  const fn = vm.runInThisContext('(function (S, CITY_DATA, CityStory) {\n' + RANKLINE_SRC + '\n;return cityRankLine; })')(S, D, CS);
-  return (restored, mids) => { S.city = { restored }; return fn(mids); };
-}
+// ---------- cityRankLine real (view.js), cargada por tests/rankline.cjs ----------
+const { rankLineWith } = require('../rankline.cjs');
 
 (async () => {
-  const D8 = (await imp('city/districts.mjs')).city;
+  const D8 = cityAt((await imp('city/districts.mjs')).city, TANDA3);   // los 8 de la Tanda 3: registrar M05/M09/M11 después no cambia estas pruebas
   const D5 = Object.assign({}, D8, { districts: Object.fromEntries(Object.entries(D8.districts).filter(([m]) => !NEW.includes(m))) });   // el estado de la Tanda 2
   const { checkDistrict, checkPlaza } = await imp('city/check_district.mjs');
   const { expandModule } = await imp('content_expand.mjs');
@@ -114,13 +107,6 @@ function rankLineWith(D) {
   for (const id of NEW) await attack('C1 checkDistrict(' + id + ') con el contenido real y la tabla del spec: sin errores', () => { const e = checkDistrict(DIST[id], MODS[id]); return e.length === 0 || e.join(' | '); });
   // ATAQUE: R9/R10 con 8 distritos (3 portales nuevos se abren y dejan de ser muros: back libre, todos en ORDER)
   await attack('C2 checkPlaza(D8) sin errores', () => { const e = checkPlaza(D8); return e.length === 0 || e.join(' | '); });
-  // ATAQUE: ningún nombre de mentor/aprendiz se repite ni suena como otro (Gil/Gilda, Ana/Hana, Javi/Xavier) y ninguno tiene menos de 3 letras
-  await attack('C3 nameClashes de todos los distritos (regla fonética de district_rules) no devuelve nada', () => { const bad = RULES.nameClashes(DIST); return bad.length === 0 || bad.join(' '); });
-  await attack('C4 los distritos nuevos tienen un color propio, seed y nombre únicos', () => {
-    const own = RULES.ownColorProblems(DIST), rep = RULES.repeated(DIST, 'seed').concat(RULES.repeated(DIST, 'name'));
-    return (own.length === 0 && rep.length === 0) || own.concat(rep).join(' | ');
-  });
-
   // =================== T. story.js con 8 distritos ===================
   // ATAQUE: el máximo alcanzable pasa a Arquitecto; Tech Lead (11) nunca con 8
   await attack('T1 rankName 0..8 con D8 = Becario,Junior,Junior,Semi-senior,Semi-senior,Semi-senior,Senior,Senior,Arquitecto (tabla 0/1/3/6/8/11 del spec)', () => {

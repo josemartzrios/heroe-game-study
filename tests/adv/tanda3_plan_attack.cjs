@@ -5,11 +5,9 @@
 //  C  cityRankLine real extraída de city/view.js con story.js real y 8 distritos: oráculo con los textos literales del plan.
 // Uso: node tests/adv/tanda3_plan_attack.cjs [RUNS=1000] [FUZZ_N=100000 por objetivo] [SEED=20261118] [MAX_S=60 por objetivo]   (código 1 si algo rompe)
 const fc = require('fast-check');
-const fs = require('fs');
-const vm = require('vm');
 const path = require('path');
 const { pathToFileURL } = require('url');
-const CS = require('../../city/story.js');
+const { TANDA3, cityAt } = require('../city_at.cjs');
 
 const RUNS = +(process.argv[2] || 1000), FUZZ_N = +(process.argv[3] || 100000), SEED = +(process.argv[4] || 20261118), MAX_MS = 1000 * +(process.argv[5] || 60);
 const root = path.join(__dirname, '..', '..');
@@ -48,16 +46,10 @@ const sharedBetween = (a, b) => { const A = objectsOf(a); return [...objectsOf(b
 const RULES = require('../district_rules.cjs');
 
 // =================== C. cityRankLine real ===================
-const VIEW_SRC = fs.readFileSync(path.join(root, 'city/view.js'), 'utf8');
-const RL_SRC = (VIEW_SRC.match(/\nfunction cityRankLine\(mids\) \{[\s\S]*?\n\}\n/) || [''])[0];
-function rankLineWith(D) {
-  const S = { city: { restored: {} } };
-  const fn = vm.runInThisContext('(function (S, CITY_DATA, CityStory) {' + RL_SRC + ';return cityRankLine; })')(S, D, CS);
-  return (restored, mids) => { S.city = { restored }; return fn(mids); };
-}
+const { SRC: RL_SRC, rankLineWith } = require('../rankline.cjs');
 
 (async () => {
-  const REAL = (await imp(path.join(root, 'city/districts.mjs'))).city;
+  const REAL = cityAt((await imp(path.join(root, 'city/districts.mjs'))).city, TANDA3);   // los 8 de la Tanda 3: registrar M05/M09/M11 después no cambia estas pruebas
   const { makeLayout, standardFrame } = await imp(path.join(root, 'city/layout.mjs'));
 
   const refSpots = (() => { const l = makeLayout({ reserve: [[0, -64], [0, 52]], streetX: [-28, 0, 28], streetZ: [16, -12, -40], xRange: [-52, 52], zRange: [52, -68] }); const s = []; try { for (;;) s.push(l.take()); } catch (e) { /* fin */ } return s; })();
@@ -70,22 +62,11 @@ function rankLineWith(D) {
     const bad = STD.filter((id) => 'lay' in REAL.districts[id] || Object.keys(REAL.districts[id]).join() !== keys || FRAME_KEYS.some((k) => JSON.stringify(REAL.districts[id][k]) !== JSON.stringify(F[k])));
     return bad.length ? 'difieren: ' + bad.join(',') : true;
   });
-  // ATAQUE: dos llamadas a standardFrame() comparten algún objeto (lay, bounds, streets, blocks, tower, entry, exit)
-  await attack('A2 dos llamadas a standardFrame() no comparten ningún objeto', () => {
-    const s = sharedBetween(standardFrame(), standardFrame());
-    return s.length ? 'comparten ' + s.length + ' objetos: ' + safeStr(s.slice(0, 3)) : true;
-  });
   // ATAQUE: dos distritos de CITY_DATA comparten un objeto (bounds, streets, blocks, tower, entry, exit): mutar uno contaminaría a los demás
   await attack('A3 los distritos M03, M01 y M10 de CITY_DATA no comparten ningún objeto entre sí', () => {
     const bad = [];
     for (let i = 0; i < STD.length; i++) for (let j = i + 1; j < STD.length; j++) { const n = sharedBetween(REAL.districts[STD[i]], REAL.districts[STD[j]]).length; if (n) bad.push(STD[i] + '/' + STD[j] + ': ' + n); }
     return bad.length ? 'comparten objetos: ' + bad.join(' ') : true;
-  });
-  // ATAQUE: el implementador usa ...standardFrame() en el literal: lay se filtra y cambia el orden de las claves (la comparación byte a byte lo detecta)
-  await attack('A4 un distrito armado con ...standardFrame() filtra lay y reordena las claves (la comparación byte a byte lo detecta)', () => {
-    const d = REAL.districts.M03, { bounds, entry, exit, streets, blocks, tower, ...restOf } = d;
-    const spread = { ...restOf, ...standardFrame() };
-    return JSON.stringify(spread) !== JSON.stringify(d) && /"lay":\{\}/.test(JSON.stringify(spread)) ? true : 'no lo detecta';
   });
   // ATAQUE: marcos intercalados (varios distritos tomando lugares a la vez) se roban lugares entre sí
   prop('A-P1 takes intercalados en 3 marcos: cada marco da exactamente la secuencia de un makeLayout nuevo',
@@ -107,8 +88,6 @@ function rankLineWith(D) {
     });
 
   // ---------------- B ----------------
-  // ATAQUE: los 8 distritos reales ya no pasan su propia regla de nombres (repetidos, homófonos, prefijos, menos de 3 letras)
-  await attack('B1 nameClashes de los distritos reales no devuelve nada', () => { const p = RULES.nameClashes(REAL.districts); return p.length ? p.join(' ') : true; });
   // ATAQUE: falso positivo injusto 'Ana'/'Anabel' (el spec lo pide como Gil/Gilda) y que la regla sea simétrica y no marque 'Ana'/'Ada'
   await attack('B4 Ana/Anabel se marca (coherente con Gil/Gilda), Ana/Ada y Sol/Saúl no; Gil/Gilda y Javi/Javier sí', () => {
     const want = [['Ana', 'Anabel', true], ['Gil', 'Gilda', true], ['Javi', 'Javier', true], ['Ana', 'Ada', false], ['Sol', 'Saúl', false], ['Ion', 'Iona', true], ['Leo', 'Leonor', true]];

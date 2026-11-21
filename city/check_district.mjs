@@ -12,6 +12,9 @@ const CM = vm.runInNewContext(fs.readFileSync(new URL('./move.js', import.meta.u
 const FORBID_ID = new Set(['__proto__', 'constructor', 'prototype', ...Object.getOwnPropertyNames(Object.prototype)]);
 const idOk = (id) => typeof id === 'string' && /^[a-z0-9_-]+$/.test(id) && !FORBID_ID.has(id);
 const aabb = (o) => ({ minX: o.x - o.w / 2, maxX: o.x + o.w / 2, minZ: o.z - o.d / 2, maxZ: o.z + o.d / 2 });
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// Texto como se lee: sin caracteres invisibles (ancho cero, guion blando) y con las letras de ancho completo pasadas a su forma normal.
+const plain = (s) => String(s).normalize('NFKC').replace(/\p{Cf}/gu, '');
 
 /* Un distrito mal formado (falta un campo, un tipo raro) devuelve un error R0 legible en vez de lanzar una excepción a mitad de la build */
 export function checkDistrict(dist, mod, opts = {}) {
@@ -68,7 +71,7 @@ function checkDistrictRules(dist, mod, opts) {
 
   // R6 palabras prohibidas en nombres y etiquetas
   const names = [dist.name, ...dist.mentors.map((x) => x.name), ...dist.creatures.map((x) => x.name), ...dist.apprentices.map((x) => x.name), ...dist.repairs.map((x) => x.label)];
-  for (const n of names) for (const re of forbidden) if (re.test(n)) bad(6, `palabra prohibida ${re} en "${n}"`);
+  for (const n of names) for (const re of forbidden) if (re.test(plain(n))) bad(6, `palabra prohibida ${re} en "${n}"`);
 
   // R7 tamaño, límites, separación >= 4 m y >= 0.6 m de toda caja sólida
   const B = dist.bounds, bw = B.maxX - B.minX, bd = B.maxZ - B.minZ;
@@ -133,13 +136,23 @@ export function checkPlaza(D, opts = {}) {
     if (!inB(p.back)) bad(9, `back del portal ${p.dist}: fuera de los bounds`);
     else if (near(p.back) || CM.portalAt(D, 'plaza', p.back.x, p.back.z) !== null || P.portals.some((q) => Math.abs(p.back.x - q.x) <= q.w / 2 && Math.abs(p.back.z - q.z) <= q.d / 2)) bad(9, `back del portal ${p.dist}: dentro de una caja sólida o de la boca de un portal`);
   }
+  // la boca de cada portal abierto debe poder pisarse: entera dentro de los bounds, sin tocar una caja sólida (sede, muros de portales cerrados)
+  // y sin solaparse con otra boca (portalAt elige siempre la primera: la otra quedaría inaccesible)
+  const touch = (a, b) => a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ;
+  const open = P.portals.filter((p) => hasOwn(D.districts, p.dist));
+  open.forEach((p, i) => {
+    const r = aabb(p);
+    if (!(r.minX >= B.minX && r.maxX <= B.maxX && r.minZ >= B.minZ && r.maxZ <= B.maxZ)) bad(9, `boca del portal ${p.dist}: fuera de los bounds`);
+    else if (boxes.some((b) => touch(r, b))) bad(9, `boca del portal ${p.dist}: dentro de una caja sólida`);
+    for (const q of open.slice(i + 1)) if (touch(r, aabb(q))) bad(9, `bocas de los portales ${p.dist} y ${q.dist}: se solapan`);
+  });
 
   // puntos de la plaza libres (directora, espejo, entrada) y nombre sin palabras prohibidas
   for (const q of [P.director, P.mirror, { id: 'entry', x: P.entry.x, z: P.entry.z }]) {
     if (!inB(q)) bad(7, `${q.id}: fuera de los bounds`);
     else if (near(q)) bad(7, `${q.id}: dentro o junto a una caja de colisión`);
   }
-  for (const re of forbidden) if (re.test(P.director.name)) bad(6, `palabra prohibida ${re} en "${P.director.name}"`);
+  for (const re of forbidden) if (re.test(plain(P.director.name))) bad(6, `palabra prohibida ${re} en "${P.director.name}"`);
 
   // R10 tabla de rangos
   const want = [[0, 'Becario'], [1, 'Junior'], [3, 'Semi-senior'], [6, 'Senior'], [8, 'Arquitecto'], [11, 'Tech Lead']];

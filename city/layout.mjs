@@ -2,6 +2,12 @@
 // Recorre primero las filas de calle (x de xRange[0] a xRange[1]) y luego las columnas (z de zRange[0] bajando a zRange[1]);
 // un punto entra si queda a >= min de todo lo ya tomado y de cada punto reservado (torre, pads, entrada...).
 export function makeLayout({ reserve = [], streetX, streetZ, xRange, zRange, step = 8, min = 7 }) {
+  // Un paso <= 0 o un extremo infinito harían un bucle sin fin y colgarían la build: se rechazan antes de recorrer nada.
+  // Cada rango solo se exige si hay calles que lo recorran (las filas usan xRange y las columnas zRange).
+  const finite = (r) => Array.isArray(r) && Number.isFinite(r[0]) && Number.isFinite(r[1]);
+  if (!(Number.isFinite(step) && step > 0)) throw new Error('makeLayout: step debe ser un número finito mayor que 0');
+  if (streetZ.length && !finite(xRange)) throw new Error('makeLayout: xRange debe tener dos extremos finitos');
+  if (streetX.length && !finite(zRange)) throw new Error('makeLayout: zRange debe tener dos extremos finitos');
   const taken = reserve.map(([x, z]) => ({ x, z }));
   const spots = [];
   const add = (x, z) => {
