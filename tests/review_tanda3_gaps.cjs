@@ -199,10 +199,11 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
   const firstN = (mid, n) => D.districts[mid].apprentices.slice(0, n).map((a) => a.id);
   const full = (mid) => ({ taught: set(firstN(mid, D.districts[mid].need)) });
   const almost = (mid) => ({ taught: set(firstN(mid, D.districts[mid].need - 1)) });
-  const teachOut = (e, mid, aid) => {   // enseña a un aprendiz con la ciudad cerrada y vuelve al inicio (la ronda guarda)
-    const q = e.w.eval('MODULES').find((m) => m.id === mid).questions.find((x) => x.type === 'mcq');
-    e.w.__CITY_ROUND__.startRound({ kind: 'teach', title: 'Enseñar', mid, back: { name: 'home' }, city: { kind: 'teach', id: aid, mid } }, [q]);
-    answerRight(e.w, e.d); nextQ(e.w, e.d); L.click(e.w, e.d.querySelector('[data-act="back"]'));
+  const winBoss = (e, mid) => {   // gana el jefe con la ciudad cerrada (con los aprendices ya enseñados la restauración queda pendiente) y vuelve al inicio
+    const qs = e.w.eval('MODULES').find((m) => m.id === mid).questions.filter((x) => x.type === 'mcq').slice(0, 20);
+    e.w.__CITY_ROUND__.startRound({ kind: 'boss', title: 'Jefe', mid, back: { name: 'home' } }, qs);
+    let g = 0; while (e.d.querySelector('.prompt') && g++ < 30) { answerRight(e.w, e.d); nextQ(e.w, e.d); }
+    L.click(e.w, e.d.querySelector('[data-act="back"]'));
   };
   const wantLine = (n, k) => {
     if (rkName(n) !== rkName(n - k)) return 'Subes a ' + rkName(n) + '.';
@@ -217,20 +218,22 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
   { const d = {}; OLD.forEach((m) => { d[m] = full(m); });
     const withRep = OLD.find((m) => D.districts[m].repairs.length && !D.districts[m].route);
     d[withRep].repairs = { [D.districts[withRep].repairs[0].id]: true };
-    const e = boot(base({ boss: passed(OLD), city: { prologue: true, scene: 'plaza', d, restored: set(OLD) } }));
-    const firstNew = SEQ[OLD.length], aid = D.districts[firstNew].apprentices[0].id;
-    teachOut(e, firstNew, aid);
+    const firstNew = SEQ[OLD.length], aid = D.districts[firstNew].apprentices[0].id, FN = D.districts[firstNew];
+    const e = boot(base({ boss: passed(OLD), city: { prologue: true, scene: firstNew, at: { x: FN.entry.x, z: FN.entry.z, yaw: 0 }, d, restored: set(OLD) } }));
+    await enterCity(e); e.w.__CITY_TEST_API__.teach(aid);   // se enseña con la ciudad abierta en ese distrito y se guarda
     const s = JSON.parse(e.w.localStorage.getItem(KEY)).city;
     ok('Tanda 2 → 3: tras guardar, el progreso de los distritos de antes queda igual', OLD.every((m) => JSON.stringify(s.d[m].taught) === JSON.stringify(d[m].taught) && JSON.stringify(s.d[m].repairs) === JSON.stringify(d[m].repairs || {})), JSON.stringify(s.d).slice(0, 400));
     ok('Tanda 2 → 3: los distritos nuevos existen en el guardado; el primero solo con el aprendiz enseñado y el resto vacíos', JSON.stringify(s.d[firstNew].taught) === JSON.stringify({ [aid]: true })
       && NEW.every((m) => s.d[m] && JSON.stringify(s.d[m].beaten) === '{}' && JSON.stringify(s.d[m].repairs) === '{}' && (m === firstNew || JSON.stringify(s.d[m].taught) === '{}')), JSON.stringify(NEW.map((m) => s.d[m])));
     ok('Tanda 2 → 3: restored conserva exactamente los distritos de antes', JSON.stringify(Object.keys(s.restored).sort()) === JSON.stringify(OLD.slice().sort()), JSON.stringify(s.restored));
-    await enterCity(e);
-    ok('Tanda 2 → 3: el HUD muestra el rango de ' + OLD.length + ' distritos (' + rkName(OLD.length) + ')', text(e, '#city-rank') === rkName(OLD.length), text(e, '#city-rank'));
-    ok('Tanda 2 → 3: el HUD dice "Distritos ' + OLD.length + ' de ' + TOTAL + '"', text(e, '#city-rest') === 'Distritos ' + OLD.length + ' de ' + TOTAL, text(e, '#city-rest'));
-    ok('Tanda 2 → 3: el objetivo de la plaza manda al primer distrito nuevo (' + D.districts[firstNew].name + ')', text(e, '#city-obj').includes('Entra a ' + D.districts[firstNew].name), text(e, '#city-obj'));
-    ok('Tanda 2 → 3: sin hoja de celebración al entrar (nada recién restaurado) y sin errores', !/restaurado/i.test(text(e, '#city-sheet')) && e.errors.length === 0, text(e, '#city-sheet').slice(0, 160) + ' ' + e.errors.join('|'));
-    e.w.close(); }
+    e.w.close();
+    const e2 = boot(base({ boss: passed(OLD), city: { prologue: true, scene: 'plaza', d, restored: set(OLD) } }));   // la plaza con el mismo guardado
+    await enterCity(e2);
+    ok('Tanda 2 → 3: el HUD muestra el rango de ' + OLD.length + ' distritos (' + rkName(OLD.length) + ')', text(e2, '#city-rank') === rkName(OLD.length), text(e2, '#city-rank'));
+    ok('Tanda 2 → 3: el HUD dice "Distritos ' + OLD.length + ' de ' + TOTAL + '"', text(e2, '#city-rest') === 'Distritos ' + OLD.length + ' de ' + TOTAL, text(e2, '#city-rest'));
+    ok('Tanda 2 → 3: el objetivo de la plaza manda al primer distrito nuevo (' + D.districts[firstNew].name + ')', text(e2, '#city-obj').includes('Entra a ' + D.districts[firstNew].name), text(e2, '#city-obj'));
+    ok('Tanda 2 → 3: sin hoja de celebración al entrar (nada recién restaurado) y sin errores', !/restaurado/i.test(text(e2, '#city-sheet')) && e2.errors.length === 0, text(e2, '#city-sheet').slice(0, 160) + ' ' + e2.errors.join('|'));
+    e2.w.close(); }
 
   // 6b. Cada distrito nuevo se carga en su escena con el % del HUD (0 %, 50 % con el jefe y el % con need − 1 enseñados)
   for (const m of NEW) {
@@ -246,9 +249,9 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
 
   // 6c. Celebración en el motor completo del n-ésimo restaurado de cada distrito nuevo y de todos los nuevos a la vez
   const scenario = async (done, pending) => {
-    const d = {}; done.forEach((m) => { d[m] = full(m); }); pending.forEach((m) => { d[m] = almost(m); });
-    const e = boot(base({ boss: passed(done.concat(pending)), city: { prologue: true, d } }));
-    pending.forEach((m) => teachOut(e, m, D.districts[m].apprentices[D.districts[m].need - 1].id));
+    const d = {}; done.forEach((m) => { d[m] = full(m); }); pending.forEach((m) => { d[m] = full(m); });
+    const e = boot(base({ boss: passed(done), city: { prologue: true, d } }));
+    pending.forEach((m) => winBoss(e, m));
     await enterCity(e);
     const r = { t: text(e, '#city-sheet'), rank: text(e, '#city-rank'), rest: text(e, '#city-rest'), obj: text(e, '#city-obj'), errs: e.errors.slice() };
     e.w.close();

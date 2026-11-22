@@ -8,6 +8,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
 const tick = async (n = 6) => { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const KEY = 'estudio_isw_v1';
+const CT = require('../city/teach.js');
 
 // opts: seed, createPending (create no resuelve hasta st.resolveCreate), createReject, noCtx (getContext nulo), matchMedia: bool|undefined
 function boot(opts = {}) {
@@ -381,11 +382,10 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       { const e4 = boot({ seed: base({ city: { prologue: true }, topics: six(['T06']) }) }); await enter(e4); near(e4, ap('a02'));
         ok('(q) "Enseñar a Beto" (modo corregir)', $(e4, '#city-act').textContent === 'Enseñar a Beto');
         click(e4.w, $(e4, '#city-act'));
-        ok('(q) corregir abre una ronda de error con el título "Enseñar"', !!$(e4, '.prompt') && /Enseñar/.test(e4.d.body.textContent) && root(e4).hidden);
-        const a0 = Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0);
-        answerRight(e4.w, e4.d);
-        click(e4.w, $(e4, '[data-act="back"]')); await tick();
-        ok('(q) si acierta queda en taught y la pregunta se registra', saved(e4.w).city.d.M02.taught.a02 === true && Object.values(saved(e4.w).qs).reduce((n, r) => n + r.a, 0) === a0 + 1);
+        ok('(q) corregir abre la hoja de Enseñar con un cuadro de texto, sin ronda y con la ciudad visible', !!$(e4, '#city-teach-text') && /¿Qué está mal y cómo es en realidad\?/.test($(e4, '#city-sheet').textContent) && !$(e4, '.opt') && !root(e4).hidden);
+        const qs0 = JSON.stringify(saved(e4.w).qs), it = M4(e4.w).questions.filter((q) => q.type === 'error' && q.topic === 'T06').map((q) => CT.fixItem(q)).find((i) => $(e4, '#city-sheet').textContent.includes(i.wrong));
+        typeIn(e4, it.right + ' ' + it.explanation); click(e4.w, btnText(e4, /^Revisar$/, '#city-sheet')); click(e4.w, btnText(e4, /^Confirmar$/, '#city-sheet'));
+        ok('(q) si lo corrige queda en taught y enseñar no registra ninguna respuesta', saved(e4.w).city.d.M02.taught.a02 === true && JSON.stringify(saved(e4.w).qs) === qs0);
         e4.w.close(); }
       // torre bloqueada
       { const e4 = boot({ seed: base({ city: { prologue: true } }) }); await enter(e4);
@@ -508,12 +508,15 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       e6.w.close();
       const e7 = boot({ seed: base({ virtues: { liderazgo: 1700000000000 }, city: { prologue: true }, topics: six('T06') }) }); await enter(e7);
       api(e7).teleport(a2.x, a2.z + 1); const y0 = saved(e7.w).xp; click(e7.w, $(e7, '#city-act'));
-      answerRight(e7.w, e7.d);
-      ok('(v) corregir con Liderazgo: "Bono de Liderazgo: +5 XP" en resultados y XP mostrado = guardado', /Bono de Liderazgo: \+5 XP/.test($(e7, 'main').textContent) && Number($(e7, '#xpc').dataset.xp) === saved(e7.w).xp - y0, $(e7, 'main').textContent.slice(-120));
+      const fixIt = (e) => e.w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((q) => q.type === 'error' && q.topic === 'T06').map((q) => CT.fixItem(q)).find((i) => $(e, '#city-sheet').textContent.includes(i.wrong));
+      const fixTxt = (e) => { const i = fixIt(e), ta = $(e, '#city-teach-text'); ta.value = i.right + ' ' + i.explanation; ta.dispatchEvent(new e.w.Event('input', { bubbles: true })); };
+      fixTxt(e7); click(e7.w, btnText(e7, /^Revisar$/, '#city-sheet')); click(e7.w, btnText(e7, /^Confirmar$/, '#city-sheet'));
+      ok('(v) corregir con Liderazgo: +20 XP y la hoja dice "(incluye +5 de Liderazgo)"', saved(e7.w).xp - y0 === 20 && /\(incluye \+5 de Liderazgo\)/.test($(e7, '#city-sheet').textContent), (saved(e7.w).xp - y0) + ' ' + $(e7, '#city-sheet').textContent.slice(0, 80));
       e7.w.close();
       const e8 = boot({ seed: base({ city: { prologue: true }, topics: six('T06') }) }); await enter(e8);
-      api(e8).teleport(a2.x, a2.z + 1); click(e8.w, $(e8, '#city-act')); answerRight(e8.w, e8.d);
-      ok('(v) sin Liderazgo no hay bono al corregir', !/Bono de Liderazgo/.test($(e8, 'main').textContent));
+      api(e8).teleport(a2.x, a2.z + 1); const z0 = saved(e8.w).xp; click(e8.w, $(e8, '#city-act'));
+      fixTxt(e8); click(e8.w, btnText(e8, /^Revisar$/, '#city-sheet')); click(e8.w, btnText(e8, /^Confirmar$/, '#city-sheet'));
+      ok('(v) sin Liderazgo no hay bono al corregir: +15 XP y la hoja no menciona Liderazgo', saved(e8.w).xp - z0 === 15 && !/Liderazgo/.test($(e8, '#city-sheet').textContent));
       e8.w.close(); }
 
     // (w) palanca visible y flotante (spec: intuitiva)

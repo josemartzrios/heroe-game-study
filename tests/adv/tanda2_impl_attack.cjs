@@ -297,35 +297,36 @@ const { grabFn, SRC: RANKLINE_SRC, rankLineWith } = require('../rankline.cjs');
   const base = (o = {}) => Object.assign({ v: 1, xp: 1000, days: { last: null, count: 0 }, session: 1, lastActive: 0, topics: {}, qs: {}, boss: {}, hero: { name: 'H' } }, o);
   const answerRight = (w, d) => { const q = L.findQ(w, d); L.click(w, L.optBtn(d, L.correctText(q))); };
   const nextQ = (w, d) => { const b = d.querySelector('#nextbtn'); if (b) L.click(w, b); };
-  const teachOut = (e, mid, aid) => {
-    const q = e.w.eval('MODULES').find((m) => m.id === mid).questions.find((x) => x.type === 'mcq');
-    e.w.__CITY_ROUND__.startRound({ kind: 'teach', title: 'Enseñar', mid, back: { name: 'home' }, city: { kind: 'teach', id: aid, mid } }, [q]);
-    answerRight(e.w, e.d); nextQ(e.w, e.d); L.click(e.w, e.d.querySelector('[data-act="back"]'));
+  const winBoss = (e, mid) => {   // gana el jefe con la ciudad cerrada (con los aprendices ya enseñados la restauración queda pendiente) y vuelve al inicio
+    const qs = e.w.eval('MODULES').find((m) => m.id === mid).questions.filter((x) => x.type === 'mcq').slice(0, 20);
+    e.w.__CITY_ROUND__.startRound({ kind: 'boss', title: 'Jefe', mid, back: { name: 'home' } }, qs);
+    let g = 0; while (e.d.querySelector('.prompt') && g++ < 30) { answerRight(e.w, e.d); nextQ(e.w, e.d); }
+    L.click(e.w, e.d.querySelector('[data-act="back"]'));
   };
   const enter = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city"]')); for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0)); return (e.d.querySelector('#city-sheet') || {}).textContent || ''; };
-  const allT = (m) => ALLTRUE(DIST[m].apprentices.map((a) => a.id)), lessOne = (m) => ALLTRUE(DIST[m].apprentices.slice(0, DIST[m].need - 1).map((a) => a.id));
-  const lastA = (m) => DIST[m].apprentices[DIST[m].need - 1].id, passed = (ms) => Object.fromEntries(ms.map((m) => [m, { best: 18, passed: true }]));
+  const allT = (m) => ALLTRUE(DIST[m].apprentices.map((a) => a.id));
+  const passed = (ms) => Object.fromEntries(ms.map((m) => [m, { best: 18, passed: true }]));
   // ATAQUE: el 3.º distrito cruza a Semi-senior: "Subes a Semi-senior." y nunca "Sigues como"
   await attack('V1 jsdom: restaurar M03 con M02 y M08 ya restaurados → "Subes a Semi-senior."', async () => {
-    const e = boot(JSON.stringify(base({ boss: passed(['M02', 'M08', 'M03']), city: { prologue: true, d: { M02: { taught: allT('M02') }, M08: { taught: allT('M08') }, M03: { taught: lessOne('M03') } } } })));
-    teachOut(e, 'M03', lastA('M03'));
+    const e = boot(JSON.stringify(base({ boss: passed(['M02', 'M08']), city: { prologue: true, d: { M02: { taught: allT('M02') }, M08: { taught: allT('M08') }, M03: { taught: allT('M03') } } } })));
+    winBoss(e, 'M03');
     const t = await enter(e); e.w.close();
     return (t.includes('Subes a Semi-senior.') && !t.includes('Sigues como') && e.errors.length === 0) || t.slice(0, 240) + ' ' + e.errors.join('|');
   });
   // ATAQUE: 4.º y 5.º a la vez (3 → 5): la línea es la del oráculo con el número real de distritos (sin "Subes a": el rango no cambia)
   await attack('V2 jsdom: M01 y M10 a la vez (3 → 5) → la línea del oráculo y título plural', async () => {
-    const e = boot(JSON.stringify(base({ boss: passed(MIDS), city: { prologue: true, d: { M02: { taught: allT('M02') }, M08: { taught: allT('M08') }, M03: { taught: allT('M03') }, M01: { taught: lessOne('M01') }, M10: { taught: lessOne('M10') } } } })));
-    teachOut(e, 'M01', lastA('M01')); teachOut(e, 'M10', lastA('M10'));
+    const e = boot(JSON.stringify(base({ boss: passed(['M02', 'M08', 'M03']), city: { prologue: true, d: { M02: { taught: allT('M02') }, M08: { taught: allT('M08') }, M03: { taught: allT('M03') }, M01: { taught: allT('M01') }, M10: { taught: allT('M10') } } } })));
+    winBoss(e, 'M01'); winBoss(e, 'M10');
     const t = await enter(e); e.w.close();
     const want = oracleLine({ M02: true, M08: true, M03: true, M01: true, M10: true }, ['M01', 'M10']);
     return (t.includes(want) && !/Subes a/.test(t) && t.includes('¡Distritos restaurados!') && t.includes(DIST.M01.name) && t.includes(DIST.M10.name) && e.errors.length === 0) || 'esperaba "' + want + '": ' + t.slice(0, 260) + ' ' + e.errors.join('|');
   });
   // ATAQUE: guardado con restored/powers hostiles (todo restaurado, __proto__ propio) y nada enseñado: la celebración del 1.º real dice "Subes a Junior."
   await attack('V3 jsdom: restored hostil en el guardado no altera la línea de rango', async () => {
-    const seed = JSON.stringify(base({ boss: passed(['M02']), city: { prologue: true, restored: { M02: true, M08: true, M03: true, M01: true, M10: true }, powers: { planos: true }, d: { M02: { taught: lessOne('M02') } } } }))
+    const seed = JSON.stringify(base({ city: { prologue: true, restored: { M02: true, M08: true, M03: true, M01: true, M10: true }, powers: { planos: true }, d: { M02: { taught: allT('M02') } } } }))
       .replace('"restored":{', '"restored":{"__proto__":{"M08":true,"M03":true},"constructor":true,');
     const e = boot(seed);
-    teachOut(e, 'M02', lastA('M02'));
+    winBoss(e, 'M02');
     const t = await enter(e); e.w.close();
     return (t.includes('Subes a Junior.') && !t.includes('Sigues como') && e.errors.length === 0 && ({}).M08 === undefined) || t.slice(0, 240) + ' ' + e.errors.join('|');
   });

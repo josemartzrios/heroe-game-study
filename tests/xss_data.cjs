@@ -144,17 +144,11 @@ async function interact(e, o, dz = 1) {
       ok('M02: sin errores de página', e.errors.length === 0, e.errors.join(' | '));
       e.w.close(); }
 
-    // celebración: con 7 aprendices enseñados y el jefe aprobado, enseñar al octavo restaura M02; al volver a la ciudad se celebra (con el rango nuevo)
+    // celebración: con 7 aprendices enseñados y el jefe aprobado, enseñar al octavo restaura M02 y se celebra en la hoja (con el rango nuevo)
     { const need = M2.need, ids = M2.apprentices.slice(0, need).map((a) => a.id);
       const seed = base({ scene: 'M02', at: at(M2.entry), d: { M02: { taught: set(ids.slice(0, need - 1)) } } }, { boss: { M02: { best: 18, passed: true } } });
       const e = await start(seed);
-      const q = e.w.eval('MODULES').find((m) => m.id === 'M02').questions.find((x) => x.topic === 'T20' && x.type === 'mcq');
-      e.w.__CITY_ROUND__.startRound({ kind: 'teach', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: ids[need - 1], mid: 'M02' } }, [q]);
-      L.click(e.w, L.optBtn(e.d, L.correctText(L.findQ(e.w, e.d))));
-      L.click(e.w, e.d.querySelector('#nextbtn')); await tick();
-      const back = e.d.querySelector('[data-act="back"]');
-      ok('celebración: la ronda termina y ofrece volver a la ciudad', !!back);
-      if (back) { click(e, back); await tick(10); }
+      api(e).teach(ids[need - 1]); await tick(10);
       const sh = $(e, '#city-sheet');
       ok('celebración: la hoja muestra el texto y el nombre del distrito como texto y sin elementos nuevos', !!sh && !sh.hidden && asText(e, 'celebracionM02') && asText(e, 'distritoM02') && clean(e), sh ? sh.textContent.slice(0, 200) : 'sin hoja');
       ok('celebración: el rango ("Subes a …") sale de los datos y también se ve como texto', asText(e, 'rango1'), sh ? sh.textContent.slice(0, 200) : '');

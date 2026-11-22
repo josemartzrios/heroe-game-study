@@ -611,13 +611,32 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
     if (pg % 4 === 0) { virt.valentia = 1; virt.enfoque = 1; virt.liderazgo = 1; }
     const boss = pg % 5 === 1 ? { M01: { best: 3, passed: true } } : pg % 5 === 2 ? { M01: { best: 1, passed: false } } : {};
     const xp0 = [0, 5, 120, 1000, 5000, 20000][pg % 6];
-    const e = boot(JSON.stringify(baseSave({ xp: xp0, virtues: virt, boss, days: pg % 3 === 0 ? { last: null, count: 0 } : { last: null, count: 9 } })), { rnd: SEED + pg });
+    const e = boot(JSON.stringify(baseSave({ xp: xp0, virtues: virt, boss, days: pg % 3 === 0 ? { last: null, count: 0 } : { last: null, count: 9 }, city: { prologue: true, scene: 'M02', at: { x: D.districts.M02.entry.x, z: D.districts.M02.entry.z, yaw: 0 } } })), { rnd: SEED + pg });
     const w = e.w, d = e.d, RH = w.__CITY_ROUND__;
     if (!RH) { note('ROUND', 'pagina ' + pg, 'sin gancho __CITY_ROUND__'); w.close(); continue; }
     for (let k = 0; k < 10 && rounds < ROUNDS; k++, rounds++) {
       const s0 = saved(w), kind = rnd.pick(['battle', 'battle', 'battle', 'tie', 'perfect', 'teach', 'quiz']);
       const vA = (s0 && s0.virtues) || {}, xpA = (s0 && s0.xp) || 0, hadVal = !!vA.valentia, hadFocus = !!vA.enfoque, hadLead = !!vA.liderazgo;
       const vid = rnd.pick(Object.keys(VIL)), probRight = rnd.pick([0, 0.2, 0.5, 0.8, 1]);
+      if (kind === 'teach') {   // enseñar ya no es una ronda: se enseña en la hoja de la ciudad y el gancho ejecuta cityTeachDone
+        const tv = (m) => roundViol.push('round ' + rounds + ' pg' + pg + ' teach lead=' + hadLead + ' ' + m);
+        const root = () => d.querySelector('#city-root');
+        if (root().hidden) {   // desde los resultados de la ronda anterior o desde Inicio
+          let b = [...d.querySelectorAll('[data-act="back"]')].find((x) => /ciudad/i.test(x.textContent));
+          if (!b) { const h = d.querySelector('[data-act="back"]'); if (h) { L.click(w, h); await tick(); } b = d.querySelector('[data-act="city"]'); }
+          if (b) { L.click(w, b); await tick(20); }
+        }
+        if (root().hidden) { continue; }   // la ronda anterior quedó a medias: sin vista desde la que entrar
+        w.__CITY_TEST_API__.teach('a01'); teaches++;
+        const s1 = saved(w), hoja = (d.querySelector('#city-sheet') || {}).textContent || '', gained = (s1 ? s1.xp : 0) - xpA, want = 15 + (hadLead ? 5 : 0);
+        if (gained !== want) tv('XP ganado ' + gained + ' en vez de ' + want);
+        if (!((((s1 || {}).city || {}).d || {}).M02 || {}).taught || !s1.city.d.M02.taught.a01) tv('a01 sin marcar enseñado');
+        if (hadLead && !/\(incluye \+5 de Liderazgo\)/.test(hoja)) tv('enseñar con Liderazgo sin «(incluye +5 de Liderazgo)»: ' + hoja.slice(0, 80));
+        if (!hadLead && /Liderazgo/.test(hoja)) tv('Liderazgo en la hoja sin la virtud previa');
+        L.click(w, d.querySelector('#city-pause')); const hm = [...d.querySelectorAll('[data-c="p-home"]')][0]; if (hm) L.click(w, hm); await tick();   // fuera de la ciudad para la siguiente ronda
+        if (e.errors.length) { tv('error de consola: ' + e.errors[0]); e.errors.length = 0; }
+        continue;
+      }
       let items, cfg, expectTotal = 0;
       try {
         if (kind === 'battle' || kind === 'tie') {
@@ -628,9 +647,6 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
         } else if (kind === 'perfect') {
           const qs = w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((x) => x.type === 'mcq').slice(0, 8 + rnd.int(0, 2));
           cfg = { kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'home' } }; items = qs;
-        } else if (kind === 'teach') {
-          const qs = w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((x) => x.type === 'error');
-          cfg = { kind: 'error', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01', mid: 'M02' } }; items = [qs[rnd.int(0, qs.length - 1)]];
         } else {
           const qs = w.eval('MODULES').find((m) => m.id === 'M02').questions.filter((x) => x.type === 'mcq');
           cfg = { kind: 'quiz', title: 'Quiz', mid: 'M02', back: { name: 'home' } }; items = rnd.pick([qs.slice(0, 3), qs.slice(0, 12)]);
@@ -647,9 +663,9 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
       }
       try {
         while (!gtitle(d) && d.querySelector('.prompt') && guard++ < 60 && !bad) {
-          const right = kind === 'perfect' || kind === 'teach' ? true : rnd.bool(probRight);
+          const right = kind === 'perfect' ? true : rnd.bool(probRight);
           if (!right) perfectRun = false;
-          if (!answerOne(w, d, right, kind === 'perfect' || kind === 'teach' ? { bool: () => false, pick: (a) => a[0] } : rnd)) { /* sin opción: sigue */ }
+          if (!answerOne(w, d, right, kind === 'perfect' ? { bool: () => false, pick: (a) => a[0] } : rnd)) { /* sin opción: sigue */ }
           answered++;
           if (isBattle) {
             const h = hp(d), en = enNow(d), mx = enMax(d);
@@ -688,8 +704,7 @@ const bigXp = (d) => { const e = d.querySelector('#xpc'); return e ? Number(e.da
       const txt = d.querySelector('main').textContent;
       if (kind === 'perfect' && items.length >= 8 && perfectRun) { perfects++; if (hadFocus && !/Bono de Enfoque: \+10 XP/.test(txt)) vi('ronda perfecta ' + items.length + ' con Enfoque previo sin bono +10'); if (!hadFocus && /Bono de Enfoque/.test(txt)) vi('bono de Enfoque sin tener la virtud antes de la ronda'); }
       if (kind !== 'perfect' && /Bono de Enfoque/.test(txt) && !(perfectRun && answered >= 8 && !isBattle)) vi('bono de Enfoque en una ronda no perfecta/<8 (respuestas ' + answered + ', todas bien=' + perfectRun + ')');
-      if (kind === 'teach') { teaches++; if (hadLead && !/Bono de Liderazgo: \+5 XP/.test(txt)) vi('enseñar bien con Liderazgo sin +5'); if (!hadLead && /Bono de Liderazgo/.test(txt)) vi('bono de Liderazgo sin virtud previa'); }
-      if (kind !== 'teach' && /Bono de Liderazgo/.test(txt)) vi('bono de Liderazgo fuera de enseñar');
+      if (/Bono de Liderazgo/.test(txt)) vi('«Bono de Liderazgo» en los resultados de una ronda (el bono ya solo existe al enseñar, en la hoja)');
       if (!s1 || !fin(s1.xp) || s1.xp < xpA) vi('S.xp no finito o bajó: ' + (s1 && s1.xp) + ' < ' + xpA);
       // volver a Inicio para la siguiente
     }

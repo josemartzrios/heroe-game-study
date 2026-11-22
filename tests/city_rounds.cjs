@@ -127,12 +127,12 @@ const BIT = { kind: 'battle', title: 'Batalla', mid: 'M02', back: { name: 'city'
       ok('Reparación con láser (asistida) no marca', !!laser && !saved(e.w).city.d.M02.repairs.r09, 'laser=' + !!laser);
       e.w.close(); }
 
-    // --- enseñar: cfg.city.kind teach
+    // --- enseñar ya no es una ronda: un cfg.city.kind teach no marca nada (se enseña escribiendo, en la hoja de la ciudad)
     { const e = boot(fresh());
       const q = e.w.eval('MODULES').find((m) => m.id === 'M02').questions.find((x) => x.topic === 'T01' && x.type === 'mcq');
       R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01', mid: 'M02' } }, [q]);
       answerOne(e.w, e.d, true); nextQ(e.w, e.d);
-      ok('Enseñar con 1 acierto marca d.M02.taught.a01', saved(e.w).city.d.M02.taught.a01 === true);
+      ok('una ronda con cfg.city.kind teach y 1 acierto ya no marca d.M02.taught.a01', !saved(e.w).city.d.M02.taught.a01 && JSON.stringify(saved(e.w).city.d.M02.taught) === '{}', JSON.stringify(saved(e.w).city.d.M02.taught));
       e.w.close(); }
 
     // --- vResults: Volver a la ciudad

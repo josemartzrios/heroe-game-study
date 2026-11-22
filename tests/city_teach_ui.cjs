@@ -49,6 +49,7 @@ const api = (e) => e.w.__CITY_TEST_API__;
 const cx = (e, c) => $$(e, '[data-act="cx"]').find((b) => b.dataset.c === c);
 const sheetText = (e) => ($(e, '#city-sheet') || {}).textContent || '';
 const live = (e) => $(e, '#city-live').textContent;
+const qsOf = (e) => saved(e.w).qs;   // respuestas registradas: enseñar no cuenta como práctica
 async function enter(e) { click(e.w, $(e, '[data-act="city"]')); await tick(); }
 function typeText(e, text) { const ta = $(e, '#city-teach-text'); ta.value = text; ta.dispatchEvent(new e.w.Event('input', { bubbles: true })); return ta; }
 const WORDS12 = 'uno dos tres cuatro cinco seis siete ocho nueve diez once doce';
@@ -147,6 +148,43 @@ const XSS = '</textarea><img src=x onerror="window.__x=1"><script>window.__x=2</
     near(e, ap('a01')); click(e.w, $(e, '#city-act')); click(e.w, cx(e, 'teach-send')); click(e.w, cx(e, 'teach-ok'));
     ok('el texto escrito no se guarda en localStorage (ni con un borrador abierto, ni al aprobar, ni en la copia _bak)', !/zxqwv/.test(withDraft) && !/zxqwv/.test(dump()) && saved(e.w).city.d.M02.taught.a01 === true);
     e.w.close(); }
+
+  // ---- corregir (M02 T06, aprendiz a02 «Beto») ----
+  const itemOf = (e) => mod2(e.w).questions.filter((q) => q.type === 'error' && q.topic === 'T06').map(T.fixItem).find((i) => sheetText(e).includes(i.wrong));
+  { const e = boot({ seed: base({ topics: six(['T06']) }), rndSeed: 7 }); const qs0 = JSON.stringify(qsOf(e)); await openA(e, 'a02');
+    const it = itemOf(e), h = $(e, '#city-sheet h2');
+    ok('corregir: se ve la frase equivocada y «¿Qué está mal y cómo es en realidad?» con el foco en el h2', !!it && /^¿Qué está mal y cómo es en realidad\?$/.test(h.textContent) && e.d.activeElement === h, it && it.wrong);
+    typeText(e, 'uno dos tres cuatro cinco');
+    ok('corregir: con 5 palabras «Falta 1 palabra de 6» y el botón desactivado', $(e, '#city-count').textContent === 'Falta 1 palabra de 6' && cx(e, 'teach-send').disabled);
+    typeText(e, 'uno dos tres cuatro cinco seis');
+    ok('corregir: con 6 palabras el botón se activa', $(e, '#city-count').textContent === 'Listo' && !cx(e, 'teach-send').disabled);
+    typeText(e, it.right + ' ' + it.explanation); click(e.w, cx(e, 'teach-send'));
+    const box = () => $(e, '#city-sheet input[type="checkbox"]');
+    ok('revisar: tu texto con algún mark.hit, la versión correcta debajo, «Encontré N de M términos» y «Lo corregí bien» premarcada', $$(e, '#city-sheet mark.hit').length > 0 && sheetText(e).includes(it.right) && /Encontré \d+ de \d+ términos?/.test(sheetText(e)) && box().checked && /Lo corregí bien/.test(box().closest('label').textContent), sheetText(e).slice(0, 200));
+    box().checked = false; click(e.w, cx(e, 'teach-ok'));
+    const miss = $(e, '#city-sheet [role="status"]');
+    ok('confirmar sin marcar vuelve a escribir con el texto, «Revisa la versión correcta» en role=status y el foco ahí', !!miss && /Revisa la versión correcta/.test(miss.textContent) && e.d.activeElement === miss && $(e, '#city-teach-text').value === it.right + ' ' + it.explanation && !saved(e.w).city.d.M02.taught.a02);
+    typeText(e, it.wrong); click(e.w, cx(e, 'teach-send'));
+    ok('revisar con la frase equivocada: «Lo corregí bien» no sale premarcada', box() && !box().checked);
+    click(e.w, cx(e, 'sheetclose')); near(e, ap('a02')); click(e.w, $(e, '#city-act'));
+    ok('reabrir tras «Cerrar» muestra la misma frase equivocada y recupera el texto', sheetText(e).includes(it.wrong) && $(e, '#city-teach-text').value === it.wrong);
+    typeText(e, it.right + ' ' + it.explanation); click(e.w, cx(e, 'teach-send'));
+    const xp0 = saved(e.w).xp, okb = cx(e, 'teach-ok'); click(e.w, okb); click(e.w, okb);
+    ok('confirmar marcada: taught.a02 y +15 XP una sola vez', saved(e.w).city.d.M02.taught.a02 === true && saved(e.w).xp - xp0 === 15 && /lo entendió/.test(sheetText(e)), String(saved(e.w).xp - xp0));
+    ok('sin ronda: la ciudad sigue visible, no hay pregunta ni «Volver», y no se registra ninguna respuesta', !$(e, '#city-root').hidden && !$(e, '.opt') && !$(e, '[data-act="back"]') && JSON.stringify(qsOf(e)) === qs0, JSON.stringify(qsOf(e)));
+    e.w.close(); }
+  { const e = boot({ seed: base({ topics: six(['T06']), virtues: { liderazgo: 1700000000000 } }), rndSeed: 7 }); await openA(e, 'a02');
+    const it = itemOf(e);
+    typeText(e, it.right + ' ' + it.explanation); click(e.w, cx(e, 'teach-send')); const xp0 = saved(e.w).xp; click(e.w, cx(e, 'teach-ok'));
+    ok('corregir con Liderazgo: +20 XP y «(incluye +5 de Liderazgo)»', saved(e.w).xp - xp0 === 20 && /\(incluye \+5 de Liderazgo\)/.test(sheetText(e)), sheetText(e).slice(0, 100));
+    e.w.close(); }
+  { const e = boot({ seed: base({ topics: six(['T06']) }), rndSeed: 7 }); await openA(e, 'a02');
+    const inert = () => !$(e, '#city-sheet img') && !$(e, '#city-sheet script') && e.w.__x === undefined;
+    typeText(e, '</textarea><img src=x onerror="window.__x=1"><script>window.__x=2</script> uno dos tres cuatro cinco seis'); click(e.w, cx(e, 'teach-send'));
+    const a = inert() && /<img src=x/.test(sheetText(e)); click(e.w, cx(e, 'teach-edit'));
+    ok('el HTML del jugador es inerte en la revisión de corregir (visible como texto) y al reescribir', a && inert() && e.errors.length === 0, e.errors.join('|'));
+    e.w.close(); }
+  ok('el motor ya no tiene la ronda de enseñar (hadLead, leadBonus, kind === \'teach\')', !/hadLead|leadBonus|kind === 'teach'/.test(html));
 
   // ---- gancho de prueba ----
   { const e = mk(); await enter(e); const xp0 = saved(e.w).xp; api(e).teach('a03');

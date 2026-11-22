@@ -300,6 +300,9 @@ body.city-on{overflow:hidden}
 #city-sheet[hidden]{display:none}
 #city-sheet .teach-label{display:block; margin:16px 0 6px; font-weight:600}
 #city-teach-text{display:block; width:100%; box-sizing:border-box; min-height:9em; font:inherit; font-size:16px; line-height:1.4; padding:10px 12px; border:2px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere}
+#city-sheet .teach-wrong{margin:12px 0 0; padding:10px 12px; border-left:4px solid var(--accent); background:var(--accent-soft)}
+#city-sheet .teach-yours,#city-sheet .teach-right{white-space:pre-wrap; overflow-wrap:anywhere; margin:4px 0 12px}
+mark.hit{background:var(--accent-soft); color:inherit; border-bottom:2px solid var(--accent); padding:0 2px}
 #city-sheet .teach-miss{margin:12px 0 0; padding:10px 12px; border:2px solid var(--accent); border-radius:8px}
 #city-sheet .teach-miss .kp{margin:8px 0 0}
 #city-sheet .teach-pts{border:0; margin:12px 0 0; padding:0; min-width:0}
@@ -671,7 +674,7 @@ const MODULES = [
     if (!items.length) return;
     clearTimer();
     R = { cfg: cfg, items: items, i: 0, ok: 0, xp: 0, consec: 0, log: [], cur: null, answered: false, picked: null, t0: 0,
-      passed: null, baseXp: 0, assisted: 0, usedCount: 0, usedNames: [], lvl0: levelOf(S.xp), lvl1: 0, integrityBonus: 0, focusBonus: 0, leadBonus: 0, hadFocus: !!S.virtues.enfoque, hadLead: !!S.virtues.liderazgo,
+      passed: null, baseXp: 0, assisted: 0, usedCount: 0, usedNames: [], lvl0: levelOf(S.xp), lvl1: 0, integrityBonus: 0, focusBonus: 0, hadFocus: !!S.virtues.enfoque,
       pw: initPw(), st: freshSt() };
     R.battlePool = (items && items.pool) ? items.pool.slice() : [];
     if (cfg.villain) { var emax = S.virtues.valentia ? 4 : 3; R.battle = { hp: 4, en: emax, max: emax, fx: '', msg: '' }; }   // Valentía: energía máxima 4, fijada al empezar la ronda
@@ -778,13 +781,12 @@ const MODULES = [
   }
   /* Progreso de un distrito (S.city.d[mid]); null si mid no es un distrito de los datos */
   function cityD(mid) { return (typeof mid === 'string' && Object.prototype.hasOwnProperty.call(S.city.d, mid)) ? S.city.d[mid] : null; }
-  /* Registra el resultado de una ronda de la ciudad (cfg.city = { kind, id, mid }): vencida, reparada o enseñada, en el distrito de la ronda */
+  /* Registra el resultado de una ronda de la ciudad (cfg.city = { kind, id, mid }): vencida o reparada, en el distrito de la ronda */
   function cityResolve() {
     var c = R.cfg.city, d = c ? cityD(c.mid) : null;
     if (!c || !d || typeof c.id !== 'string') return;
     if (c.kind === 'battle') { if (R.won) d.beaten[c.id] = today(); }
     else if (c.kind === 'repair') { if (R.ok === 2 && R.assisted === 0) d.repairs[c.id] = true; }
-    else if (c.kind === 'teach') { if (R.ok === 1) d.taught[c.id] = true; }
   }
   var cityRestorePending = [];   // ids de los distritos recién restaurados que aún no se celebraron
   /* Gancho de prueba: solo existe si la página de pruebas lo pide antes de cargar */
@@ -812,7 +814,6 @@ const MODULES = [
       if (R.hadFocus) { R.focusBonus = FOCUS_XP; R.xp += FOCUS_XP; S.xp += FOCUS_XP; }
       earn('enfoque');
     }
-    if (R.hadLead && R.cfg.city && R.cfg.city.kind === 'teach' && R.ok === 1) { R.leadBonus = LEAD_XP; R.xp += LEAD_XP; S.xp += LEAD_XP; }
     checkVirtues();
     if (R.battle) { R.won = R.battle.hp <= 0; R.tie = !R.won && R.battle.en > 0; }   // sin preguntas con vida y energía: Empate
     cityResolve();
@@ -1028,9 +1029,9 @@ const MODULES = [
         '</small></div>';
     }
     h += bannersVirtues(takePend());
-    if (R.assisted || R.usedNames.length || R.integrityBonus || R.focusBonus || R.leadBonus) {
+    if (R.assisted || R.usedNames.length || R.integrityBonus || R.focusBonus) {
       h += '<p class="meta">' + (R.usedNames.length ? 'Poderes usados: ' + esc(R.usedNames.join(', ')) + '. ' : '') + 'Respuestas asistidas: ' + R.assisted + '.' +
-        (R.integrityBonus ? ' Bono de Integridad: +' + R.integrityBonus + ' XP.' : '') + (R.focusBonus ? ' Bono de Enfoque: +' + R.focusBonus + ' XP.' : '') + (R.leadBonus ? ' Bono de Liderazgo: +' + R.leadBonus + ' XP.' : '') + '</p>';
+        (R.integrityBonus ? ' Bono de Integridad: +' + R.integrityBonus + ' XP.' : '') + (R.focusBonus ? ' Bono de Enfoque: +' + R.focusBonus + ' XP.' : '') + '</p>';
     }
     if (weak.length) {
       h += '<div><h2 class="h2">Temas por reforzar</h2><ul class="weak">' + weak.map(function (w) {

@@ -50,10 +50,19 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
     const ruido = M8.creatures.find((c) => c.id === 'ruido');
     const repairM8 = (e, tid, id, mid = 'M08') => R(e.w).startRound({ kind: 'repair', title: 'Reparación', mid: 'M08', back: { name: 'city' }, city: { kind: 'repair', id, mid } }, R(e.w).repairItems('M08', tid));
     const quick = (e, tid = 'T02', id = 'r01') => { repairM8(e, tid, id); answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, true); nextQ(e.w, e.d); };   // una ronda cualquiera para forzar save()
-    const teachM8 = (e, aid, topic = 'T01') => {
-      const q = e.w.eval('MODULES').find((m) => m.id === 'M08').questions.find((x) => x.topic === topic && x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M08', back: { name: 'city' }, city: { kind: 'teach', id: aid, mid: 'M08' } }, [q]);
-      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+    const settle = async () => { for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0)); };
+    const sceneAt = (mid) => ({ scene: mid, at: { x: D.districts[mid].entry.x, z: D.districts[mid].entry.z, yaw: 0 } });   // la ciudad abre en ese distrito
+    // enseñar: con la ciudad abierta (se abre desde Inicio o desde los resultados de una ronda) el gancho ejecuta cityTeachDone sobre el aprendiz
+    const teachIn = async (e, aid) => {
+      if (e.d.querySelector('#city-root').hidden) { L.click(e.w, [...e.d.querySelectorAll('[data-act="back"],[data-act="city"]')].find((x) => /ciudad/i.test(x.textContent))); await settle(); }
+      e.w.__CITY_TEST_API__.teach(aid);
+    };
+    // ganar el jefe del módulo con la ciudad detenida (restaura el distrito si ya están enseñados los que pide) y volver al inicio
+    const winBoss = (e, mid) => {
+      const qs = e.w.eval('MODULES').find((m) => m.id === mid).questions.filter((x) => x.type === 'mcq').slice(0, 20);
+      R(e.w).startRound({ kind: 'boss', title: 'Jefe', mid, back: { name: 'home' } }, qs);
+      let g = 0; while (e.d.querySelector('.prompt') && g++ < 30) { answerOne(e.w, e.d, true); nextQ(e.w, e.d); }
+      L.click(e.w, e.d.querySelector('[data-act="back"]'));
     };
 
     // 1. migrate corre antes de que exista S: una partida con M02 restaurada (formato plano) arranca sin lanzar y sin respaldo
@@ -67,7 +76,7 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       e.w.close(); }
 
     // 2. cityResolve escribe en el distrito de la ronda (los ids r01, a01 existen en M02 y en M08)
-    { const e = boot(base({ city: { prologue: true } }));
+    { const e = boot(base({ city: Object.assign({ prologue: true }, sceneAt('M08')) }));
       R(e.w).startRound({ kind: 'battle', title: 'Batalla', mid: 'M08', back: { name: 'city' }, villain: { id: 'ruido', name: 'Ruido Blanco', mod: 'M08', topics: ruido.topics }, city: { kind: 'battle', id: 'ruido', mid: 'M08' } }, R(e.w).battleItems({ mod: 'M08', topics: ruido.topics, n: 8 }));
       for (let i = 0; i < 4; i++) { answerOne(e.w, e.d, true); nextQ(e.w, e.d); }
       let s = saved(e.w).city;
@@ -75,14 +84,12 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       repairM8(e, 'T02', 'r01'); answerOne(e.w, e.d, true); nextQ(e.w, e.d); answerOne(e.w, e.d, true); nextQ(e.w, e.d);
       s = saved(e.w).city;
       ok('reparación r01 en M08: d.M08.repairs.r01; d.M02.repairs y el espejo siguen vacíos', s.d.M08.repairs.r01 === true && keys(s.d.M02.repairs) === '[]' && keys(s.repairs) === '[]', JSON.stringify(s.d));
-      teachM8(e, 'a01');
+      await teachIn(e, 'a01');
       s = saved(e.w).city;
       ok('enseñar a01 en M08: d.M08.taught.a01; d.M02.taught y el espejo siguen vacíos', s.d.M08.taught.a01 === true && keys(s.d.M02.taught) === '[]' && keys(s.taught) === '[]', JSON.stringify(s.d));
       e.w.close(); }
-    { const e = boot(base({ city: { prologue: true } }));
-      const q2 = e.w.eval('MODULES').find((m) => m.id === 'M02').questions.find((x) => x.topic === 'T01' && x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: 'a01', mid: 'M02' } }, [q2]);
-      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+    { const e = boot(base({ city: Object.assign({ prologue: true }, sceneAt('M02')) }));
+      await teachIn(e, 'a01');
       const s = saved(e.w).city;
       ok('enseñar a01 en M02: d.M02.taught.a01 y el espejo plano lo copia; M08 intacto', s.d.M02.taught.a01 === true && s.taught.a01 === true && keys(s.d.M08.taught) === '[]', JSON.stringify(s));
       e.w.close(); }
@@ -106,8 +113,8 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       e.w.close(); }
 
     // 5. una pestaña con el código anterior guarda encima: M02 se conserva por el espejo; M08 vuelve a cero (límite documentado)
-    { const e = boot(base({ city: { prologue: true, taught: set(['a01', 'a02', 'a03']) } }));
-      teachM8(e, 'a02'); quick(e, 'T04', 'r03');
+    { const e = boot(base({ city: Object.assign({ prologue: true, taught: set(['a01', 'a02', 'a03']) }, sceneAt('M08')) }));
+      quick(e, 'T04', 'r03'); await teachIn(e, 'a02');
       const raw = saved(e.w); e.w.close();
       const hasNew = raw.city.d.M08.taught.a02 === true && raw.city.d.M08.repairs.r03 === true && raw.city.d.M02.taught.a03 === true;
       const OLD = require('./fixtures/old_city/story.js'), Dold = (await import('./fixtures/old_city/districts.mjs')).city;
@@ -119,29 +126,24 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       e2.w.close(); }
 
     // 6. restauración por distrito al terminar una ronda (jefe aprobado de ese módulo + need aprendices)
-    { const six = M8.apprentices.slice(0, 6).map((a) => a.id), seed = base({ boss: { M08: { best: 18, passed: true } }, city: { prologue: true, d: { M08: { taught: set(six.slice(0, 5)) } } } });
+    { const six = M8.apprentices.slice(0, 6).map((a) => a.id), seed = base({ boss: { M08: { best: 18, passed: true } }, city: Object.assign({ prologue: true, d: { M08: { taught: set(six.slice(0, 5)) } } }, sceneAt('M08')) });
       const e = boot(seed);
       const s0 = saved(e.w); ok('antes de la sexta enseñanza M08 no está restaurado (el guardado semilla aún no trae restored)', !s0.city.restored || !s0.city.restored.M08);
-      teachM8(e, six[5], 'T13');
+      await teachIn(e, six[5]);
       const s = saved(e.w).city;
       ok('al enseñar al sexto aprendiz con el jefe aprobado, M08 queda restaurado sin dar poder y M02 no', s.restored.M08 === true && !s.restored.M02 && keys(s.powers) === '[]', JSON.stringify([s.restored, s.powers]));
       e.w.close(); }
-    { const seed = base({ boss: { M02: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(M2.apprentices.slice(0, 7).map((a) => a.id)) } } } });
+    { const seed = base({ boss: { M02: { best: 18, passed: true } }, city: Object.assign({ prologue: true, d: { M02: { taught: set(M2.apprentices.slice(0, 7).map((a) => a.id)) } } }, sceneAt('M02')) });
       const e = boot(seed);
-      const q2 = e.w.eval('MODULES').find((m) => m.id === 'M02').questions.find((x) => x.topic === 'T20' && x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M02', back: { name: 'city' }, city: { kind: 'teach', id: M2.apprentices[7].id, mid: 'M02' } }, [q2]);
-      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+      await teachIn(e, M2.apprentices[7].id);
       const s = saved(e.w).city;
       ok('al enseñar al octavo aprendiz de M02 con el jefe aprobado: restaurado y con el poder Planos', s.restored.M02 === true && s.powers.planos === true && !s.restored.M08, JSON.stringify([s.restored, s.powers]));
       e.w.close(); }
 
-    // 6b. la restauración que ocurre con la ciudad detenida (ronda fuera de ella) se celebra al entrar, no en una ronda futura
-    { const six = M8.apprentices.slice(0, 6).map((a) => a.id), seed = base({ boss: { M08: { best: 18, passed: true } }, city: { prologue: true, d: { M08: { taught: set(six.slice(0, 5)) } } } });
+    // 6b. la restauración que ocurre con la ciudad detenida (el jefe se gana fuera de ella) se celebra al entrar, no en una ronda futura
+    { const six = M8.apprentices.slice(0, 6).map((a) => a.id), seed = base({ city: { prologue: true, d: { M08: { taught: set(six) } } } });
       const e = boot(seed);
-      const q = e.w.eval('MODULES').find((m) => m.id === 'M08').questions.find((x) => x.topic === 'T01' && x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M08', back: { name: 'home' }, city: { kind: 'teach', id: six[5], mid: 'M08' } }, [q]);
-      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
-      L.click(e.w, e.d.querySelector('[data-act="back"]'));
+      winBoss(e, 'M08');
       ok('6b la ronda terminó con la ciudad detenida y M08 quedó restaurado', !!saved(e.w).city.restored && saved(e.w).city.restored.M08 === true && e.d.querySelector('#city-root').hidden);
       L.click(e.w, e.d.querySelector('[data-act="city"]'));
       for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
@@ -167,37 +169,30 @@ const keys = (o) => JSON.stringify(Object.keys(o || {}).sort());
       for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
       ok('RF2a jefe de M01 aprobado y 0 enseñados: la Ciudadela marca 50 % y el objetivo no manda a la torre', e.d.querySelector('#city-rest').textContent === M1.name + ' 50 %' && !/torre/i.test(e.d.querySelector('#city-obj').textContent), e.d.querySelector('#city-rest').textContent + ' | ' + e.d.querySelector('#city-obj').textContent);
       e.w.close(); }
-    { const seed = base({ boss: { M01: { best: 18, passed: true } }, city: { prologue: true, d: { M01: { taught: set(M1.apprentices.slice(0, M1.need - 1).map((a) => a.id)) } } } });
+    { const seed = base({ boss: { M01: { best: 18, passed: true } }, city: Object.assign({ prologue: true, d: { M01: { taught: set(M1.apprentices.slice(0, M1.need - 1).map((a) => a.id)) } } }, sceneAt('M01')) });
       const e = boot(seed);
-      const q = e.w.eval('MODULES').find((m) => m.id === 'M01').questions.find((x) => x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid: 'M01', back: { name: 'city' }, city: { kind: 'teach', id: M1.apprentices[M1.need - 1].id, mid: 'M01' } }, [q]);
-      answerOne(e.w, e.d, true); nextQ(e.w, e.d);
+      await teachIn(e, M1.apprentices[M1.need - 1].id);
       const s = saved(e.w).city;
       ok('RF2b con need − 1 enseñados y el jefe aprobado, enseñar al siguiente restaura M01 sin poder nuevo', s.restored.M01 === true && keys(s.powers) === '[]', JSON.stringify([s.restored, s.powers]));
       e.w.close(); }
 
     // 6d. la celebración solo anuncia una subida de rango cuando la hay (Review Focus 3)
     { const RK = D.ranks, total = Object.keys(D.districts).length;
-      const teachOut = (e, mid, aid) => {   // enseñar con la ciudad detenida (la restauración queda pendiente) y volver al inicio
-        const q = e.w.eval('MODULES').find((m) => m.id === mid).questions.find((x) => x.type === 'mcq');
-        R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid, back: { name: 'home' }, city: { kind: 'teach', id: aid, mid } }, [q]);
-        answerOne(e.w, e.d, true); nextQ(e.w, e.d); L.click(e.w, e.d.querySelector('[data-act="back"]'));
-      };
-      const enter = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city"]')); for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0)); return (e.d.querySelector('#city-sheet') || {}).textContent || ''; };
+      const enter = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city"]')); await settle(); return (e.d.querySelector('#city-sheet') || {}).textContent || ''; };
       const lastOne = (mid, n) => D.districts[mid].apprentices.slice(0, n).map((a) => a.id);
-      { const e = boot(base({ boss: { M02: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need - 1)) } } } }));
-        teachOut(e, 'M02', M2.apprentices[M2.need - 1].id);
+      { const e = boot(base({ city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need)) } } } }));
+        winBoss(e, 'M02');
         const t = await enter(e);
         ok('RF3a restaurar el 1.º distrito: "Subes a ' + RK[1][1] + '."', t.includes('Subes a ' + RK[1][1] + '.') && !t.includes('Sigues como'), t.slice(0, 200));
         e.w.close(); }
-      { const e = boot(base({ boss: { M02: { best: 18, passed: true }, M08: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need)) }, M08: { taught: set(lastOne('M08', M8.need - 1)) } } } }));
-        teachOut(e, 'M08', M8.apprentices[M8.need - 1].id);
+      { const e = boot(base({ boss: { M02: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need)) }, M08: { taught: set(lastOne('M08', M8.need)) } } } }));
+        winBoss(e, 'M08');
         const t = await enter(e);
         const nxt = RK.find((rk) => rk[0] > 2 && rk[0] <= total);
         ok('RF3b restaurar el 2.º distrito (el rango no cambia): "Sigues como ' + RK[1][1] + ': te falta ' + (nxt[0] - 2) + ' distrito para ' + nxt[1] + '." y nunca "Subes a"', t.includes('Sigues como ' + RK[1][1] + ': te falta ' + (nxt[0] - 2) + ' distrito para ' + nxt[1] + '.') && !t.includes('Subes a'), t.slice(0, 220));
         e.w.close(); }
-      { const e = boot(base({ boss: { M02: { best: 18, passed: true }, M08: { best: 18, passed: true } }, city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need - 1)) }, M08: { taught: set(lastOne('M08', M8.need - 1)) } } } }));
-        teachOut(e, 'M02', M2.apprentices[M2.need - 1].id); teachOut(e, 'M08', M8.apprentices[M8.need - 1].id);
+      { const e = boot(base({ city: { prologue: true, d: { M02: { taught: set(lastOne('M02', M2.need)) }, M08: { taught: set(lastOne('M08', M8.need)) } } } }));
+        winBoss(e, 'M02'); winBoss(e, 'M08');
         const t = await enter(e);
         ok('RF3c dos restauraciones acumuladas fuera de la ciudad (de 0 a 2): "Subes a ' + RK[1][1] + '." en una sola hoja', t.includes('Subes a ' + RK[1][1] + '.') && !t.includes('Sigues como'), t.slice(0, 220));
         e.w.close(); }

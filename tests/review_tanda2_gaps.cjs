@@ -78,18 +78,17 @@ const CS = require('../city/story.js');
     const passed = (mids) => Object.fromEntries(mids.map((m) => [m, { best: 18, passed: true }]));
     const firstN = (mid, n) => D.districts[mid].apprentices.slice(0, n).map((a) => a.id);
     const full = (mid) => ({ taught: set(firstN(mid, D.districts[mid].need)) });
-    const almost = (mid) => ({ taught: set(firstN(mid, D.districts[mid].need - 1)) });
-    const teachOut = (e, mid) => {   // enseña al aprendiz que falta con la ciudad cerrada (la restauración queda pendiente) y vuelve al inicio
-      const aid = D.districts[mid].apprentices[D.districts[mid].need - 1].id;
-      const q = e.w.eval('MODULES').find((m) => m.id === mid).questions.find((x) => x.type === 'mcq');
-      R(e.w).startRound({ kind: 'teach', title: 'Enseñar', mid, back: { name: 'home' }, city: { kind: 'teach', id: aid, mid } }, [q]);
-      answerOne(e.w, e.d, true); nextQ(e.w, e.d); L.click(e.w, e.d.querySelector('[data-act="back"]'));
+    const winBoss = (e, mid) => {   // gana el jefe con la ciudad cerrada (con los aprendices ya enseñados la restauración queda pendiente) y vuelve al inicio
+      const qs = e.w.eval('MODULES').find((m) => m.id === mid).questions.filter((x) => x.type === 'mcq').slice(0, 20);
+      R(e.w).startRound({ kind: 'boss', title: 'Jefe', mid, back: { name: 'home' } }, qs);
+      let g = 0; while (e.d.querySelector('.prompt') && g++ < 30) { answerOne(e.w, e.d, true); nextQ(e.w, e.d); }
+      L.click(e.w, e.d.querySelector('[data-act="back"]'));
     };
     const enter = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city"]')); for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0)); return (e.d.querySelector('#city-sheet') || {}).textContent || ''; };
     const scenario = async (done, pending) => {   // done: ya restaurados al cargar; pending: se restauran fuera de la ciudad
-      const d = {}; done.forEach((m) => { d[m] = full(m); }); pending.forEach((m) => { d[m] = almost(m); });
-      const e = boot(base({ boss: passed(done.concat(pending)), city: { prologue: true, d } }));
-      pending.forEach((m) => teachOut(e, m));
+      const d = {}; done.forEach((m) => { d[m] = full(m); }); pending.forEach((m) => { d[m] = full(m); });
+      const e = boot(base({ boss: passed(done), city: { prologue: true, d } }));
+      pending.forEach((m) => winBoss(e, m));
       const t = await enter(e);
       const rank = (e.d.querySelector('#city-rank') || {}).textContent || '';
       const errs = e.errors.slice();

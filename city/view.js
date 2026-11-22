@@ -544,9 +544,10 @@ function cityTeachWriteHtml(T, tp) {
   var c = cityTeachCount(T), miss = '';
   if (T.miss) miss = '<div class="teach-miss" role="status" tabindex="-1"><strong>' + esc(T.mode === 'correct' ? 'Revisa la versión correcta' : 'Te faltó:') + '</strong>' +
     (T.mode === 'correct' ? '' : '<ul class="kp">' + T.miss.map(function (k) { return '<li>' + fmt(k) + '</li>'; }).join('') + '</ul>') + '</div>';
-  var title = '¿Me explicas ' + tp.title + '?';
-  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">' + esc(title) + '</h2>' + miss +
-    '<label class="teach-label" for="city-teach-text">Explícalo con tus palabras</label>' +
+  var fix = T.mode === 'correct';
+  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">' + esc(fix ? '¿Qué está mal y cómo es en realidad?' : '¿Me explicas ' + tp.title + '?') + '</h2>' +
+    (fix ? '<p class="teach-wrong"><span class="meta">' + esc(T.o.name + ' dice:') + '</span> ' + esc('“' + T.item.wrong + '”') + '</p>' : '') + miss +
+    '<label class="teach-label" for="city-teach-text">' + (fix ? 'Escribe tu corrección' : 'Explícalo con tus palabras') + '</label>' +
     '<textarea id="city-teach-text" rows="8" maxlength="' + CityTeach.MAX_CHARS + '" autocapitalize="sentences" autocorrect="off" spellcheck="false" autocomplete="off" aria-describedby="city-count"></textarea>' +
     '<p class="meta" id="city-count">' + esc(c.text) + '</p>' +
     cityTeachActions('<button class="btn primary" data-act="cx" data-c="teach-send"' + (c.ready ? '' : ' disabled') + '>Revisar</button>') + '</article>';
@@ -561,11 +562,21 @@ function cityTeachReviewHtml(T, tp) {
     '<fieldset class="teach-pts"><legend>' + esc('Marca al menos ' + need + ' puntos que sí explicaste') + '</legend><ul class="vlist">' + rows + '</ul></fieldset>' +
     cityTeachActions('<button class="btn primary" data-act="cx" data-c="teach-ok">Confirmar</button><button class="btn" data-act="cx" data-c="teach-edit">Reescribir</button>') + '</article>';
 }
+function cityTeachFixReviewHtml(T) {
+  var c = T.checks, it = T.item;
+  var yours = CityTeach.marks(T.text, c.found).map(function (x) { return x.hit ? '<mark class="hit">' + esc(x.t) + '</mark>' : esc(x.t); }).join('');
+  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">Revisa tu corrección</h2>' +
+    '<p class="meta">Tu texto:</p><p class="teach-yours">' + yours + '</p>' +
+    '<p class="meta">La versión correcta:</p><p class="teach-right">' + esc(it.right) + '</p>' + (it.explanation ? '<p>' + esc(it.explanation) + '</p>' : '') +
+    '<p class="meta">' + esc('Encontré ' + c.found.length + ' de ' + c.terms.length + (c.terms.length === 1 ? ' término' : ' términos')) + '</p>' +
+    '<label class="vitem teach-chk"><input type="checkbox" data-k="fix"' + (c.detected ? ' checked' : '') + '><span>Lo corregí bien</span></label>' +
+    cityTeachActions('<button class="btn primary" data-act="cx" data-c="teach-ok">Confirmar</button><button class="btn" data-act="cx" data-c="teach-edit">Reescribir</button>') + '</article>';
+}
 /* Pinta el paso actual de CD.teach; where: dónde cae el foco ('h2' al abrir, 'first' en la revisión, 'miss' tras fallar, 'text' al reescribir) */
 function cityTeachPaint(where, opening) {
   var T = CD && CD.teach; if (!T) return;
   var tp = mod(CD.scene).tById[T.o.topic];
-  var html = T.step === 'review' ? cityTeachReviewHtml(T, tp) : cityTeachWriteHtml(T, tp);
+  var html = T.step === 'write' ? cityTeachWriteHtml(T, tp) : (T.mode === 'correct' ? cityTeachFixReviewHtml(T) : cityTeachReviewHtml(T, tp));
   var sh = cId('city-sheet');
   if (opening || !CD.sheet || !sh) cityOpenSheet(html, '.prompt', T.id);
   else { sh.innerHTML = html; citySheetLabel(sh); sh.scrollTop = 0; }
@@ -578,18 +589,30 @@ function cityTeachPaint(where, opening) {
 }
 function cityTeachOpen(o) {
   if (!CD) return;
-  if (!CD.teach || CD.teach.id !== o.id) CD.teach = { id: o.id, o: o, mode: 'explain', step: 'write', text: '', item: null, checks: null, miss: null, ready: false };
+  if (!CD.teach || CD.teach.id !== o.id) {
+    var T = { id: o.id, o: o, mode: o.mode === 'correct' ? 'correct' : 'explain', step: 'write', text: '', item: null, checks: null, miss: null, ready: false };
+    if (T.mode === 'correct') {   // el error se sortea al abrir y se conserva hasta aprobar
+      var items = shuffle(ofType(mod(CD.scene), 'error', o.topic)).map(function (q) { return CityTeach.fixItem(q); }).filter(Boolean);
+      if (!items.length) return;
+      T.item = items[0];
+    }
+    CD.teach = T;
+  }
   CD.teach.step = 'write'; CD.teach.miss = null;
   cityTeachPaint('h2', true);
 }
 function cityTeachSend() {
   var T = CD && CD.teach; if (!T || T.step !== 'write' || !cityTeachCount(T).ready) return;
-  T.checks = CityTeach.explainCheck(T.text, mod(CD.scene).tById[T.o.topic].keyPoints);
+  T.checks = T.mode === 'correct' ? CityTeach.fixCheck(T.text, T.item) : CityTeach.explainCheck(T.text, mod(CD.scene).tById[T.o.topic].keyPoints);
   T.step = 'review'; cityTeachPaint('first');
 }
 function cityTeachConfirm() {
   var T = CD && CD.teach; if (!T || T.step !== 'review') return;   // el doble toque llega con CD.teach ya nulo
   var sh = cId('city-sheet'), boxes = sh ? [].slice.call(sh.querySelectorAll('input[type="checkbox"]')) : [];
+  if (T.mode === 'correct') {
+    if (boxes[0] && boxes[0].checked) { cityTeachDone(T.o); return; }
+    T.miss = true; T.step = 'write'; cityTeachPaint('miss'); return;
+  }
   var kps = mod(CD.scene).tById[T.o.topic].keyPoints, need = Math.min(CityTeach.PASS_POINTS, kps.length);
   var done = boxes.filter(function (b) { return b.checked; }).length;
   if (done >= need) { cityTeachDone(T.o); return; }
@@ -610,11 +633,6 @@ function cityTeachDone(o) {
   CD.teach = null;
   if (rs.changed.length) { cityRestorePending = []; cityRefresh(); cityCelebrate(rs.changed, '¡Gracias, ' + o.name + ' lo entendió!'); }
   else cityOpenSheet(citySheetHtml('Enseñar', '¡Lo entendió!', '<p>' + esc(o.name + ' lo entendió gracias a ti. +' + gainXp + ' XP' + (S.virtues.liderazgo ? ' (incluye +' + LEAD_XP + ' de Liderazgo)' : '') + '.') + '</p>'), '[data-c="sheetclose"]', o.id);
-}
-function cityTeachCorrect(o) {
-  var qs = shuffle(ofType(mod(CD.scene), 'error', o.topic));
-  if (!qs.length || !CD) return;
-  startRound({ kind: 'error', title: 'Enseñar', mid: CD.scene, back: { name: 'city' }, city: { kind: 'teach', id: o.id, mid: CD.scene } }, [qs[0]]);
 }
 /* Línea de rango de la celebración: "Subes a X." solo si el rango subió con esta restauración; si no, "Sigues como X: te falta(n) N distrito(s) para Y."
    (Y = el siguiente rango alcanzable con los distritos que existen) o "Sigues como X." si ya no hay uno. El rango previo cuenta los restaurados que no están en mids. */
@@ -683,7 +701,7 @@ function cityOpen(o) {
   } else if (o.kind === 'mentor') {
     cityLesson(o);
   } else if (o.kind === 'apprentice') {
-    if (o.mode === 'correct') cityTeachCorrect(o); else cityTeachOpen(o);
+    cityTeachOpen(o);
   } else if (o.kind === 'tower') {
     cityTower(o);
   } else if (o.kind === 'portal') {
