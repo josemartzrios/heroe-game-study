@@ -9,8 +9,8 @@ var CityTeach = (function () {
     'tiene tienen todo todos tu un una uno unos unas usa y ya reves version correcta error realidad decir puede pueden').split(' ');
   var STOPSET = Object.create(null);
   STOP.forEach(function (w) { STOPSET[w] = true; });
-  var INVIS = /[­؜᠎​-‏‪-‮⁠-⁩﻿]/;
-  var COMB = /[̀-ͯ]/g, TOK = /[a-z0-9]+(?:[.,][0-9]+)*/g;
+  var INVIS = /[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/;
+  var COMB = /[\u0300-\u036F]/g, TOK = /[a-z0-9]+(?:[.,][0-9]+)*/g;
   var CAN_NFD = typeof String.prototype.normalize === 'function';
 
   function isNum(t) { return /^[0-9]/.test(t); }

@@ -47,6 +47,8 @@ Si la prueba de contenido de «corregir» encuentra otro `error` sin términos, 
 - En *corregir*, la explicación sola premarca 60 de 71 errores.
 - La frase equivocada más un distractor premarca 29 de 213. La confirmación del jugador cubre ese margen.
 
+**Límite conocido (explicar):** escribir el título del tema en el enunciado más relleno premarca los puntos cuyas negritas son esas mismas palabras (p. ej. «SoC, GPU y NPU» en M02 T10: 3 de 7). No se corrige: quitar las palabras del título del texto también borraría las menciones legítimas, y el aprobado nunca fue a prueba de trampas (la pantalla de revisión deja marcar a mano cualquier punto; la confirmación es del jugador).
+
 **Límite conocido:** en los errores de tipo «es al revés» (SAST/DAST, atributos/métodos), la versión correcta usa las mismas palabras que la equivocada. Solo premarcan si escribes las palabras de la explicación («estático», «dinámico»).
 
 ## Diseño

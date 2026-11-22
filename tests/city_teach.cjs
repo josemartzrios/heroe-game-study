@@ -12,13 +12,14 @@ const T = require('../city/teach.js');
 const STOP_LITERAL = 'a al algo ante antes asi aun bajo bien cada como con contra cual cuando de del desde donde dos e el ella ellas ello ellos en entre era es esa ese eso esta este esto estos estas fue ha hace hay la las le les lo los mas me mi mismo misma muy nada ni no nos o otra otro otros para pero poco por porque que quien se sea segun ser si sin sino sobre solo son su sus tambien tan tanto te tiene tienen todo todos tu un una uno unos unas usa y ya reves version correcta error realidad decir puede pueden';
 const RUNS = { numRuns: 1000 };
 // texto con letras acentuadas, números con punto, signos e invisibles
-const textArb = fc.array(fc.constantFrom('a', 'e', 'c', 'p', 'u', 'á', 'é', 'ñ', 'Á', 'CPU', 'red', 'es', 's', '1', '255', '.', ',', ' ', '  ', '\n', '​', '⁦', '­', '`', '*', '“', '”', '-'), { maxLength: 40 }).map((a) => a.join(''));
+const textArb = fc.array(fc.constantFrom('a', 'e', 'c', 'p', 'u', 'á', 'é', 'ñ', 'Á', 'CPU', 'red', 'es', 's', '1', '255', '.', ',', ' ', '  ', '\n', '\u200B', '\u2066', '\u00AD', '`', '*', '“', '”', '-'), { maxLength: 40 }).map((a) => a.join(''));
 
 // ---- norm ----
 ok('norm: acentos, mayúsculas, números con puntos y siglas con dígitos', J(T.norm('Árbol  BITS, 255.255.255.255 y 5G')) === J(['arbol', 'bits', '255.255.255.255', 'y', '5g']), J(T.norm('Árbol  BITS, 255.255.255.255 y 5G')));
-ok('norm: los invisibles (U+200B, aislante bidi U+2066, guion blando U+00AD) no parten la palabra', ['esca​lable', 'esca⁦lable', 'esca­lable'].every((s) => J(T.norm(s)) === J(['escalable'])));
+ok('norm: los invisibles (U+200B, aislante bidi U+2066, guion blando U+00AD) no parten la palabra', ['esca\u200Blable', 'esca\u2066lable', 'esca\u00ADlable'].every((s) => J(T.norm(s)) === J(['escalable'])));
 ok('norm(null) y norm(undefined) dan []', J(T.norm(null)) === '[]' && J(T.norm(undefined)) === '[]');
 ok('norm recorta a 2000 antes de todo', T.norm('x'.repeat(5000)).join('').length === 2000 && T.norm('a'.repeat(1999) + ' cpu').indexOf('cpu') < 0);
+ok('el código fuente no lleva caracteres invisibles, de dirección ni combinantes literales (solo escapes \\uXXXX)', !/[\u00AD\u0300-\u036F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/.test(fs.readFileSync(SRC, 'utf8')));
 ok('norm no usa NFKC (ni \\p ni la bandera u en el código)', T.norm('ﬁ').join('') !== 'fi' && !/NFKC|\\p\{/.test(fs.readFileSync(SRC, 'utf8')));
 { const big = 'ﷺ'.repeat(1 << 20), t0 = Date.now(); T.norm(big); const ms = Date.now() - t0;
   ok('norm de 1 MB de ﷺ tarda menos de 200 ms', ms < 200, ms + ' ms'); }
@@ -65,7 +66,7 @@ ok('fixCheck sin términos nunca detecta', T.fixCheck('lo que sea', { wrong: 'a 
 ok('marks reproduce el texto y marca CPU', T.marks('Hola, CPU!', ['cpu']).map((x) => x.t).join('') === 'Hola, CPU!' && T.marks('Hola, CPU!', ['cpu']).some((x) => x.t === 'CPU' && x.hit === true));
 { const m = T.marks('el satélite inalámbrico', ['inalambrico']);
   ok('marks no parte una palabra por el acento', m.filter((x) => x.hit).length === 1 && m.filter((x) => x.hit)[0].t === 'inalámbrico', J(m)); }
-ok('marks marca la palabra con un invisible dentro', T.marks('esca​lable', ['escalable']).filter((x) => x.hit).map((x) => x.t).join('') === 'esca​lable');
+ok('marks marca la palabra con un invisible dentro', T.marks('esca\u200Blable', ['escalable']).filter((x) => x.hit).map((x) => x.t).join('') === 'esca\u200Blable');
 { const raw = 'x '.repeat(1000) + 'escalable', m = T.marks(raw, ['escalable']);
   ok('marks recorta a 2000 y no marca lo que norm no cuenta', m.map((x) => x.t).join('').length === 2000 && !m.some((x) => x.hit)); }
 { let bad = 0, bad2 = 0; const found = ['cpu', 'red', 'inalambrico', '255.255'];

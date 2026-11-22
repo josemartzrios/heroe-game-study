@@ -108,9 +108,9 @@ const XSS = '</textarea><img src=x onerror="window.__x=1"><script>window.__x=2</
     ok('reescribir: vuelve a escribir con el texto y el foco en el textarea', $(e, '#city-teach-text').value === EXPLAIN_TXT && e.d.activeElement === $(e, '#city-teach-text'));
     // confirmar bien
     click(e.w, cx(e, 'teach-send'));
-    const xp0 = saved(e.w).xp, okb = cx(e, 'teach-ok'); click(e.w, okb); click(e.w, okb);
+    const xp0 = saved(e.w).xp, okb = cx(e, 'teach-ok'); click(e.w, okb); $(e, '#city-sheet').appendChild(okb); click(e.w, okb);   // el 2.º toque llega con el botón viejo aún en la hoja: debe ignorarse
     const s = saved(e.w);
-    ok('confirmar con 3 marcadas: taught.a01 y +15 XP una sola vez (doble toque)', s.city.d.M02.taught.a01 === true && s.xp - xp0 === 15 && /lo entendió/.test(sheetText(e)), String(s.xp - xp0));
+    ok('confirmar con 3 marcadas: taught.a01 y +15 XP una sola vez (doble toque)', e.errors.length === 0 && s.city.d.M02.taught.a01 === true && s.xp - xp0 === 15 && /lo entendió/.test(sheetText(e)), String(s.xp - xp0));
     e.w.close(); }
 
   // ---- explicar con Liderazgo ----
@@ -174,8 +174,8 @@ const XSS = '</textarea><img src=x onerror="window.__x=1"><script>window.__x=2</
     click(e.w, cx(e, 'sheetclose')); near(e, ap('a02')); click(e.w, $(e, '#city-act'));
     ok('reabrir tras «Cerrar» muestra la misma frase equivocada y recupera el texto', sheetText(e).includes(it.wrong) && $(e, '#city-teach-text').value === it.wrong);
     typeText(e, it.right + ' ' + it.explanation); click(e.w, cx(e, 'teach-send'));
-    const xp0 = saved(e.w).xp, okb = cx(e, 'teach-ok'); click(e.w, okb); click(e.w, okb);
-    ok('confirmar marcada: taught.a02 y +15 XP una sola vez', saved(e.w).city.d.M02.taught.a02 === true && saved(e.w).xp - xp0 === 15 && /lo entendió/.test(sheetText(e)), String(saved(e.w).xp - xp0));
+    const xp0 = saved(e.w).xp, okb = cx(e, 'teach-ok'); click(e.w, okb); $(e, '#city-sheet').appendChild(okb); click(e.w, okb);   // el 2.º toque llega con el botón viejo aún en la hoja: debe ignorarse
+    ok('confirmar marcada: taught.a02 y +15 XP una sola vez (doble toque)', e.errors.length === 0 && saved(e.w).city.d.M02.taught.a02 === true && saved(e.w).xp - xp0 === 15 && /lo entendió/.test(sheetText(e)), String(saved(e.w).xp - xp0));
     ok('sin ronda: la ciudad sigue visible, no hay pregunta ni «Volver», y no se registra ninguna respuesta', !$(e, '#city-root').hidden && !$(e, '.opt') && !$(e, '[data-act="back"]') && JSON.stringify(qsOf(e)) === qs0, JSON.stringify(qsOf(e)));
     e.w.close(); }
   { const e = boot({ seed: base({ topics: six(['T06']), virtues: { liderazgo: 1700000000000 } }), rndSeed: 7 }); await openA(e, 'a02');

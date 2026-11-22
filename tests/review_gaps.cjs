@@ -154,7 +154,7 @@ const finite = (h) => ['x', 'z', 'speed'].every((k) => Number.isFinite(h[k]));
       { const ta = $(e, '#city-teach-text'); ta.value = 'La ram es volatil y el hdd es lento pero barato para guardar muchas cosas hoy'; ta.dispatchEvent(new e.w.Event('input', { bubbles: true })); }
       click(e.w, cx(e, 'teach-send'));
       const go = cx(e, 'teach-ok'); const xp0 = saved(e.w).xp;
-      click(e.w, go); click(e.w, go);
+      click(e.w, go); $(e, '#city-sheet').appendChild(go); click(e.w, go);   // el 2.º toque llega con el botón viejo aún en la hoja
       ok('3d doble clic en Confirmar: el XP se suma una sola vez (+15)', saved(e.w).xp - xp0 === 15 && saved(e.w).city.taught.a01 === true, String(saved(e.w).xp - xp0));
       click(e.w, cx(e, 'sheetclose'));
       api(e).teleport(a01.x, a01.z + 1);
