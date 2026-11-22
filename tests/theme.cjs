@@ -55,7 +55,7 @@ ok('.herobtn: min-width ≥ 44 px', px(rules('.herobtn')['min-width']) >= 44);
   ok('#city-sheet: ocupa toda la pantalla (inset 0) y no tiene max-height de media pantalla', full && !/dvh|vh|%/.test(r['max-height'] || ''), JSON.stringify({ inset: r.inset, top: r.top, bottom: r.bottom, mh: r['max-height'] }));
   ok('#city-sheet: desplaza su propio contenido (overflow auto) y queda sobre el HUD', /auto|scroll/.test(r['overflow'] || r['overflow-y'] || '') && parseInt(r['z-index'] || '0', 10) >= 2);
   const ac = rules('#city-sheet .actions');
-  ok('#city-sheet .actions: pegado abajo (sticky) con fondo, para que "Practicar" y "Cerrar" no dependan del desplazamiento', ac.position === 'sticky' && ac.bottom === '0' && /var\(--surface\)|#/.test(ac.background || ''), JSON.stringify(ac));
+  ok('#city-sheet .actions: pegado abajo (sticky, sobre el teclado virtual con --kb) con fondo, para que "Practicar" y "Cerrar" no dependan del desplazamiento', ac.position === 'sticky' && ac.bottom === 'var(--kb, 0px)' && /var\(--surface\)|#/.test(ac.background || ''), JSON.stringify(ac));
   ok('ya no existe la regla de 85dvh del apaisado para la hoja', !/#city-sheet\{max-height/.test(css)); }
 
 // pantallas

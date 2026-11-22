@@ -201,3 +201,13 @@ Se usa `CityTeach` desde ESM con `createRequire`.
 ## Lo que queda al constructor
 - Los textos finos de la interfaz.
 - (La lista exacta de `STOP` quedó fijada en el plan y la congela su prueba.)
+
+## Cambios de la implementación
+Decisiones tomadas al ejecutar el plan (el spec sigue siendo la referencia del comportamiento):
+- `CityTeach.fixItem(q)` vive en el módulo (lo usan la vista, R4 y las pruebas de contenido) y devuelve `null` si la pregunta está mal formada.
+- `norm` y `marks` comparten un único plegado carácter a carácter (`fold`): lo que se resalta es exactamente lo que se cuenta, también con acentos, invisibles y números con punto.
+- El foco vuelve al título de la hoja con un `focusout` en `view.js` (`input.js` solo suelta el cuadro de texto con Esc, porque no conoce la hoja). Al soltar el cuadro de texto también se revisa el aviso de giro que se pospuso mientras se escribía.
+- Las acciones de la hoja se anclan con `bottom: var(--kb)` y `--kb` se pone a `0px` al cerrar la hoja.
+- Las pruebas que enseñaban con la ciudad cerrada ahora ganan el jefe del módulo con los aprendices ya enseñados (la restauración sigue quedando pendiente hasta entrar); las que enseñaban con la ciudad abierta usan `__CITY_TEST_API__.teach(id)`.
+- `tests/city_teach_ui.cjs` usa el mundo falso de `city_engine.cjs` (permite teletransportar, forzar `matchMedia` y un `visualViewport` falso).
+- Comprobado en un navegador real (Chromium móvil, 360×740 y 412×915): escribir con el teclado, revisar y confirmar, con los botones dentro de la pantalla, 3 puntos premarcados y 0 errores de consola.
