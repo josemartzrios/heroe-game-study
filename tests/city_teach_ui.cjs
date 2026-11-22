@@ -15,7 +15,7 @@ function boot(opts = {}) {
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push('jsdomError: ' + (e.detail || e.message)));
   vc.on('error', (e) => errors.push('console.error: ' + e));
-  const st = { calls: [], sets: 0 };
+  const st = { calls: [], sets: 0, kb: 0 };
   const dom = new JSDOM(html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
@@ -24,6 +24,11 @@ function boot(opts = {}) {
       w.Element.prototype.scrollIntoView = function () {};
       w.__CITY_TEST__ = true;
       if (opts.rndSeed) { let s = opts.rndSeed; w.Math.random = function () { s |= 0; s = (s + 0x6D2B79F5) | 0; let x = Math.imul(s ^ (s >>> 15), 1 | s); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+      if (opts.mm) w.matchMedia = () => ({ matches: opts.mm.on });   // opts.mm = { on }: la consulta de giro la decide la prueba
+      if (opts.vv) {   // visualViewport falso: opts.vv = { cut }, el teclado recorta `cut` px de la altura; __fire dispara resize/scroll
+        const L = {}; w.visualViewport = { height: w.innerHeight - opts.vv.cut, offsetTop: 0, addEventListener(t, f) { (L[t] = L[t] || []).push(f); }, __fire(t) { (L[t] || []).forEach((f) => f()); } };
+        const sp = w.CSSStyleDeclaration.prototype.setProperty; w.CSSStyleDeclaration.prototype.setProperty = function (k, v) { if (k === '--kb') st.kb++; return sp.call(this, k, v); };
+      }
       const proto = Object.getPrototypeOf(w.localStorage), setItem = proto.setItem;
       proto.setItem = function (k, v) { st.sets++; return setItem.call(this, k, v); };
       const fake = (el) => new Proxy({ canvas: el }, { get(t, k) { if (k in t) return t[k]; if (k === 'measureText') return () => ({ width: 0 }); return () => {}; }, set(t, k, v) { t[k] = v; return true; } });
@@ -185,6 +190,31 @@ const XSS = '</textarea><img src=x onerror="window.__x=1"><script>window.__x=2</
     ok('el HTML del jugador es inerte en la revisión de corregir (visible como texto) y al reescribir', a && inert() && e.errors.length === 0, e.errors.join('|'));
     e.w.close(); }
   ok('el motor ya no tiene la ronda de enseñar (hadLead, leadBonus, kind === \'teach\')', !/hadLead|leadBonus|kind === 'teach'/.test(html));
+
+  // ---- Esc, aviso de giro y teclado virtual ----
+  { const e = mk(); await openA(e, 'a01'); const ta = $(e, '#city-teach-text'); ta.focus(); typeText(e, EXPLAIN_TXT);
+    ta.dispatchEvent(new e.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    ok('Esc en el textarea: la hoja sigue abierta, el foco pasa al h2, el texto se conserva y no hay pausa', !$(e, '#city-sheet').hidden && e.d.activeElement === $(e, '#city-sheet h2') && $(e, '#city-teach-text').value === EXPLAIN_TXT && $(e, '#city-pausebox').hidden);
+    e.w.close(); }
+  { const mm = { on: false }, e = boot({ seed: base({ topics: six(['T05']) }), mm }); await openA(e, 'a01'); const ta = $(e, '#city-teach-text'); ta.focus();
+    mm.on = true; e.w.dispatchEvent(new e.w.Event('resize'));
+    ok('giro con el foco en el textarea: el aviso no aparece y la hoja no queda inert', $(e, '#city-rotate').hidden && !$(e, '#city-sheet').hasAttribute('inert'));
+    ta.blur();
+    ok('al perder el foco el aviso aparece y la hoja queda inert', !$(e, '#city-rotate').hidden && $(e, '#city-sheet').hasAttribute('inert'));
+    e.w.close(); }
+  { const mm = { on: false }, e = boot({ seed: base({ topics: six(['T05']) }), mm }); await openA(e, 'a01');
+    mm.on = true; e.w.dispatchEvent(new e.w.Event('resize'));
+    ok('giro sin foco en el textarea: el aviso aparece', !$(e, '#city-rotate').hidden);
+    e.w.close(); }
+  { const e = boot({ seed: base({ topics: six(['T05']) }), vv: { cut: 300 } }); await openA(e, 'a01'); const V = e.w.visualViewport;
+    V.__fire('resize');
+    ok('teclado virtual: --kb en la hoja vale la altura recortada (300px)', $(e, '#city-sheet').style.getPropertyValue('--kb') === '300px', $(e, '#city-sheet').style.getPropertyValue('--kb'));
+    const n = e.st.kb; V.__fire('resize'); V.__fire('scroll');
+    ok('un resize o scroll con el mismo valor no vuelve a escribir --kb', e.st.kb === n, n + '→' + e.st.kb);
+    click(e.w, cx(e, 'sheetclose'));
+    ok('al cerrar la hoja --kb vuelve a 0px', $(e, '#city-sheet').style.getPropertyValue('--kb') === '0px');
+    e.w.close(); }
+  ok('las acciones de la hoja se anclan con bottom:var(--kb) (un padding no las subiría sobre el teclado)', /#city-sheet \.actions\{[^}]*bottom:var\(--kb,\s*0px\)/.test(html));
 
   // ---- gancho de prueba ----
   { const e = mk(); await enter(e); const xp0 = saved(e.w).xp; api(e).teach('a03');

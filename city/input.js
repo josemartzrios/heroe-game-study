@@ -54,7 +54,12 @@ var CityInput = (function () {
     function onKeyDown(e) {
       if (dead || e.ctrlKey || e.metaKey || e.altKey) return;
       var k = String(e.key).toLowerCase();
-      if (k === 'escape') { if (!e.repeat) pause = true; return; }
+      if (k === 'escape') {
+        var ae0 = doc.activeElement;
+        if (ae0 && ae0.tagName === 'TEXTAREA') { if (!e.repeat) ae0.blur(); return; }   // al escribir un texto largo, Esc solo suelta el cuadro: no pausa ni cierra la hoja
+        if (!e.repeat) pause = true;
+        return;
+      }
       if (typing()) return;
       if (k === '+' || k === '=') { if (!e.repeat) zoomS += 1; return; }
       if (k === '-' || k === '_') { if (!e.repeat) zoomS -= 1; return; }

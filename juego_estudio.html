@@ -296,7 +296,7 @@ body.city-on{overflow:hidden}
 #city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600; z-index:6}   /* sobre el velo (z 5) */
 #city-sheet{position:absolute; inset:0; overflow:auto; overscroll-behavior:contain; background:var(--surface); padding:max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); z-index:2}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
-#city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
+#city-sheet .actions{position:sticky; bottom:var(--kb, 0px); background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
 #city-sheet .teach-label{display:block; margin:16px 0 6px; font-weight:600}
 #city-teach-text{display:block; width:100%; box-sizing:border-box; min-height:9em; font:inherit; font-size:16px; line-height:1.4; padding:10px 12px; border:2px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere}
@@ -2883,7 +2883,12 @@ var CityInput = (function () {
     function onKeyDown(e) {
       if (dead || e.ctrlKey || e.metaKey || e.altKey) return;
       var k = String(e.key).toLowerCase();
-      if (k === 'escape') { if (!e.repeat) pause = true; return; }
+      if (k === 'escape') {
+        var ae0 = doc.activeElement;
+        if (ae0 && ae0.tagName === 'TEXTAREA') { if (!e.repeat) ae0.blur(); return; }   // al escribir un texto largo, Esc solo suelta el cuadro: no pausa ni cierra la hoja
+        if (!e.repeat) pause = true;
+        return;
+      }
       if (typing()) return;
       if (k === '+' || k === '=') { if (!e.repeat) zoomS += 1; return; }
       if (k === '-' || k === '_') { if (!e.repeat) zoomS -= 1; return; }
@@ -4245,7 +4250,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = CityWorld2
 /* Vista `city` de Ciudad Núcleo, una escena a la vez: la plaza o un distrito (CD.scene). Se inserta DENTRO de la IIFE del motor: usa S, V, go,
    esc, fmt, mod, starsOf, queue, sample, startRound, levelOf, bossPassedOf, cityD, beatenToday, CITY_DATA, CityMove, CityStory, CityInput y CityWorld2D. ES5. Texto de datos: solo esc()/fmt() en innerHTML;
    el botón de acción, #city-live y #city-obj se escriben solo con textContent. */
-var CD = null, cityGen = 0;
+var CD = null, cityGen = 0, cityKb = 0;   // cityKb: altura del teclado virtual escrita en --kb de la hoja
 function cityLoadHtml(text) { return '<div id="city-loadbox"><p role="status" id="city-load">' + esc(text) + '</p><button class="btn" data-act="cx" data-c="quit">Salir</button></div>'; }
 var CITY_ZMIN = 1, CITY_ZMAX = 1.75, CITY_LOAD_MS = 250, CITY_FADE_MS = 250, CITY_SAVE_M = 1;
 var CITY_ROTATE_Q = '(orientation: landscape) and (max-height: 499px) and (pointer: coarse)';
@@ -4575,6 +4580,7 @@ function cityResume() {
 }
 function cityRotateCheck() {
   if (!CD || !CD.world || CD.suspended) return;
+  if (document.activeElement && document.activeElement.id === 'city-teach-text') return;   // escribiendo: el teclado virtual encoge la pantalla y parecería horizontal
   var on = false;
   try { on = !!(window.matchMedia && window.matchMedia(CITY_ROTATE_Q).matches); } catch (e) {}
   if (on === CD.rotate) return;
@@ -4735,7 +4741,8 @@ function cityOpenSheet(html, focusSel, forId) {
 function cityCloseSheet(quiet) {
   if (!CD) return;
   var resume = cityRouteAbort();   // una estación a medias no cuenta: aviso para retomarla
-  var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; }
+  var sh = cId('city-sheet'); if (sh) { sh.hidden = true; sh.innerHTML = ''; sh.style.setProperty('--kb', '0px'); }
+  cityKb = 0;
   CD.sheet = false; CD.sheetFor = null;
   cityRootEl().classList.remove('sheet-open'); cityInert();
   if (CD.world && !quiet) CD.world.setPaused('sheet', false);
@@ -5075,6 +5082,24 @@ cityRootEl().addEventListener('input', function (e) {
   if (c.ready && !T.ready) { var lv = cId('city-live'); if (lv) lv.textContent = 'Ya puedes revisar.'; }
   T.ready = c.ready;
 });
+/* Al soltar el cuadro de texto (Esc o un toque fuera) el foco pasa al título de la hoja y se revisa el aviso de giro que se pospuso mientras se escribía */
+cityRootEl().addEventListener('focusout', function (e) {
+  var ta = e.target;
+  if (!ta || ta.id !== 'city-teach-text') return;
+  var h = (!e.relatedTarget && ta.isConnected && CD && CD.sheet) ? ta.closest('#city-sheet').querySelector('.prompt') : null;
+  if (h) cFocus(h);
+  cityRotateCheck();
+});
+/* Teclado virtual: la hoja no se encoge (el viewport de diseño no cambia en iOS), así que las acciones suben con --kb */
+if (window.visualViewport) {
+  var cityVvSync = function () {
+    if (!CD) return;
+    var vv = window.visualViewport, kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)), sh = cId('city-sheet');
+    if (kb === cityKb || !sh) return;
+    cityKb = kb; sh.style.setProperty('--kb', kb + 'px');
+  };
+  window.visualViewport.addEventListener('resize', cityVvSync); window.visualViewport.addEventListener('scroll', cityVvSync);
+}
 window.addEventListener('resize', function () { if (CD && CD.world && !CD.suspended) { CD.world.resize(); cityRotateCheck(); } });
 if (window.__CITY_TEST__ === true) {
   window.__CITY_TEST_API__ = {

@@ -5,7 +5,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
 const CI = require('../city/input.js');
 
 function setup(over = {}) {
-  const dom = new JSDOM('<!doctype html><body><div id="root"><button id="hud" data-hud>HUD</button></div><button id="btn">B</button><input id="inp"></body>', { pretendToBeVisual: true });
+  const dom = new JSDOM('<!doctype html><body><div id="root"><button id="hud" data-hud>HUD</button></div><button id="btn">B</button><input id="inp"><textarea id="ta"></textarea></body>', { pretendToBeVisual: true });
   const w = dom.window, d = w.document, root = d.getElementById('root');
   root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 844, right: 390, bottom: 844, x: 0, y: 0 });
   let captures = 0; w.Element.prototype.setPointerCapture = function () { captures++; }; w.Element.prototype.releasePointerCapture = function () {};
@@ -121,6 +121,16 @@ function setup(over = {}) {
   t.key('keydown', 'Enter'); ok('g Enter sin foco en botón → acción', t.inp.consumeAction() === true);
   t.d.getElementById('btn').focus(); t.key('keydown', 'Enter'); ok('g Enter con el foco en un botón no cuenta', t.inp.consumeAction() === false); t.d.getElementById('btn').blur();
   t.key('keydown', 'Escape'); ok('g Esc → consumePause una vez', t.inp.consumePause() === true && t.inp.consumePause() === false); t.inp.dispose(); }
+
+// (g2) Esc con el foco en un cuadro de texto: en un <textarea> solo quita el foco (no pausa); en un <input> o sin foco sigue pausando
+{ const t = setup(), ta = t.d.getElementById('ta'); ta.focus(); t.key('keydown', 'Escape', { target: ta });
+  ok('g2 Esc en un textarea no activa la pausa y el textarea pierde el foco', t.inp.consumePause() === false && t.d.activeElement !== ta);
+  t.key('keydown', 'Escape', { target: t.d.body }); ok('g2 sin foco en ningún campo, Esc sí pausa', t.inp.consumePause() === true);
+  const inp = t.d.getElementById('inp'); inp.focus(); t.key('keydown', 'Escape', { target: inp });
+  ok('g2 Esc en un <input> pausa como antes y no le quita el foco', t.inp.consumePause() === true && t.d.activeElement === inp);
+  ta.focus(); t.key('keydown', 'w', { target: ta }); t.key('keydown', 'e', { target: ta });
+  ok('g2 las demás teclas con el foco en el textarea no mueven al héroe ni actúan', t.inp.intent().mag === 0 && t.inp.consumeAction() === false);
+  t.inp.dispose(); }
 
 // (h) dispose
 { const t = setup(); t.inp.dispose(); t.key('keydown', 'w'); t.ptr('pointerdown', t.root, 100, 700, 1); t.ptr('pointermove', t.root, 148, 700, 1); t.key('keydown', 'e');

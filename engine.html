@@ -296,7 +296,7 @@ body.city-on{overflow:hidden}
 #city-loadbox{position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; font-weight:600; z-index:6}   /* sobre el velo (z 5) */
 #city-sheet{position:absolute; inset:0; overflow:auto; overscroll-behavior:contain; background:var(--surface); padding:max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); z-index:2}
 #city-sheet .qcard{max-width:720px; margin:0 auto}
-#city-sheet .actions{position:sticky; bottom:0; background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
+#city-sheet .actions{position:sticky; bottom:var(--kb, 0px); background:var(--surface); padding:12px 0 max(12px, env(safe-area-inset-bottom)); margin-top:12px}
 #city-sheet[hidden]{display:none}
 #city-sheet .teach-label{display:block; margin:16px 0 6px; font-weight:600}
 #city-teach-text{display:block; width:100%; box-sizing:border-box; min-height:9em; font:inherit; font-size:16px; line-height:1.4; padding:10px 12px; border:2px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere}
