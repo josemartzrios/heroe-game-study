@@ -44,9 +44,9 @@ Comprobado sobre el contenido real antes de cerrar este documento:
 - **Mentores (T01–T22):** Adela, Benjamín, Celestino, Delfina, Eusebio, Farah, Gaspar, Higinio, Imelda, Josué, Lázaro, Matilde, Norma, Olegario, Petra, Rafael, Salvador, Tadeo, Uriel, Vicente, Yolanda, Zacarías.
 - **Criaturas**, en este orden. La primera contiene T01, así el objetivo guiado empieza por el tema 1:
   - `forzado` Patrón Forzado (T01, T21, T22)
-  - `telescopico` Constructor Telescópico (T02–T06)
+  - `caprichoso` Creador Caprichoso (T02–T06)
   - `envoltorio` Envoltorio Infinito (T07–T10)
-  - `proxy` Proxy Lento (T11–T13)
+  - `arbol` Árbol Hueco (T11–T13)
   - `chismoso` Observador Chismoso (T14–T16)
   - `indeciso` Estado Indeciso (T17–T20)
 - **Reparaciones (`r01`–`r09`):**
@@ -83,7 +83,7 @@ Comprobado sobre el contenido real antes de cerrar este documento:
   - `loro` Loro Estocástico (T01, T02, T19)
   - `desbordado` Contexto Desbordado (T03–T05)
   - `ambiguo` Prompt Ambiguo (T06–T08)
-  - `vector` Vector Perdido (T09–T12)
+  - `vector` Vector Desorientado (T09–T12)
   - `agente` Agente Sin Freno (T13–T15)
   - `factura` Factura Disparada (T16–T18)
   - No hay otra "Alucinación": M02 ya tiene esa criatura.
@@ -91,7 +91,7 @@ Comprobado sobre el contenido real antes de cerrar este documento:
   - T03 "el contador de tokens"
   - T04 "la memoria de corto plazo"
   - T05 "el dial de temperatura"
-  - T08 "la plantilla de prompts"
+  - T08 "los ejemplos sin formato"
   - T11 "el buscador de documentos"
   - T13 "la caja de herramientas"
   - T14 "el plan de tareas olvidado"
@@ -103,7 +103,7 @@ Comprobado sobre el contenido real antes de cerrar este documento:
   - Chema T06 explicar
   - Gerva T10 explicar
   - Iratxe T12 explicar
-  - Lupe T17 explicar
+  - Urko T17 explicar
   - Mabel T02 corregir
   - Nacho T07 corregir
   - Quima T09 corregir
@@ -205,6 +205,8 @@ El tope de 4 096 px que vigila `tests/city_sprites.cjs` equivale a 292 filas, as
 ## Riesgos conocidos (sin cambio de código)
 - **Pestaña vieja:** como en las tandas anteriores, una pestaña con el código anterior que guarde encima pierde el progreso de los distritos nuevos.
 - **"Entrar a Mercado de Patrones" / "Entrar a Laboratorio Neuronal":** el botón sigue sin artículo. Es la deuda conocida de la Tanda 3.
+- **Premarca en *corregir*:** un texto genérico sobre IA deja premarcado «Lo corregí bien» con Mabel (M09-E002), porque «genera» y «texto» ya son 2 de sus 5 términos. Es el mismo límite aceptado en enseñar escribiendo: solo es una premarca y el jugador confirma.
+- **`makeLayout` acepta parámetros que lo cuelgan** (`city/layout.mjs:8-17`): rangos enormes o pasos diminutos. No afecta a esta tanda porque `standardFrame()` es fijo. Queda como deuda: rechazar `x + step === x`, `min <= 0` y más de N vueltas.
 - **`frame()` busca la variante con `indexOf` en cada cuadro** (`city/sprites2d.js:43`), sobre todas las personas de la ciudad. Hoy no se nota. Conviene resolverlo junto al corte del atlas en M11.
 
 ## Fuera de alcance
