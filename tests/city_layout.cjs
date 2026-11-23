@@ -51,6 +51,10 @@ const imp = (rel) => import(pathToFileURL(path.join(__dirname, '..', rel)).href)
     ok('people(): la criatura toma el lugar siguiente como área de 6 m', JSON.stringify(P.creatures[0]) === JSON.stringify({ id: 'bit', name: 'Bit', topics: ['T01', 'T02'], area: { x: 2, z: -2, r: 6 } }), JSON.stringify(P.creatures));
     ok('people(): reparación r01 y aprendiz a01 después, en ese orden', JSON.stringify(P.repairs[0]) === JSON.stringify({ id: 'r01', topic: 'T02', label: 'el semáforo', x: 3, z: -3 }) && JSON.stringify(P.apprentices[0]) === JSON.stringify({ id: 'a01', topic: 'T01', name: 'Cleo', mode: 'explain', x: 4, z: -4 }), JSON.stringify([P.repairs, P.apprentices]));
     ok('people(): toma exactamente un lugar por personaje', spots.length === 5); }
+  // standardFrame().lay: la secuencia de lugares que reparte take() es lo que fija dónde está cada personaje; si cambia, se mueven todos los de todos los distritos
+  { const lay = standardFrame().lay, got = []; try { for (;;) got.push(lay.take()); } catch (e) { /* fin de los lugares */ }
+    ok('standardFrame().lay.take(): los tres primeros lugares son {-52,16}, {-44,16} y {-36,16}', JSON.stringify(got.slice(0, 3)) === '[{"x":-52,"z":16},{"x":-44,"z":16},{"x":-36,"z":16}]', JSON.stringify(got.slice(0, 3)));
+    ok('standardFrame().lay: hay exactamente 72 lugares y el último es {28,-68}', got.length === 72 && JSON.stringify(got[71]) === '{"x":28,"z":-68}', got.length + ' ' + JSON.stringify(got[got.length - 1])); }
   // standardFrame(): el marco común de los distritos de las tandas 2 y 3 (mismo mapa que Nodo Enlace sin pads)
   { const F = standardFrame();
     const want = { bounds: { minX: -60, maxX: 60, minZ: -70, maxZ: 60 }, entry: { x: 0, z: 52, yaw: 0 }, exit: { x: 0, z: 57, w: 6, d: 2 }, tower: { id: 'torre', x: 0, z: -64, w: 8, d: 8, h: 20 }, streets: { x: [-28, 0, 28], z: [16, -12, -40] } };

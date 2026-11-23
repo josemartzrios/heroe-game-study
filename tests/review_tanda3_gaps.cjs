@@ -237,19 +237,21 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
     ok('Tanda 2 → 3: sin hoja de celebración al entrar (nada recién restaurado) y sin errores', !/restaurado/i.test(text(e2, '#city-sheet')) && e2.errors.length === 0, text(e2, '#city-sheet').slice(0, 160) + ' ' + e2.errors.join('|'));
     e2.w.close(); }
 
-  // 6b. Cada distrito nuevo se carga en su escena con el % del HUD (0 %, 50 % con el jefe y el % con need − 1 enseñados)
-  for (const m of NEW) {
-    const M = D.districts[m], at = { x: M.entry.x, z: M.entry.z, yaw: 0 };
-    const pct = (t, b) => Math.round(100 * (0.5 * t / M.need + 0.5 * (b ? 1 : 0)));
-    for (const [label, boss, d, t, b] of [['sin progreso', {}, {}, 0, false], ['jefe aprobado', passed([m]), {}, 0, true], ['jefe y need − 1 enseñados', passed([m]), { [m]: almost(m) }, M.need - 1, true]]) {
-      const e = boot(base({ boss, city: { prologue: true, scene: m, at, d } }));
-      await enterCity(e);
-      ok(m + ' (' + label + '): el HUD dice "' + M.name + ' ' + pct(t, b) + ' %" y sin errores', text(e, '#city-rest') === M.name + ' ' + pct(t, b) + ' %' && e.errors.length === 0, text(e, '#city-rest') + ' ' + e.errors.join('|'));
-      e.w.close();
+  // 6b. Cada distrito nuevo se carga en su escena con el % del HUD escrito a mano (no calculado desde need): 0 %, 50 % con el jefe y 93 % con el jefe y 6 de 7 enseñados
+  const hudLoad = async (nw) => {
+    for (const m of nw) {
+      const M = D.districts[m], at = { x: M.entry.x, z: M.entry.z, yaw: 0 };
+      for (const [label, boss, d, pct] of [['sin progreso', {}, {}, 0], ['jefe aprobado', passed([m]), {}, 50], ['jefe y need − 1 enseñados', passed([m]), { [m]: almost(m) }, 93]]) {
+        const e = boot(base({ boss, city: { prologue: true, scene: m, at, d } }));
+        await enterCity(e);
+        ok(m + ' (' + label + '): el HUD dice "' + M.name + ' ' + pct + ' %" y sin errores', text(e, '#city-rest') === M.name + ' ' + pct + ' %' && e.errors.length === 0, text(e, '#city-rest') + ' ' + e.errors.join('|'));
+        e.w.close();
+      }
     }
-  }
+  };
 
-  // 6c. Celebración en el motor completo del n-ésimo restaurado de cada distrito nuevo y de todos los nuevos a la vez
+  // 6c. Celebración en el motor completo del n-ésimo restaurado de cada distrito de la tanda y de todos a la vez, y adónde manda el objetivo de la plaza antes y después.
+  // literal: textos de rango escritos a mano ({ M05: …, all: … }) además del oráculo wantLine.
   const scenario = async (done, pending) => {
     const d = {}; done.forEach((m) => { d[m] = full(m); }); pending.forEach((m) => { d[m] = full(m); });
     const e = boot(base({ boss: passed(done), city: { prologue: true, d } }));
@@ -259,14 +261,29 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
     e.w.close();
     return r;
   };
-  for (const m of NEW) {
-    const k = SEQ.indexOf(m) + 1, want = wantLine(k, 1), r = await scenario(SEQ.slice(0, k - 1), [m]);
-    ok('celebración en el motor: el ' + k + '.º distrito (' + m + ') dice "' + want + '" y su texto', r.t.includes(want) && r.t.includes(D.districts[m].celebrate.text) && r.t.includes('¡Distrito restaurado!'), r.t.slice(0, 300));
-    ok('celebración en el motor: tras el ' + k + '.º el HUD muestra ' + rkName(k) + ' y "Distritos ' + k + ' de ' + TOTAL + '" sin errores', r.rank === rkName(k) && r.rest === 'Distritos ' + k + ' de ' + TOTAL && r.errs.length === 0, r.rank + ' | ' + r.rest + ' | ' + r.errs.join('|'));
-  }
-  { const r = await scenario(OLD.concat(AFTER), NEW), want = wantLine(TOTAL, NEW.length);   // con todos los demás ya restaurados
-    ok('celebración en el motor: los ' + NEW.length + ' nuevos a la vez (de ' + OLD.length + ' a ' + TOTAL + ') en una sola hoja: "' + want + '"', r.t.includes('¡Distritos restaurados!') && NEW.every((m) => r.t.includes(D.districts[m].name) && r.t.includes(D.districts[m].celebrate.text)) && r.t.includes(want), r.t.slice(0, 300));
-    ok('con todos restaurados: rango ' + RANK_AT[TOTAL] + ', "Distritos ' + TOTAL + ' de ' + TOTAL + '" y la plaza dice "Ciudad al día"', r.rank === RANK_AT[TOTAL] && r.rest === 'Distritos ' + TOTAL + ' de ' + TOTAL && /Ciudad al día/.test(r.obj) && r.errs.length === 0, [r.rank, r.rest, r.obj, r.errs.join('|')].join(' | ')); }
+  const celebrations = async (nw, literal = {}) => {
+    const oldN = SEQ.slice(0, SEQ.indexOf(nw[0])), afterN = SEQ.slice(SEQ.indexOf(nw[nw.length - 1]) + 1);
+    for (const m of nw) {
+      const k = SEQ.indexOf(m) + 1, want = literal[m] || wantLine(k, 1), nextId = SEQ[k];
+      const antes = await scenario(SEQ.slice(0, k - 1), []);
+      ok('objetivo: con los ' + (k - 1) + ' anteriores restaurados la plaza manda a "Entra a ' + D.districts[m].name + '"', antes.obj.includes('Entra a ' + D.districts[m].name), antes.obj);
+      const r = await scenario(SEQ.slice(0, k - 1), [m]);
+      if (literal[m]) ok('el oráculo wantLine coincide con el texto escrito a mano para el ' + k + '.º', wantLine(k, 1) === literal[m], wantLine(k, 1));
+      ok('celebración en el motor: el ' + k + '.º distrito (' + m + ') dice "' + want + '" y su texto', r.t.includes(want) && r.t.includes(D.districts[m].celebrate.text) && r.t.includes('¡Distrito restaurado!'), r.t.slice(0, 300));
+      ok('celebración en el motor: tras el ' + k + '.º el HUD muestra ' + rkName(k) + ' y "Distritos ' + k + ' de ' + TOTAL + '" sin errores', r.rank === rkName(k) && r.rest === 'Distritos ' + k + ' de ' + TOTAL && r.errs.length === 0, r.rank + ' | ' + r.rest + ' | ' + r.errs.join('|'));
+      ok('objetivo: tras el ' + k + '.º la plaza manda a ' + (nextId ? '"Entra a ' + D.districts[nextId].name + '"' : '"Ciudad al día"'), nextId ? r.obj.includes('Entra a ' + D.districts[nextId].name) : /Ciudad al día/.test(r.obj), r.obj);
+    }
+    const r = await scenario(oldN.concat(afterN), nw), want = literal.all || wantLine(TOTAL, nw.length);   // con todos los demás ya restaurados
+    ok('celebración en el motor: los ' + nw.length + ' a la vez (de ' + oldN.length + ' a ' + TOTAL + ') en una sola hoja: "' + want + '"', r.t.includes('¡Distritos restaurados!') && nw.every((m) => r.t.includes(D.districts[m].name) && r.t.includes(D.districts[m].celebrate.text)) && r.t.includes(want), r.t.slice(0, 300));
+    ok('con todos restaurados: rango ' + RANK_AT[TOTAL] + ', "Distritos ' + TOTAL + ' de ' + TOTAL + '" y la plaza dice "Ciudad al día"', r.rank === RANK_AT[TOTAL] && r.rest === 'Distritos ' + TOTAL + ' de ' + TOTAL && /Ciudad al día/.test(r.obj) && r.errs.length === 0, [r.rank, r.rest, r.obj, r.errs.join('|')].join(' | '));
+  };
+
+  await hudLoad(NEW); await celebrations(NEW);
+  // Tanda 4: M05 y M09 (9.º y 10.º distrito). Tech Lead pide 11: con 10 distritos la celebración no promete un rango que aún no existe.
+  const NEW4 = ['M05', 'M09'].filter((m) => D.districts[m]);
+  ok('M05 y M09 están registrados al final del orden de la plaza', NEW4.length === 2 && SEQ.slice(-2).join() === 'M05,M09', SEQ.join());
+  await hudLoad(NEW4);
+  await celebrations(NEW4, { M05: 'Sigues como Arquitecto. Llevas 9 de 10 distritos restaurados.', M09: 'Sigues como Arquitecto. Llevas 10 de 10 distritos restaurados.', all: 'Sigues como Arquitecto. Llevas 10 de 10 distritos restaurados.' });
 
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;

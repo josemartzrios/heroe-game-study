@@ -123,7 +123,8 @@ const CS = require('../city/story.js');
 
     // =================== 2. cityRankLine (city/view.js) como unidad, con story.js real ===================
     ok('cityRankLine existe en city/view.js', !!RANK.SRC);
-    const line = (restored, mids, data = D) => RANK.rankLineFn({ city: { restored } }, data)(mids);
+    const lineReal = RANK.rankLineWith(D);   // cityRankLine compilada una sola vez para los datos reales (el bucle de combinaciones la llama 3^N − 2^N veces)
+    const line = (restored, mids, data = D) => (data === D ? lineReal(restored, mids) : RANK.rankLineFn({ city: { restored } }, data)(mids));
     if (RANK.SRC) {
       // con los datos reales: los casos que no dependen de cuántos distritos hay
       ok('rankLine 0→1: "Subes a Junior."', line({ M02: true }, ['M02']) === 'Subes a Junior.', line({ M02: true }, ['M02']));
