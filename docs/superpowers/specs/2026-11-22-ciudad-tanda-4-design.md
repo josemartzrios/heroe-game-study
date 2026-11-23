@@ -114,16 +114,13 @@ Comprobado sobre el contenido real antes de cerrar este documento:
 ## Distancia de color (regla nueva)
 Con 10 distritos la paleta está cerca del límite. «No ser exactamente igual» ya no basta: el primer borrador tenía un naranja casi idéntico al de las reparaciones pendientes (ΔE00 ≈ 2) y un índigo a ΔE00 ≈ 5 de un morado de referencia.
 
-**La regla:** cada color de un distrito queda a **ΔE2000 ≥ 10** de todos estos colores:
-- los colores de los demás distritos;
-- el ámbar de ventanas y muros `#ffd76a`;
-- el naranja de las reparaciones pendientes `#ff8f3a`;
-- el amarillo de la torre y del traje de Iris `#ffd23f`;
-- los 6 morados de referencia de las criaturas.
+**La regla** (`colorDistanceProblems` en `tests/district_rules.cjs`, con la métrica `de00` de `tests/adv/tanda3_attack.cjs`):
+- cada color `a`/`b` tiene la forma `#rrggbb`;
+- queda a ΔE2000 ≥ 10 de los colores de los demás distritos, del otro color del mismo distrito, del ámbar `#ffd76a`, del naranja de las reparaciones `#ff8f3a`, del amarillo de la torre y de Iris `#ffd23f`, y de los 6 morados de referencia;
+- tiene contraste WCAG ≥ 3:1 frente al suelo `#141a3a`, la calzada `#232a52`, las fachadas `#2a2f5e` y el fondo `#0d1230`;
+- `a` es el cuerpo de las criaturas, así que además queda a ΔE2000 ≥ 20 del blanco de los ojos y con contraste ≥ 3:1 frente a la pupila `#12162e`.
 
-Se usa la métrica `de00` y el umbral de `tests/adv/tanda3_attack.cjs` (S5).
-- La regla se aplica a los distritos de esta tanda y a los futuros.
-- Los distritos anteriores no se revisan: el par M04/M08 queda a ≈ 14 y pasa igualmente.
+Se aplica solo a los distritos de esta tanda y a los futuros. Los anteriores no se revisan: M07 está a 6,4 de M01 y no se toca.
 
 **Valores medidos (ΔE00 al color más cercano):**
 
@@ -138,7 +135,7 @@ Entre ellos los cuatro quedan a ≥ 32.
 
 **Ojos blancos:** los cuerpos quedan a ΔE00 ≥ 34 del blanco de los ojos. Los cuerpos actuales con menos distancia son M07, con 20,6.
 
-**Aceptado:** el acento amarillo sobre el cuerpo naranja de M05 tiene poco contraste de luminancia. Como en otros distritos, el acento es un detalle de 2 px.
+**Aceptado:** el amarillo `#fff700` queda a ΔE ≈ 10 de la luz de las farolas `#ffe066` y el blanco `#f4f4ff` cerca de la tinta y del pelo de Iris `#e8ecff`; son detalles pequeños de la escena y no entran en la regla. También se acepta que el acento amarillo sobre el cuerpo naranja de M05 tiene poco contraste de luminancia. Como en otros distritos, el acento es un detalle de 2 px.
 
 ## Rangos con 10 distritos
 La tabla de rangos no cambia: 0/1/3/6/8/11.
