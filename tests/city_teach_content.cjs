@@ -1,4 +1,4 @@
-// Contenido real contra las reglas de CityTeach: para cada aprendiz de los 8 distritos, el tema se puede enseñar escribiendo.
+// Contenido real contra las reglas de CityTeach: para cada aprendiz de los 10 distritos, el tema se puede enseñar escribiendo.
 //   explain: >= min(3, n) puntos con términos válidos; vacío, basura y un texto genérico de informática no llegan al aprobado premarcado;
 //   correct: cada error del tema tiene términos, su versión correcta + explicación se detecta y la frase equivocada no.
 const path = require('path');
@@ -42,7 +42,8 @@ const GENERIC = 'En este ejemplo el sistema guarda los datos del usuario y forma
       });
     }
   }
-  ok('hay 81 aprendices en los 8 distritos', apprentices === 81, String(apprentices));
+  ok('hay 101 aprendices en los 10 distritos (el literal vigila que no falte ni sobre ninguno)', apprentices === 101 && Object.keys(city.districts).length === 10, apprentices + ' en ' + Object.keys(city.districts).length);
+  ok('cada distrito tiene al menos tantos aprendices como pide para restaurarse (need)', Object.values(city.districts).every((d) => d.apprentices.length >= d.need), Object.values(city.districts).map((d) => d.id + ':' + d.apprentices.length + '/' + d.need).join(' '));
   ok('todos los aprendices se pueden enseñar escribiendo (0 fallos)', bad.length === 0, bad.length + ' fallos:\n  ' + bad.slice(0, 40).join('\n  '));
 
   results.forEach((r) => console.log(r.join(' | ')));

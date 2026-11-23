@@ -8,6 +8,8 @@ import { district as m10 } from './districts/m10.mjs';
 import { district as m04 } from './districts/m04.mjs';
 import { district as m06 } from './districts/m06.mjs';
 import { district as m07 } from './districts/m07.mjs';
+import { district as m05 } from './districts/m05.mjs';
+import { district as m09 } from './districts/m09.mjs';
 
 // Orden recomendado de los distritos (también el de los portales de la plaza para el objetivo "Entra a …").
 export const ORDER = ['M02', 'M08', 'M03', 'M01', 'M10', 'M04', 'M06', 'M07', 'M05', 'M09', 'M11'];
@@ -32,5 +34,5 @@ export const city = {
     hq: { x: 0, z: -14, w: 14, d: 10, h: 9 },
     director: { id: 'iris', name: 'Iris', x: -6, z: -4 }, mirror: { id: 'espejo', name: 'Espejo', x: 6, z: -4 }, portals
   },
-  districts: { M02: m02, M08: m08, M03: m03, M01: m01, M10: m10, M04: m04, M06: m06, M07: m07 }
+  districts: { M02: m02, M08: m08, M03: m03, M01: m01, M10: m10, M04: m04, M06: m06, M07: m07, M05: m05, M09: m09 }
 };

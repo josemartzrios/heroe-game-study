@@ -11,14 +11,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const tick = async (n = 6) => { for (let i = 0; i < n; i++) await sleep(0); };
 const FADE = 250, SETTLE = 2 * FADE + 140;
 
-// opts: seed, reduced (movimiento reducido), reject (Set de escenas que rechazan), pending (Set de escenas cuyo create queda pendiente), real (mundo real con raf inyectado)
+// Copia del HTML sin el distrito de M09: el JSON de CITY_DATA se reescribe con el mismo escape de "<" que build.mjs. Con los 10 distritos registrados ya no queda
+// ningún muro con módulo, y (p), (p2), (p3) y (v3) necesitan uno ("Ver módulo", "Ir al módulo", página de módulo sin "Ir al distrito"). Se localiza con
+// indexOf/slice (no con una expresión regular ni con replace con texto: un ";" o un "$&" en los datos los rompería).
+const CD_PREFIX = 'var CITY_DATA = ', CD_START = html.indexOf(CD_PREFIX) + CD_PREFIX.length, CD_END = html.indexOf(';\n', CD_START);
+const htmlWith = (data) => html.slice(0, CD_START) + JSON.stringify(data).replace(/</g, '\\u003c') + html.slice(CD_END);
+const DATA_REAL = JSON.parse(html.slice(CD_START, CD_END)), DATA_NO_M09 = JSON.parse(html.slice(CD_START, CD_END));
+delete DATA_NO_M09.districts.M09;
+const HTML_NO_M09 = htmlWith(DATA_NO_M09);
+
+// opts: html (otro HTML; por defecto el real), seed, reduced (movimiento reducido), reject (Set de escenas que rechazan), pending (Set de escenas cuyo create queda pendiente), real (mundo real con raf inyectado)
 function boot(opts = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', (er) => errors.push('jsdomError: ' + (er.detail || er.message)));
   vc.on('error', (...a) => errors.push('console.error: ' + a.map(String).join(' ')));
   const st = { scenes: [], calls: [], worlds: [], disposed: 0, lastOpts: null, resolvers: {}, reject: opts.reject || new Set(), pending: opts.pending || new Set(), net: {}, rafPend: new Map(), rafN: 0 };
-  const dom = new JSDOM(html, {
+  const dom = new JSDOM(opts.html || html, {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.test/', virtualConsole: vc,
     beforeParse(w) {
       if (opts.seed) w.localStorage.setItem(KEY, JSON.stringify(opts.seed));
@@ -77,7 +86,8 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
 (async () => {
   const D = (await import('../city/districts.mjs')).city;
   const M2 = D.districts.M02, M8 = D.districts.M08, P = D.plaza;
-  const OPEN = Object.keys(D.districts).length, SIN = D.order.find((m) => !Object.prototype.hasOwnProperty.call(D.districts, m));
+  const OPEN = Object.keys(D.districts).length, SIN = DATA_NO_M09.order.find((m) => !Object.prototype.hasOwnProperty.call(DATA_NO_M09.districts, m));   // el primer muro con módulo de la copia sin M09
+  ok('la copia del HTML sin M09 deja 9 distritos y su primer muro con módulo es M09; reescribir sin borrar nada reproduce el HTML real byte a byte', SIN === 'M09' && Object.keys(DATA_NO_M09.districts).length === OPEN - 1 && htmlWith(DATA_REAL) === html, SIN + ' ' + OPEN);
   const portal = (m) => P.portals.find((p) => p.dist === m);
   const near = (p) => ({ x: p.x, z: p.z + 2.5 });   // junto al portal, fuera de su caja y a menos de 4 m
   const goNear = (e, m) => { const q = near(portal(m)); api(e).teleport(q.x, q.z); };
@@ -158,7 +168,7 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     e.w.close();
 
     // ---- Próximamente ----
-    e = boot({ seed: base() }); await enterCity(e);
+    e = boot({ html: HTML_NO_M09, seed: base() }); await enterCity(e);
     const SINT = e.w.eval('MODULES').find((m) => m.id === SIN).title;
     goNear(e, SIN);
     ok('(p) junto a un muro sin distrito el botón dice "Ver <módulo>" con "<módulo> · Próximamente"', act(e).main === 'Ver ' + SIN && act(e).sub === SIN + ' · Próximamente', JSON.stringify(act(e)));
@@ -237,7 +247,7 @@ async function enterCity(e) { click(e.w, $(e, '[data-act="city"]')); await tick(
     click(e.w, ib); await tick(); await sleep(30);
     ok('(v2) "Ir al distrito" abre la ciudad en la entrada de M08', e.st.scenes.join() === 'M08' && saved(e.w).city.scene === 'M08' && saved(e.w).city.at.x === M8.entry.x && saved(e.w).city.at.z === M8.entry.z, e.st.scenes.join());
     e.w.close();
-    e = boot({ seed: base() });
+    e = boot({ html: HTML_NO_M09, seed: base() });
     click(e.w, [...e.d.querySelectorAll('[data-act="mod"]')].find((b) => b.dataset.id === SIN)); await tick();
     ok('(v3) la página de un módulo sin distrito no tiene "Ir al distrito"', !$(e, '[data-act="district"]'));
     e.w.close();

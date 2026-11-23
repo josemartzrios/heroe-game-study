@@ -16,6 +16,7 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const L = require('./adv/lib.cjs');
 const DR = require('./district_rules.cjs');
+const CS = require('../city/story.js');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'juego_estudio.html'), 'utf8');
 const KEY = 'estudio_isw_v1';
@@ -174,7 +175,8 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
   const lower = Object.fromEntries(MIDS.map((id) => [id, { colors: { a: D.districts[id].colors.a.toLowerCase(), b: D.districts[id].colors.b.toLowerCase() } }]));
   ok('cada distrito tiene un color propio también sin distinguir mayúsculas', DR.ownColorProblems(lower).length === 0, DR.ownColorProblems(lower).join(' | '));
   const reach = D.ranks.filter((r) => r[0] <= TOTAL).pop()[1];
-  ok('con ' + TOTAL + ' distritos el rango máximo alcanzable es ' + reach + (TOTAL === 8 ? ' (el spec pide Arquitecto con 8)' : ''), TOTAL !== 8 || reach === 'Arquitecto', reach);
+  const RANK_AT = { 8: 'Arquitecto', 9: 'Arquitecto', 10: 'Arquitecto' };   // esperado por número de distritos (tabla 0/1/3/6/8/11), independiente del código que se mide
+  ok('con ' + TOTAL + ' distritos el rango máximo alcanzable es ' + RANK_AT[TOTAL] + ' (spec), y coincide con el rankName real de story.js', RANK_AT[TOTAL] !== undefined && reach === RANK_AT[TOTAL] && reach === CS.rankName(TOTAL, D), reach);
 
   // =================== 5. district_rules: bordes ===================
   const P = (...names) => names.map((name) => ({ name }));
@@ -193,7 +195,7 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
 
   // =================== 6. motor real (jsdom) ===================
   const NEW = ['M04', 'M06', 'M07'].filter((m) => D.districts[m]);                 // el alcance de la Tanda 3
-  const SEQ = D.order.filter((m) => D.districts[m]), OLD = SEQ.filter((m) => !NEW.includes(m));
+  const SEQ = D.order.filter((m) => D.districts[m]), OLD = SEQ.slice(0, SEQ.indexOf(NEW[0])), AFTER = SEQ.slice(SEQ.indexOf(NEW[NEW.length - 1]) + 1);   // los de antes, y los que se registraron después de esta tanda
   const RK = D.ranks, rkName = (n) => RK.reduce((nm, r) => (n >= r[0] ? r[1] : nm), RK[0][1]);
   const passed = (mids) => Object.fromEntries(mids.map((m) => [m, { best: 18, passed: true }]));
   const firstN = (mid, n) => D.districts[mid].apprentices.slice(0, n).map((a) => a.id);
@@ -212,7 +214,7 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
     const miss = next[0] - n;
     return 'Sigues como ' + rkName(n) + ': ' + (miss === 1 ? 'te falta 1 distrito' : 'te faltan ' + miss + ' distritos') + ' para ' + next[1] + '.';
   };
-  ok('hay distritos nuevos de la Tanda 3 registrados y van después de los de antes en el orden de la plaza', NEW.length > 0 && SEQ.slice(OLD.length).join() === NEW.join(), SEQ.join());
+  ok('hay distritos nuevos de la Tanda 3 registrados y van después de los de antes en el orden de la plaza', NEW.length > 0 && SEQ.slice(OLD.length, OLD.length + NEW.length).join() === NEW.join(), SEQ.join());
 
   // 6a. Guardado de la Tanda 2: solo los distritos de antes, todos restaurados, con progreso suelto en uno
   { const d = {}; OLD.forEach((m) => { d[m] = full(m); });
@@ -262,9 +264,9 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
     ok('celebración en el motor: el ' + k + '.º distrito (' + m + ') dice "' + want + '" y su texto', r.t.includes(want) && r.t.includes(D.districts[m].celebrate.text) && r.t.includes('¡Distrito restaurado!'), r.t.slice(0, 300));
     ok('celebración en el motor: tras el ' + k + '.º el HUD muestra ' + rkName(k) + ' y "Distritos ' + k + ' de ' + TOTAL + '" sin errores', r.rank === rkName(k) && r.rest === 'Distritos ' + k + ' de ' + TOTAL && r.errs.length === 0, r.rank + ' | ' + r.rest + ' | ' + r.errs.join('|'));
   }
-  { const r = await scenario(OLD, NEW), want = wantLine(TOTAL, NEW.length);
+  { const r = await scenario(OLD.concat(AFTER), NEW), want = wantLine(TOTAL, NEW.length);   // con todos los demás ya restaurados
     ok('celebración en el motor: los ' + NEW.length + ' nuevos a la vez (de ' + OLD.length + ' a ' + TOTAL + ') en una sola hoja: "' + want + '"', r.t.includes('¡Distritos restaurados!') && NEW.every((m) => r.t.includes(D.districts[m].name) && r.t.includes(D.districts[m].celebrate.text)) && r.t.includes(want), r.t.slice(0, 300));
-    ok('con todos restaurados: rango ' + rkName(TOTAL) + (TOTAL === 8 ? ' (Arquitecto, como pide el spec)' : '') + ', "Distritos ' + TOTAL + ' de ' + TOTAL + '" y la plaza dice "Ciudad al día"', r.rank === rkName(TOTAL) && (TOTAL !== 8 || r.rank === 'Arquitecto') && r.rest === 'Distritos ' + TOTAL + ' de ' + TOTAL && /Ciudad al día/.test(r.obj) && r.errs.length === 0, [r.rank, r.rest, r.obj, r.errs.join('|')].join(' | ')); }
+    ok('con todos restaurados: rango ' + RANK_AT[TOTAL] + ', "Distritos ' + TOTAL + ' de ' + TOTAL + '" y la plaza dice "Ciudad al día"', r.rank === RANK_AT[TOTAL] && r.rest === 'Distritos ' + TOTAL + ' de ' + TOTAL && /Ciudad al día/.test(r.obj) && r.errs.length === 0, [r.rank, r.rest, r.obj, r.errs.join('|')].join(' | ')); }
 
   results.forEach((r) => console.log(r.join(' | ')));
   const fails = results.filter((r) => r[0] === 'FAIL').length;
