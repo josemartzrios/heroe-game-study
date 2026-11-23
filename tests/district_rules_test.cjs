@@ -50,7 +50,34 @@ for (const [id, { file, title }] of Object.entries(MODULES)) {
   ok(`modules.cjs ${id}: build.mjs importa ${file} como c${n} y lo expande con "${title}"`, build.includes(`import * as c${n} from './${file}';`) && build.includes(`expand('${id}', '${title}', c${n})`));
 }
 
-const fails = results.filter((r) => r[0] === 'FAIL');
-results.forEach((r) => console.log(r.join(' | ')));
-console.log(fails.length ? 'DISTRICT_RULES FALLAS ' + fails.length : 'DISTRICT_RULES OK (' + results.length + ' comprobaciones)');
-process.exit(fails.length ? 1 : 0);
+// de00 y colorDistanceProblems: la regla de distancia de color de los distritos nuevos (spec de la Tanda 4)
+const fc = require('fast-check');
+const X = (a, b) => ({ X: { colors: { a, b } } });
+const hex = fc.tuple(fc.integer({ min: 0, max: 255 }), fc.integer({ min: 0, max: 255 }), fc.integer({ min: 0, max: 255 })).map(([r, g, b]) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join(''));
+ok('de00: #ffd76a y #ffe600 quedan a menos de 10 (el amarillo que se descartó)', R.de00('#ffd76a', '#ffe600') < 10, String(R.de00('#ffd76a', '#ffe600')));
+ok('de00: #ff4800 y #ff8f3a quedan a 15 o más', R.de00('#ff4800', '#ff8f3a') >= 15, String(R.de00('#ff4800', '#ff8f3a')));
+{ let bad = 0; fc.assert(fc.property(hex, hex, (a, b) => { if (Math.abs(R.de00(a, b) - R.de00(b, a)) > 1e-9 || R.de00(a, a) !== 0) bad++; return true; }), { numRuns: 1000 });
+  ok('de00 es simétrica y de00(x, x) = 0 (1000 ejecuciones)', bad === 0, 'violaciones=' + bad); }
+const has = (errs, re) => errs.some((e) => re.test(e));
+ok('colorDistanceProblems: #ff8c42 nombra el naranja de las reparaciones #ff8f3a', has(R.colorDistanceProblems(X('#ff8c42', '#36a3ff'), ['X']), /#ff8f3a/));
+ok('colorDistanceProblems: #f4f4ff como cuerpo (a) nombra los ojos', has(R.colorDistanceProblems(X('#f4f4ff', '#36a3ff'), ['X']), /ojos/));
+ok('colorDistanceProblems: #7c5cff nombra el morado de referencia #8a5fe0', has(R.colorDistanceProblems(X('#ff4800', '#7c5cff'), ['X']), /#8a5fe0/));
+ok('colorDistanceProblems: un color casi igual al de la fachada nombra el fondo', has(R.colorDistanceProblems(X('#2a2f5e', '#fff700'), ['X']), /fondo/));
+ok('colorDistanceProblems: a y b iguales dentro del mismo distrito dan problema', has(R.colorDistanceProblems(X('#36a3ff', '#36a3ff'), ['X']), /otro color/));
+ok('colorDistanceProblems: "#fff" y "" se reportan como mal formados, sin NaN silenciosos', R.colorDistanceProblems(X('#fff', ''), ['X']).filter((e) => /mal formado/.test(e)).length === 2);
+ok('colorDistanceProblems: un id no registrado da "<id>: no registrado" y no lanza, también __proto__ y constructor', JSON.stringify(R.colorDistanceProblems({}, ['M05'])) === '["M05: no registrado"]' && R.colorDistanceProblems({}, ['__proto__', 'constructor']).length === 2);
+
+(async () => {
+  const { city } = await import(require('url').pathToFileURL(path.join(__dirname, '..', 'city', 'districts.mjs')).href);
+  const real = Object.fromEntries(Object.entries(city.districts).map(([k, d]) => [k, { colors: d.colors }]));
+  ok('colorDistanceProblems: con ids [] no se mide nada, aunque M07 esté a 6,4 de M01', R.colorDistanceProblems(real, []).length === 0);
+  ok('colorDistanceProblems: con ids ["M07"] sí se mide y da problema (M07 b #e05cff queda a menos de 10 de M01 a #d580ff)', R.colorDistanceProblems(real, ['M07']).length > 0);
+  const all = Object.assign({}, real, { M05: { colors: { a: '#ff4800', b: '#fff700' } }, M09: { colors: { a: '#36a3ff', b: '#f4f4ff' } } });
+  const nuevos = R.colorDistanceProblems(all, ['M05', 'M09']);
+  ok('colorDistanceProblems: los colores de M05 y M09 del spec, junto a los 8 reales, no dan ningún problema', nuevos.length === 0, nuevos.join(' | '));
+
+  const fails = results.filter((r) => r[0] === 'FAIL');
+  results.forEach((r) => console.log(r.join(' | ')));
+  console.log(fails.length ? 'DISTRICT_RULES FALLAS ' + fails.length : 'DISTRICT_RULES OK (' + results.length + ' comprobaciones)');
+  process.exit(fails.length ? 1 : 0);
+})().catch((e) => { console.error('EXC', e); process.exit(2); });

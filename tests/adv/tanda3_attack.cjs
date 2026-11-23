@@ -64,25 +64,6 @@ function cellOps(SP, kind, variant) {
 }
 const geom = (ops) => ops.map((o) => o.slice(1).join(',')).join(';');
 
-// ---------- CIEDE2000 (para "casi el mismo color") ----------
-function lab(h) {
-  const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v > 0.04045 ? ((v + 0.055) / 1.055) ** 2.4 : v / 12.92));
-  const X = (c[0] * 0.4124 + c[1] * 0.3576 + c[2] * 0.1805) / 0.95047, Y = c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722, Z = (c[0] * 0.0193 + c[1] * 0.1192 + c[2] * 0.9505) / 1.08883;
-  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116); return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
-}
-function de00(h1, h2) {
-  const [L1, a1, b1] = lab(h1), [L2, a2, b2] = lab(h2), rad = Math.PI / 180, C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2), Cb = (C1 + C2) / 2;
-  const G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7))), a1p = a1 * (1 + G), a2p = a2 * (1 + G), C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2);
-  let h1p = Math.atan2(b1, a1p) / rad; if (h1p < 0) h1p += 360; let h2p = Math.atan2(b2, a2p) / rad; if (h2p < 0) h2p += 360;
-  const dL = L2 - L1, dC = C2p - C1p; let dh = h2p - h1p; if (C1p * C2p === 0) dh = 0; else if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
-  const dH = 2 * Math.sqrt(C1p * C2p) * Math.sin(dh / 2 * rad), Lb = (L1 + L2) / 2, Cbp = (C1p + C2p) / 2;
-  let hb = h1p + h2p; if (C1p * C2p !== 0) { if (Math.abs(h1p - h2p) > 180) hb = hb < 360 ? hb + 360 : hb - 360; hb /= 2; }
-  const Tt = 1 - 0.17 * Math.cos((hb - 30) * rad) + 0.24 * Math.cos(2 * hb * rad) + 0.32 * Math.cos((3 * hb + 6) * rad) - 0.2 * Math.cos((4 * hb - 63) * rad);
-  const dth = 30 * Math.exp(-(((hb - 275) / 25) ** 2)), RC = 2 * Math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7));
-  const SL = 1 + 0.015 * (Lb - 50) ** 2 / Math.sqrt(20 + (Lb - 50) ** 2), SC = 1 + 0.045 * Cbp, SH = 1 + 0.015 * Cbp * Tt, RT = -Math.sin(2 * dth * rad) * RC;
-  return Math.sqrt((dL / SL) ** 2 + (dC / SC) ** 2 + (dH / SH) ** 2 + RT * (dC / SC) * (dH / SH));
-}
-
 // ---------- cityRankLine real (view.js), cargada por tests/rankline.cjs ----------
 const { rankLineWith } = require('../rankline.cjs');
 
@@ -273,7 +254,7 @@ const { rankLineWith } = require('../rankline.cjs');
   // ATAQUE: "color propio" exacto no basta: cuerpo de un distrito nuevo casi igual (ΔE2000 < 10) al de otra criatura con la misma forma
   await attack('S5 cuerpos de M04/M06/M07: ΔE2000 ≥ 10 frente a toda criatura de otro distrito con la misma forma', () => {
     const bad = [];
-    for (const a of looks.filter((l) => NEW.includes(l[0]))) for (const b of looks) if (a[0] !== b[0] && a[2] === b[2]) { const d = de00(a[3], b[3]); if (d < 10) bad.push(a[0] + ':' + a[1] + ' ' + a[3] + ' ~ ' + b[0] + ':' + b[1] + ' ' + b[3] + ' ΔE=' + d.toFixed(1)); }
+    for (const a of looks.filter((l) => NEW.includes(l[0]))) for (const b of looks) if (a[0] !== b[0] && a[2] === b[2]) { const d = RULES.de00(a[3], b[3]); if (d < 10) bad.push(a[0] + ':' + a[1] + ' ' + a[3] + ' ~ ' + b[0] + ':' + b[1] + ' ' + b[3] + ' ΔE=' + d.toFixed(1)); }
     return bad.length === 0 || [...new Set(bad)].slice(0, 6).join(' | ');
   });
   await attack('S6 íconos de inicio siguen saliendo de M02 (referencia) con 8 distritos', () => {
