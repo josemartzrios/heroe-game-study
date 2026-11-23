@@ -216,3 +216,16 @@ El tope de 4 096 px que vigila `tests/city_sprites.cjs` equivale a 292 filas, as
 ## Lo que queda al constructor
 - Cómo exponer `run` en `feasibility_lib` y `colorDistanceProblems` en `district_rules`, siempre que ninguna prueba pierda comprobaciones.
 - El detalle de cómo reescribir el JSON de `CITY_DATA` en la copia del HTML de `city_scenes`.
+
+## Cambios de la implementación
+- **`feasibility_lib.run(SPEC, label, ok, opts)`** concentra la factibilidad de una tanda. `tanda3_feasibility` quedó con su tabla y su salida idéntica byte a byte (124 comprobaciones); `tanda4_feasibility` pasa `{ colorIds: ['M05', 'M09'], cross: false }` (79 comprobaciones). Las reglas entre distritos las ejecuta una sola vez la de la Tanda 3 sobre `city.districts`.
+- **Regla de color** (`colorDistanceProblems`): `lab` y `de00` se movieron desde `tests/adv/tanda3_attack.cjs`; los colores de referencia viven en `district_rules` (`REF_COLORS`) y `feasibility_lib` los toma de ahí. Un id no registrado devuelve «<id>: no registrado» en lugar de lanzar.
+- **Pruebas adaptadas** (sin perder comprobaciones): `city_teach_content` (101 aprendices, literal), `review_tanda3_gaps` (68 → 93 comprobaciones: rango esperado con tabla literal y `rankName` real, `OLD`/`AFTER`, HUD 0/50/93 % escritos a mano, objetivo de la plaza antes y después de cada distrito, celebración del 9.º, el 10.º y los dos a la vez) y `city_scenes` (50: (p), (p2), (p3) y (v3) arrancan con una copia del HTML sin M09, reescrita con `indexOf`/`slice`; reescribir sin borrar nada reproduce el HTML byte a byte). `city_layout` fija la secuencia de `take()` (72 lugares, 3 primeros y el último). `review_tanda2_gaps` compila `cityRankLine` una vez (71 comprobaciones, de 6,4 s a 5,5 s el proceso entero).
+- **Mutación comprobada:** con `need: 6` en M05 fallan el HUD del 93 % (sale 92 %) y la comparación con la tabla.
+- **Atlas de personas:** 282 filas × 14 px = **3 948 px** (112 × 3 948) y criaturas 59 × 14 = 826 px; quedan 10 filas libres bajo el tope de 4 096.
+- **Humo en Chromium** (320×640 y 390×844 táctiles, 1280×800; 72 comprobaciones, 0 errores de consola):
+  - el botón del portal dice «Entrar a Mercado de Patrones» / «Entrar a Laboratorio Neuronal», no se desborda, queda dentro de la pantalla y no toca el joystick ni en reposo ni activo;
+  - con todo restaurado, el HUD dice «<distrito> 100 %» con rango Arquitecto, ningún hijo pasa del borde derecho y ocupa ≤ 25 % del alto;
+  - las criaturas tienen ojos (≥ 4 píxeles blancos junto al cuerpo y ≥ 1 de pupila, medidos en el canvas);
+  - se enseña a un aprendiz de cada modo en cada distrito a 320 px: la revisión premarca, el HUD pasa de 0 % a 7 %, no hay scroll horizontal y el foco vuelve al juego;
+  - con teclado se entra con Enter, `#city-live` dice «Entraste a …» y Escape abre y cierra la pausa.
