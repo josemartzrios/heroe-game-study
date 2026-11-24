@@ -36,7 +36,7 @@ export function people(lay, { mentors, creatures, repairs, apprentices }) {
   return { mentors: m, creatures: c, repairs: r, apprentices: a };
 }
 
-// Marco común de los distritos de las tandas 2 y 3 (el mapa de Nodo Enlace sin pads): límites, entrada, salida, torre, calles, 16 manzanas y el
+// Marco común de los distritos de las tandas 2 a 4 (el mapa de Nodo Enlace sin pads): límites, entrada, salida, torre, calles, 16 manzanas y el
 // reparto de lugares libres (lay), con la torre y la entrada reservadas. Todo es nuevo en cada llamada: dos distritos nunca comparten un objeto.
 // Los distritos desestructuran lo que usan (no hacer `...standardFrame()` en el literal: metería `lay` y cambiaría el orden de las claves).
 export function standardFrame() {

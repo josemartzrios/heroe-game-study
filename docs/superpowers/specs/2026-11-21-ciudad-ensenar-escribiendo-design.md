@@ -112,7 +112,7 @@ Se excluye cualquier token que case con alguno de `wrong`, y no se repiten token
 - Al cerrar se conserva, y reabrir al mismo aprendiz recupera el borrador.
 
 **Escribir:**
-- Título «¿Me explicas *título*?», o en *corregir* la frase equivocada del aprendiz y «¿Qué está mal y cómo es en realidad?».
+- Título «¿Me explicas «*título*»?» (el título entre comillas latinas, porque algunos son preguntas: «Qué es un patrón de diseño»), o en *corregir* la frase equivocada del aprendiz y «¿Qué está mal y cómo es en realidad?».
 - Un `<textarea id="city-teach-text">` con `<label for>` visible, `maxlength="2000"`, `autocapitalize="sentences"`, `autocorrect="off"`, `spellcheck="false"` y `autocomplete="off"`.
 - El texto se restaura siempre con `textarea.value = CD.teach.text`, nunca dentro de `innerHTML`.
 - Un listener `input` delegado en la raíz hace solo tres cosas: actualizar `CD.teach.text`, poner el `textContent` de `#city-count` («Faltan 4 palabras de 12» / «Listo») y fijar `disabled` del botón. **Nunca repinta la hoja.**

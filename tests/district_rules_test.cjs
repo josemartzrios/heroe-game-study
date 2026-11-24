@@ -16,7 +16,7 @@ ok('phon: gue/gui conservan /g/ y ge/gi suenan /j/', R.phon('Miguel') === 'migel
 ok('phon: letras repetidas, h muda, qu y ch', R.phon('Aaron') === 'aron' && R.phon('Hugo') === 'ugo' && R.phon('Quique') === 'kike' && R.phon('Chema') === 'chema', [R.phon('Aaron'), R.phon('Hugo'), R.phon('Quique'), R.phon('Chema')].join());
 
 // namesNear: los caracteres invisibles y el ancho completo no esconden un nombre
-for (const [a, b] of [['Ana', 'A​na'], ['Ana', 'A­na'], ['Ana', 'Ａｎａ'], ['Ana', 'An﻿a']])
+for (const [a, b] of [['Ana', 'A\u200Bna'], ['Ana', 'A\u00ADna'], ['Ana', 'Ａｎａ'], ['Ana', 'An\uFEFFa']])
   ok(`namesNear('${a}', ${JSON.stringify(b)}) es verdadero`, R.namesNear(a, b) && R.namesNear(b, a), R.phon(a) + ' / ' + R.phon(b));
 
 // nameClashes
@@ -35,7 +35,7 @@ ok('nameClashes: Carla con otro Karla distinto (no heredado) sí se reporta', R.
 ok('ownColorProblems: un distrito con los dos colores de otros se reporta', R.ownColorProblems(dist(
   D('A', [], [], { a: '#111111', b: '#222222' }), D('B', [], [], { a: '#111111', b: '#333333' }), D('C', [], [], { a: '#444444', b: '#222222' }), D('E', [], [], { a: '#111111', b: '#222222' }))).length === 2);
 ok('ownColorProblems: con un color propio no hay problema', R.ownColorProblems(dist(D('A', [], [], { a: '#111111', b: '#222222' }), D('B', [], [], { a: '#111111', b: '#333333' }))).length === 0);
-ok('nameClashes: los invisibles no cuentan como letras (una letra visible es un nombre corto)', R.nameClashes(dist(D('A', ['A​​'], []))).some((x) => /menos de 3 letras/.test(x)));
+ok('nameClashes: los invisibles no cuentan como letras (una letra visible es un nombre corto)', R.nameClashes(dist(D('A', ['A\u200B\u200B'], []))).some((x) => /menos de 3 letras/.test(x)));
 ok('ownColorProblems: los colores en mayúsculas cuentan como los mismos', R.ownColorProblems(dist(
   D('A', [], [], { a: '#aabbcc', b: '#223344' }), D('B', [], [], { a: '#AABBCC', b: '#223344' }))).length === 2);
 ok('repeated: seeds y nombres repetidos', R.repeated(dist(D('A', [], [], null, 5, 'X'), D('B', [], [], null, 5, 'Y')), 'seed').join() === '5' && R.repeated(dist(D('A', [], [], null, 1, 'X'), D('B', [], [], null, 2, 'X')), 'name').join() === 'X'
@@ -75,6 +75,14 @@ ok('colorDistanceProblems: un id no registrado da "<id>: no registrado" y no lan
   const all = Object.assign({}, real, { M05: { colors: { a: '#ff4800', b: '#fff700' } }, M09: { colors: { a: '#36a3ff', b: '#f4f4ff' } } });
   const nuevos = R.colorDistanceProblems(all, ['M05', 'M09']);
   ok('colorDistanceProblems: los colores de M05 y M09 del spec, junto a los 8 reales, no dan ningún problema', nuevos.length === 0, nuevos.join(' | '));
+
+  // la luz de las ventanas de un distrito restaurado también es un color de la escena
+  ok('REF_COLORS incluye la luz de las ventanas restauradas #fff0a0 y colorDistanceProblems la nombra', R.REF_COLORS.lit === '#fff0a0' && has(R.colorDistanceProblems(X('#fff1a2', '#36a3ff'), ['X']), /#fff0a0/), JSON.stringify(R.REF_COLORS.lit));
+  ok('los colores de M05 y M09 siguen a ΔE ≥ 10 de esa luz (el amarillo #fff700 queda a ≈ 13)', R.de00('#fff700', '#fff0a0') >= 10, String(R.de00('#fff700', '#fff0a0')));
+  // los nombres no se esconden con rellenos invisibles ni espacios raros (fold quita \p{Cf}, \p{Mn}, los espacios Unicode, los rellenos hangul y el braille vacío)
+  for (const [a, b] of [['Ana', 'A\u3164na'], ['Ana', 'A\u2800na'], ['Ana', 'A\u00A0na'], ['Ana', 'A\u3000na'], ['Ana', 'A\u115Fna'], ['Ana', 'A\u17B4na'], ['Ana', 'A\u200Bna'], ['Ana', ' Ana'], ['Ana', 'Ana\t']])
+    ok(`namesNear('${a}', ${JSON.stringify(b)}) es verdadero (relleno invisible o espacio)`, R.namesNear(a, b) && R.namesNear(b, a), R.phon(a) + ' / ' + R.phon(b));
+  ok('nameClashes reporta " Al " como nombre de menos de 3 letras (los espacios no cuentan)', R.nameClashes(dist(D('A', [' Al '], []))).some((x) => /tiene menos de 3 letras/.test(x)));
 
   const fails = results.filter((r) => r[0] === 'FAIL');
   results.forEach((r) => console.log(r.join(' | ')));

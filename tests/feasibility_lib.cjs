@@ -1,4 +1,4 @@
-// Piezas comunes de tanda2_feasibility y tanda3_feasibility: armar un distrito desde la tabla transcrita del spec y comprobarla contra el módulo real.
+// Piezas comunes de tanda2_feasibility, tanda3_feasibility y tanda4_feasibility: armar un distrito desde la tabla transcrita del spec y comprobarla contra el módulo real.
 // `ok(nombre, condición, detalle)` es el de cada prueba; las tablas SPEC y lo que es propio de cada tanda se quedan en su archivo.
 const path = require('path');
 const fs = require('fs');
@@ -6,12 +6,12 @@ const { pathToFileURL } = require('url');
 const assert = require('assert');
 const R = require('./district_rules.cjs');
 const MODULES = require('./modules.cjs');
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const same = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catch (e) { return false; } };
 const MODE = { explicar: 'explain', corregir: 'correct' };
 const ART = /^(el|la|los|las|un|una|unos|unas) /;
-const { REF_COLORS, colorDistanceProblems } = require('./district_rules.cjs');
-const PURPLES = REF_COLORS.purples;   // los morados de las criaturas de referencia
-const AMBER = REF_COLORS.amber;       // el ámbar de ventanas y muros
+const PURPLES = R.REF_COLORS.purples;   // los morados de las criaturas de referencia
+const AMBER = R.REF_COLORS.amber;       // el ámbar de ventanas y muros
 
 // El distrito de la tabla s armado como lo hacen city/districts/*.mjs: standardFrame() y people() de city/layout.mjs.
 function build(id, s, standardFrame, people) {
@@ -27,11 +27,14 @@ function build(id, s, standardFrame, people) {
 
 // La tabla s contra el módulo real mod: temas, un mentor por tema, ids de criatura únicos, modos, colores, style y etiquetas de reparación cortas.
 function shape(ok, id, s, mod) {
-  const n = s.topicCount, ids = mod.topics.map((t) => t.id), want = Array.from({ length: n }, (_, i) => 'T' + String(i + 1).padStart(2, '0'));
+  const n = s.topicCount;
+  if (!(Number.isInteger(n) && n >= 1 && n <= 99)) { ok(`${id}: topicCount entero entre 1 y 99`, false, String(n)); return; }   // sin esto una tabla mal escrita construiría una lista enorme
+  const ids = mod.topics.map((t) => t.id), want = Array.from({ length: n }, (_, i) => 'T' + String(i + 1).padStart(2, '0'));
   ok(`${id}: el módulo real "${mod.title}" tiene ${n} temas T01..T${n} en orden`, JSON.stringify(ids) === JSON.stringify(want), ids.join(','));
   ok(`${id}: un nombre de mentor por tema (${n})`, s.mentors.split(', ').length === n, String(s.mentors.split(', ').length));
   ok(`${id}: ids de criatura únicos`, new Set(s.creatures.map((c) => c[0])).size === s.creatures.length);
-  ok(`${id}: modos de aprendiz válidos (explicar/corregir)`, s.apprentices.every((a) => MODE[a[2]]));
+  ok(`${id}: forma de las tuplas (criatura 3 campos, reparación 2, aprendiz 3: build ignoraría un campo de más)`, s.creatures.every((c) => Array.isArray(c) && c.length === 3) && s.repairs.every((r) => Array.isArray(r) && r.length === 2) && s.apprentices.every((a) => Array.isArray(a) && a.length === 3));
+  ok(`${id}: modos de aprendiz válidos (explicar/corregir)`, s.apprentices.every((a) => hasOwn(MODE, a[2])));
   ok(`${id}: colores en formato #rrggbb`, /^#[0-9a-f]{6}$/.test(s.colors.a) && /^#[0-9a-f]{6}$/.test(s.colors.b), s.colors.a + ' ' + s.colors.b);
   ok(`${id}: style 'red' (con 'taller' los edificios ignoran los colores del distrito)`, s.style === 'red', s.style);
   ok(`${id}: ningún color es uno de los 6 morados de las criaturas de referencia`, !PURPLES.includes(s.colors.a) && !PURPLES.includes(s.colors.b), s.colors.a + ' ' + s.colors.b);
@@ -69,11 +72,13 @@ async function run(SPEC, label, ok, opts = {}) {
   const { checkDistrict, FORBIDDEN } = await imp('city/check_district.mjs');
   const { expandModule } = await imp('content_expand.mjs');
   const { city } = await imp('city/districts.mjs');
+  ok('la tabla de la tanda no está vacía', Object.keys(SPEC).length > 0);
 
   const probe = standardFrame().lay;
   let spots = 0; try { for (;;) { probe.take(); spots++; } } catch (e) { /* fin de lugares */ }
 
   for (const [id, s] of Object.entries(SPEC)) {
+    if (!hasOwn(MODULES, id)) { ok(`${id}: es un módulo del juego (tests/modules.cjs)`, false, 'id sin módulo'); continue; }
     const { file, title } = MODULES[id];
     const mod = expandModule(id, title, await imp(file));
     shape(ok, id, s, mod);
@@ -107,8 +112,12 @@ async function run(SPEC, label, ok, opts = {}) {
     ok(`${id}: el archivo real ${file2} es idéntico al armado desde la tabla del spec`, !!real && same(dist, real), real && same(dist, real) ? '' : why);
   }
 
-  if (Array.isArray(opts.colorIds)) {
-    const { city } = await imp('city/districts.mjs'), cp = colorDistanceProblems(city.districts, opts.colorIds);
+  if (opts.colorIds !== undefined) {
+    const valid = Array.isArray(opts.colorIds) && opts.colorIds.length > 0 && opts.colorIds.every((x) => typeof x === 'string');
+    ok(`${label}: colorIds es una lista no vacía de ids`, valid, JSON.stringify(opts.colorIds));
+  }
+  if (Array.isArray(opts.colorIds) && opts.colorIds.length > 0 && opts.colorIds.every((x) => typeof x === 'string')) {
+    const cp = R.colorDistanceProblems(city.districts, opts.colorIds);
     ok(`${label}: distancia de color de ${opts.colorIds.join(', ')} (ΔE2000 ≥ 10 con referencias y otros distritos, contraste con los fondos, cara visible)`, cp.length === 0, cp.join(' | '));
   }
 

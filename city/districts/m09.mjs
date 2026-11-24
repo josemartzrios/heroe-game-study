@@ -27,5 +27,5 @@ export const district = {
   id: 'M09', name: 'Laboratorio Neuronal', colors: { a: '#36a3ff', b: '#f4f4ff' }, style: 'red', seed: 41,
   bounds, entry, exit, streets, blocks,
   mentors, creatures, repairs, apprentices, tower, need: 7,
-  celebrate: { text: 'El Laboratorio Neuronal vuelve a pensar: cada modelo reconoce cuándo no sabe algo.' }
+  celebrate: { text: 'El Laboratorio Neuronal vuelve a pensar: cada respuesta del modelo se verifica antes de fiarse de ella.' }
 };

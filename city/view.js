@@ -547,7 +547,7 @@ function cityTeachWriteHtml(T, tp) {
   if (T.miss) miss = '<div class="teach-miss" role="status" tabindex="-1"><strong>' + esc(T.mode === 'correct' ? 'Revisa la versión correcta' : 'Te faltó:') + '</strong>' +
     (T.mode === 'correct' ? '' : '<ul class="kp">' + T.miss.map(function (k) { return '<li>' + fmt(k) + '</li>'; }).join('') + '</ul>') + '</div>';
   var fix = T.mode === 'correct';
-  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">' + esc(fix ? '¿Qué está mal y cómo es en realidad?' : '¿Me explicas ' + tp.title + '?') + '</h2>' +
+  return '<article class="qcard">' + cityTeachChip(T) + '<h2 class="prompt" tabindex="-1">' + esc(fix ? '¿Qué está mal y cómo es en realidad?' : '¿Me explicas «' + tp.title + '»?') + '</h2>' +
     (fix ? '<p class="teach-wrong"><span class="meta">' + esc(T.o.name + ' dice:') + '</span> ' + esc('“' + T.item.wrong + '”') + '</p>' : '') + miss +
     '<label class="teach-label" for="city-teach-text">' + (fix ? 'Escribe tu corrección' : 'Explícalo con tus palabras') + '</label>' +
     '<textarea id="city-teach-text" rows="8" maxlength="' + CityTeach.MAX_CHARS + '" autocapitalize="sentences" autocorrect="off" spellcheck="false" autocomplete="off" aria-describedby="city-count"></textarea>' +

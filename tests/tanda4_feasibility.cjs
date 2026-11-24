@@ -46,7 +46,7 @@ const SPEC = {
     apprentices: [['Ainhoa', 'T01', 'explicar'], ['Chema', 'T06', 'explicar'], ['Gerva', 'T10', 'explicar'], ['Iratxe', 'T12', 'explicar'],
       ['Urko', 'T17', 'explicar'], ['Mabel', 'T02', 'corregir'], ['Nacho', 'T07', 'corregir'], ['Quima', 'T09', 'corregir'],
       ['Rita', 'T14', 'corregir'], ['Sixto', 'T18', 'corregir']],
-    celebrate: 'El Laboratorio Neuronal vuelve a pensar: cada modelo reconoce cuándo no sabe algo.'
+    celebrate: 'El Laboratorio Neuronal vuelve a pensar: cada respuesta del modelo se verifica antes de fiarse de ella.'
   }
 };
 

@@ -76,7 +76,15 @@ ok('.herobtn: min-width ≥ 44 px', px(rules('.herobtn')['min-width']) >= 44);
   ok('tras fallar: la elegida lleva ✗ y "tu respuesta"', !!badB && !!badB.querySelector('.mark') && badB.querySelector('.mark').textContent === '✗' && /tu respuesta/.test((badB.querySelector('.sronly') || {}).textContent || ''));
   ok('las opciones atenuadas no llevan marca', [...e2.d.querySelectorAll('.opt.dim')].every((b) => !b.querySelector('.mark')));
   e2.w.close();
-  results.forEach((r) => { if (r[0] === 'FAIL') console.log(r.join(' | ')); });
+  // Texto largo sin espacios (identificadores como ServicioAutenticacionConLoggingYCache) en el móvil: las columnas del quiz y de la lección se encogen (minmax(0, 1fr)) y el texto se parte
+// donde haga falta; sin esto la opción correcta se corta y la página se ensancha más que la pantalla (medido en Chromium a 320–430 px).
+{ const flex = (sel, prop) => (rules(sel)[prop] || '').replace(/\s+/g, '');
+  ok('.opts: una columna que se puede encoger (minmax(0,1fr))', flex('.opts', 'grid-template-columns') === 'minmax(0,1fr)', flex('.opts', 'grid-template-columns'));
+  ok('.opt: 32px para la tecla y el texto en minmax(0,1fr)', flex('.opt', 'grid-template-columns') === '32pxminmax(0,1fr)', flex('.opt', 'grid-template-columns'));
+  ok('.kp: la lista de puntos clave tiene una columna que se puede encoger', flex('.kp', 'grid-template-columns') === 'minmax(0,1fr)', flex('.kp', 'grid-template-columns'));
+  for (const sel of ['.kp li', '.opt span', '.prompt', 'code', '.fb']) ok(sel + ': overflow-wrap:anywhere (parte los identificadores largos)', flex(sel, 'overflow-wrap') === 'anywhere', flex(sel, 'overflow-wrap')); }
+
+results.forEach((r) => { if (r[0] === 'FAIL') console.log(r.join(' | ')); });
   const fails = results.filter((r) => r[0] === 'FAIL').length;
   console.log(fails ? fails + ' FALLOS' : 'THEME OK (' + results.length + ')'); process.exit(fails ? 1 : 0);
 })();

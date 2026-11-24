@@ -9,6 +9,7 @@
 //  5. district_rules: bordes (nombre vacío, mismo nombre exacto heredado, ñ, k = 3 justo, un distrito solo, repetidos triples).
 //  6. Motor real (jsdom): un guardado de la Tanda 2 (solo los distritos de antes) entra con el rango y el objetivo correctos y guarda los nuevos
 //     vacíos; cada distrito nuevo se entra con su % en el HUD; la celebración del 6.º, 7.º, 8.º y de los nuevos a la vez en el motor completo.
+//  7. Tanda 4 (M05 y M09, 9.º y 10.º): los mismos bloques 6 con hudLoad/celebrations (0/50/93 %, objetivo de la plaza antes y después, «Llevas N de 10»).
 const { JSDOM, VirtualConsole } = require('jsdom');
 const fc = require('fast-check');
 const fs = require('fs');
@@ -195,7 +196,7 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
 
   // =================== 6. motor real (jsdom) ===================
   const NEW = ['M04', 'M06', 'M07'].filter((m) => D.districts[m]);                 // el alcance de la Tanda 3
-  const SEQ = D.order.filter((m) => D.districts[m]), OLD = SEQ.slice(0, SEQ.indexOf(NEW[0])), AFTER = SEQ.slice(SEQ.indexOf(NEW[NEW.length - 1]) + 1);   // los de antes, y los que se registraron después de esta tanda
+  const SEQ = D.order.filter((m) => D.districts[m]), OLD = SEQ.slice(0, SEQ.indexOf(NEW[0]));   // los de antes de esta tanda
   const RK = D.ranks, rkName = (n) => RK.reduce((nm, r) => (n >= r[0] ? r[1] : nm), RK[0][1]);
   const passed = (mids) => Object.fromEntries(mids.map((m) => [m, { best: 18, passed: true }]));
   const firstN = (mid, n) => D.districts[mid].apprentices.slice(0, n).map((a) => a.id);
@@ -263,15 +264,22 @@ const enterCity = async (e) => { L.click(e.w, e.d.querySelector('[data-act="city
   };
   const celebrations = async (nw, literal = {}) => {
     const oldN = SEQ.slice(0, SEQ.indexOf(nw[0])), afterN = SEQ.slice(SEQ.indexOf(nw[nw.length - 1]) + 1);
-    for (const m of nw) {
+    for (const [i, m] of nw.entries()) {
       const k = SEQ.indexOf(m) + 1, want = literal[m] || wantLine(k, 1), nextId = SEQ[k];
-      const antes = await scenario(SEQ.slice(0, k - 1), []);
-      ok('objetivo: con los ' + (k - 1) + ' anteriores restaurados la plaza manda a "Entra a ' + D.districts[m].name + '"', antes.obj.includes('Entra a ' + D.districts[m].name), antes.obj);
+      if (i === 0) {   // el guardado de la tanda anterior (solo los k − 1 primeros restaurados y sin claves de los nuevos): sin celebración espuria, HUD y rango de antes y objetivo hacia el primero nuevo
+        const antes = await scenario(SEQ.slice(0, k - 1), []);
+        ok('guardado anterior (' + (k - 1) + ' restaurados): la plaza manda a "Entra a ' + D.districts[m].name + '", sin hoja de celebración y sin errores', antes.obj.includes('Entra a ' + D.districts[m].name) && !/restaurado/i.test(antes.t) && antes.errs.length === 0, antes.obj + ' | ' + antes.t.slice(0, 80) + ' | ' + antes.errs.join('|'));
+        ok('guardado anterior (' + (k - 1) + ' restaurados): el HUD dice "Distritos ' + (k - 1) + ' de ' + TOTAL + '" y el rango es ' + rkName(k - 1), antes.rest === 'Distritos ' + (k - 1) + ' de ' + TOTAL && antes.rank === rkName(k - 1), antes.rest + ' | ' + antes.rank);
+      }
       const r = await scenario(SEQ.slice(0, k - 1), [m]);
       if (literal[m]) ok('el oráculo wantLine coincide con el texto escrito a mano para el ' + k + '.º', wantLine(k, 1) === literal[m], wantLine(k, 1));
       ok('celebración en el motor: el ' + k + '.º distrito (' + m + ') dice "' + want + '" y su texto', r.t.includes(want) && r.t.includes(D.districts[m].celebrate.text) && r.t.includes('¡Distrito restaurado!'), r.t.slice(0, 300));
       ok('celebración en el motor: tras el ' + k + '.º el HUD muestra ' + rkName(k) + ' y "Distritos ' + k + ' de ' + TOTAL + '" sin errores', r.rank === rkName(k) && r.rest === 'Distritos ' + k + ' de ' + TOTAL && r.errs.length === 0, r.rank + ' | ' + r.rest + ' | ' + r.errs.join('|'));
       ok('objetivo: tras el ' + k + '.º la plaza manda a ' + (nextId ? '"Entra a ' + D.districts[nextId].name + '"' : '"Ciudad al día"'), nextId ? r.obj.includes('Entra a ' + D.districts[nextId].name) : /Ciudad al día/.test(r.obj), r.obj);
+    }
+    if (afterN.length) {   // los de esta tanda a la vez sin los posteriores: salto de varios rangos en una sola hoja (en la Tanda 3, de Semi-senior a Arquitecto)
+      const r2 = await scenario(oldN, nw), want2 = wantLine(oldN.length + nw.length, nw.length);
+      ok('celebración en el motor: los ' + nw.length + ' a la vez de ' + oldN.length + ' a ' + (oldN.length + nw.length) + ' dicen "' + want2 + '"', r2.t.includes('¡Distritos restaurados!') && r2.t.includes(want2), r2.t.slice(0, 300));
     }
     const r = await scenario(oldN.concat(afterN), nw), want = literal.all || wantLine(TOTAL, nw.length);   // con todos los demás ya restaurados
     ok('celebración en el motor: los ' + nw.length + ' a la vez (de ' + oldN.length + ' a ' + TOTAL + ') en una sola hoja: "' + want + '"', r.t.includes('¡Distritos restaurados!') && nw.every((m) => r.t.includes(D.districts[m].name) && r.t.includes(D.districts[m].celebrate.text)) && r.t.includes(want), r.t.slice(0, 300));

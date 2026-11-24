@@ -1,6 +1,6 @@
 // Factibilidad de datos del spec 2026-11-18-ciudad-tanda-3-design.md (M04, M06, M07) contra el contenido REAL.
-// Transcribe las tablas del spec, arma cada distrito con standardFrame() y people() de city/layout.mjs (igual que city/districts/m10.mjs) y pasa
-// city/check_district.mjs (R1–R7 y R11); las reglas entre todos los distritos registrados vienen de district_rules.cjs y el archivo y título de
+// Transcribe las tablas del spec; todo lo demás (armar cada distrito con standardFrame() y people(), checkDistrict R1–R7 y R11, el archivo real y las reglas
+// entre TODOS los distritos registrados, que se ejecutan aquí una sola vez) lo hace feasibility_lib.run con district_rules.cjs; el archivo y título de
 // cada módulo, de modules.cjs. Solo lee datos; no depende de build.mjs.
 const F = require('./feasibility_lib.cjs');
 const results = [];

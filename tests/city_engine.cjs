@@ -365,7 +365,7 @@ const tickW = (e, ms = 16) => e.st.lastOpts.tick(ms);
       { const e4 = boot({ seed: base({ city: { prologue: true }, topics: six(['T05']) }), rndSeed: 12345 }); await enter(e4); const a1 = ap('a01'), T5 = M4(e4.w).topics.find((x) => x.id === 'T05');
         near(e4, a1); click(e4.w, $(e4, '#city-act'));
         const sh = () => $(e4, '#city-sheet'), send = () => btnText(e4, /^Revisar$/, '#city-sheet');
-        ok('(q) explicar: "¿Me explicas {título}?" con un cuadro de texto y el contador "Faltan 12 palabras de 12" sin aria-live', sh().textContent.includes('¿Me explicas ' + T5.title + '?') && !!$(e4, '#city-teach-text') && $(e4, '#city-count').textContent === 'Faltan 12 palabras de 12' && !$(e4, '#city-count').hasAttribute('aria-live'));
+        ok('(q) explicar: "¿Me explicas {título}?" con un cuadro de texto y el contador "Faltan 12 palabras de 12" sin aria-live', sh().textContent.includes('¿Me explicas «' + T5.title + '»?') && !!$(e4, '#city-teach-text') && $(e4, '#city-count').textContent === 'Faltan 12 palabras de 12' && !$(e4, '#city-count').hasAttribute('aria-live'));
         typeIn(e4, 'ram volatil hdd');
         ok('(q) con 3 palabras "Revisar" está desactivado y el contador dice "Faltan 9 palabras de 12"', send().disabled === true && $(e4, '#city-count').textContent === 'Faltan 9 palabras de 12');
         typeIn(e4, TXT); click(e4.w, send());

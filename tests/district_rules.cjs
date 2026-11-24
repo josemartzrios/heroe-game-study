@@ -1,8 +1,10 @@
 // Reglas entre distritos en un solo lugar: nombres de personas que suenan igual, colores propios, seeds y nombres de distrito únicos.
-// Las importan tanda2_feasibility, tanda3_feasibility, adv/tanda3_attack y adv/tanda3_plan_attack (probadas en district_rules_test.cjs).
+// Las importan feasibility_lib (tandas 2 a 4), adv/tanda3_attack y adv/tanda3_plan_attack (probadas en district_rules_test.cjs). También: de00 (CIEDE2000) y colorDistanceProblems,
+// la regla de distancia de color de los distritos nuevos (spec de la Tanda 4).
 
 // Sin invisibles (ancho cero, guion blando), con ancho completo en su forma normal, sin acentos y en minúsculas.
-const fold = (s) => String(s).normalize('NFKC').replace(/\p{Cf}/gu, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+// Los espacios (también los Unicode), las marcas combinantes y los rellenos que no se ven (hangul, braille vacío) tampoco cuentan: no esconden un nombre.
+const fold = (s) => String(s).normalize('NFKC').replace(/[\p{Cf}\p{Mn}\p{Zs}\s\u115F\u1160\u3164\uFFA0\u2800]/gu, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // Cómo suena un nombre en español, sin acentos y en minúsculas. El orden importa: ch es un sonido propio (marca \u0001, no pasa por c ni h);
 // gue/gui suenan /ge/ /gi/ (marca \u0002, no pasan por g+e/i → j); luego c y g suaves, h muda, z → s, v → b, x → j, ll/y → i y letras repetidas → una.
@@ -73,9 +75,9 @@ function de00(h1, h2) {
 }
 
 // Colores de la escena que ningún distrito nuevo debe imitar: el ámbar de ventanas y muros, el naranja de las reparaciones pendientes, el amarillo
-// de la torre y de Iris, los 6 morados de las criaturas de referencia, el blanco de los ojos y la pupila de las criaturas, y los fondos del mapa.
+// de la torre y de Iris, la luz de las ventanas restauradas, los 6 morados de las criaturas de referencia, el blanco de los ojos y la pupila de las criaturas, y los fondos del mapa.
 const REF_COLORS = {
-  amber: '#ffd76a', repair: '#ff8f3a', tower: '#ffd23f',
+  amber: '#ffd76a', repair: '#ff8f3a', tower: '#ffd23f', lit: '#fff0a0',   // lit: la luz de las ventanas de un distrito restaurado
   purples: ['#7a52c4', '#b06cff', '#5a3a9a', '#9a4fd8', '#8a5fe0', '#6a3fb0'],
   eyes: '#ffffff', pupil: '#12162e', grounds: ['#141a3a', '#232a52', '#2a2f5e', '#0d1230']
 };
@@ -100,7 +102,7 @@ function colorDistanceProblems(districts, ids) {
     if (bad.length) continue;
     for (const k of ['a', 'b']) {
       const c = mine[k];
-      const refs = [['el ámbar', R.amber], ['el naranja de las reparaciones', R.repair], ['la torre y Iris', R.tower], ...R.purples.map((p) => ['un morado de referencia', p]), ['el otro color del distrito', k === 'a' ? mine.b : mine.a]];
+      const refs = [['el ámbar', R.amber], ['el naranja de las reparaciones', R.repair], ['la torre y Iris', R.tower], ['la luz de las ventanas restauradas', R.lit], ...R.purples.map((p) => ['un morado de referencia', p]), ['el otro color del distrito', k === 'a' ? mine.b : mine.a]];
       for (const [oid, od] of Object.entries(districts)) if (oid !== id && od && od.colors) for (const x of [od.colors.a, od.colors.b]) if (typeof x === 'string' && HEX.test(x)) refs.push([oid, x]);
       for (const [name, x] of refs) if (de00(c, x) < 10) out.push(id + ' ' + k + ' ' + c + ' cerca de ' + name + ' ' + x);
       for (const g of R.grounds) if (contrast(c, g) < 3) out.push(id + ' ' + k + ' ' + c + ' sin contraste con el fondo ' + g);

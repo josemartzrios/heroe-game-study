@@ -72,7 +72,7 @@ const XSS = '</textarea><img src=x onerror="window.__x=1"><script>window.__x=2</
   // ---- explicar: abrir y textarea ----
   { const e = mk(); await openA(e, 'a01');
     const h = $(e, '#city-sheet h2');
-    ok('explicar: abre «¿Me explicas {título}?» con el foco en el h2 (tabindex -1)', /^¿Me explicas Memoria y almacenamiento\?$/.test(h.textContent) && h.getAttribute('tabindex') === '-1' && e.d.activeElement === h, h.textContent + ' | ' + (e.d.activeElement && e.d.activeElement.tagName));
+    ok('explicar: abre «¿Me explicas {título}?» con el foco en el h2 (tabindex -1)', /^¿Me explicas «Memoria y almacenamiento»\?$/.test(h.textContent) && h.getAttribute('tabindex') === '-1' && e.d.activeElement === h, h.textContent + ' | ' + (e.d.activeElement && e.d.activeElement.tagName));
     const ta = $(e, '#city-teach-text');
     ok('textarea: maxlength 2000, sin corrector, label[for] y contador asociado', !!ta && ta.getAttribute('maxlength') === '2000' && ta.getAttribute('spellcheck') === 'false' && ta.getAttribute('autocorrect') === 'off' && ta.getAttribute('autocapitalize') === 'sentences' && ta.getAttribute('autocomplete') === 'off' && !!$(e, 'label[for="city-teach-text"]') && ta.getAttribute('aria-describedby') === 'city-count');
     ok('contador: sin aria-live; con 0 palabras «Faltan 12 palabras de 12» y «Revisar» desactivado', !$(e, '#city-count').hasAttribute('aria-live') && $(e, '#city-count').textContent === 'Faltan 12 palabras de 12' && cx(e, 'teach-send').disabled);

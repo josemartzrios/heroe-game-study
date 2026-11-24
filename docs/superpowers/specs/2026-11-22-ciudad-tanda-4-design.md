@@ -109,7 +109,7 @@ Comprobado sobre el contenido real antes de cerrar este documento:
   - Quima T09 corregir
   - Rita T14 corregir
   - Sixto T18 corregir
-- `celebrate`: "El Laboratorio Neuronal vuelve a pensar: cada modelo reconoce cuándo no sabe algo."
+- `celebrate`: "El Laboratorio Neuronal vuelve a pensar: cada respuesta del modelo se verifica antes de fiarse de ella."
 
 ## Distancia de color (regla nueva)
 Con 10 distritos la paleta está cerca del límite. «No ser exactamente igual» ya no basta: el primer borrador tenía un naranja casi idéntico al de las reparaciones pendientes (ΔE00 ≈ 2) y un índigo a ΔE00 ≈ 5 de un morado de referencia.
@@ -164,7 +164,7 @@ El tope de 4 096 px que vigila `tests/city_sprites.cjs` equivale a 292 filas, as
 
 **2. Pruebas que se rompen al registrar M05 y M09.** Se adaptan sin debilitarlas:
 - **`tests/city_teach_content.cjs:45`:** fija «81 aprendices».
-  - Se calcula desde los datos, sumando los aprendices de `city.districts`, y se mantiene «0 fallos».
+  - Pasa a un literal (101 aprendices en 10 distritos) y se mantiene «0 fallos»: calcularlo desde los mismos datos que recorre el contador no vigilaría nada.
 - **`tests/review_tanda3_gaps.cjs`, con varios puntos:**
   - `:195-196`: `OLD` mete a M05 y M09 en «los de antes». Pasa a ser `SEQ.slice(0, SEQ.indexOf(NEW[0]))`.
   - `:213-215`: se compara `SEQ.slice(OLD.length, OLD.length + NEW.length)` con NEW.
@@ -218,7 +218,7 @@ El tope de 4 096 px que vigila `tests/city_sprites.cjs` equivale a 292 filas, as
 - El detalle de cómo reescribir el JSON de `CITY_DATA` en la copia del HTML de `city_scenes`.
 
 ## Cambios de la implementación
-- **`feasibility_lib.run(SPEC, label, ok, opts)`** concentra la factibilidad de una tanda. `tanda3_feasibility` quedó con su tabla y su salida idéntica byte a byte (124 comprobaciones); `tanda4_feasibility` pasa `{ colorIds: ['M05', 'M09'], cross: false }` (79 comprobaciones). Las reglas entre distritos las ejecuta una sola vez la de la Tanda 3 sobre `city.districts`.
+- **`feasibility_lib.run(SPEC, label, ok, opts)`** concentra la factibilidad de una tanda. `tanda3_feasibility` quedó con su tabla y su salida idéntica byte a byte (124 comprobaciones al moverlo); `tanda4_feasibility` pasa `{ colorIds: ['M05', 'M09'], cross: false }` (79). Tras la revisión final `run` y `shape` comprueban más (tabla no vacía, id de módulo, forma de las tuplas, modo con `hasOwn`, `topicCount` entre 1 y 99, `colorIds` válido) y quedaron en 128, 83 y 109 (Tanda 2). Las reglas entre distritos las ejecuta una sola vez la de la Tanda 3 sobre `city.districts`.
 - **Regla de color** (`colorDistanceProblems`): `lab` y `de00` se movieron desde `tests/adv/tanda3_attack.cjs`; los colores de referencia viven en `district_rules` (`REF_COLORS`) y `feasibility_lib` los toma de ahí. Un id no registrado devuelve «<id>: no registrado» en lugar de lanzar.
 - **Pruebas adaptadas** (sin perder comprobaciones): `city_teach_content` (101 aprendices, literal), `review_tanda3_gaps` (68 → 93 comprobaciones: rango esperado con tabla literal y `rankName` real, `OLD`/`AFTER`, HUD 0/50/93 % escritos a mano, objetivo de la plaza antes y después de cada distrito, celebración del 9.º, el 10.º y los dos a la vez) y `city_scenes` (50: (p), (p2), (p3) y (v3) arrancan con una copia del HTML sin M09, reescrita con `indexOf`/`slice`; reescribir sin borrar nada reproduce el HTML byte a byte). `city_layout` fija la secuencia de `take()` (72 lugares, 3 primeros y el último). `review_tanda2_gaps` compila `cityRankLine` una vez (71 comprobaciones, de 6,4 s a 5,5 s el proceso entero).
 - **Mutación comprobada:** con `need: 6` en M05 fallan el HUD del 93 % (sale 92 %) y la comparación con la tabla.
@@ -229,3 +229,20 @@ El tope de 4 096 px que vigila `tests/city_sprites.cjs` equivale a 292 filas, as
   - las criaturas tienen ojos (≥ 4 píxeles blancos junto al cuerpo y ≥ 1 de pupila, medidos en el canvas);
   - se enseña a un aprendiz de cada modo en cada distrito a 320 px: la revisión premarca, el HUD pasa de 0 % a 7 %, no hay scroll horizontal y el foco vuelve al juego;
   - con teclado se entra con Enter, `#city-live` dice «Entraste a …» y Escape abre y cierra la pausa.
+
+### Revisión de lo implementado (2026-11-23) y qué se cambió
+Siete revisores (código limpio, rendimiento, diseño, interfaz, pruebas, ataque y seguridad) y la suite completa: sin críticos; uno alto y varios medios, arreglados así:
+- **Alto, desborde horizontal en el móvil** (`engine.html`): identificadores largos sin espacios de M05 (`ServicioAutenticacionConLoggingYCache`) ensanchaban la página (111 px a 320 px) y cortaban la opción correcta del quiz de T08; la lección de T08 desbordaba 23 px. Arreglo: columnas `minmax(0, 1fr)` en `.opts`, `.opt` y `.kp`, y `overflow-wrap: anywhere` en `.kp li`, `.opt span`, `.prompt`, `code` y `.fb`. Medido en Chromium a 320, 360, 390 y 430 px (`tests/manual/overflow_m05.cjs`, 16 comprobaciones; antes fallaba en los cuatro anchos) y fijado en `tests/theme.cjs`.
+- **Celebración de M09** decía «cada modelo reconoce cuándo no sabe algo», lo contrario de lo que enseña el módulo (el modelo no «sabe» que no sabe). Ahora: «cada respuesta del modelo se verifica antes de fiarse de ella.»
+- **Hoja de explicar** (`city/view.js`): «¿Me explicas «Qué es un patrón de diseño»?», con el título entre comillas latinas.
+- **Regla de color:** `REF_COLORS` incluye la luz de las ventanas restauradas `#fff0a0` (el amarillo de M05 queda a ΔE ≈ 13). Quedan aceptados, igual que las farolas, el traje rojo `#e0533a` (ΔE 8,6 de M05 `a`) y la plata de estrella `#cfd6e6` (7,6 de M09 `b`): son detalles de personas y estrellas frente a criaturas.
+- **Pruebas:** se integran las cinco del test engineer (`color_rule_gaps`, `tanda4_data_gaps`, `feasibility_run_gaps`, `city_scenes_rewrite_gaps`, `city_tanda4_engine_gaps`: 291 comprobaciones, más 21 de endurecimiento de `feasibility_run_gaps`); `review_tanda3_gaps` recupera el salto de varios rangos con el motor completo y comprueba el guardado anterior (sin hoja de celebración, «Distritos 8 de 10»); `fold` de `district_rules` ya no se deja engañar por rellenos invisibles ni espacios Unicode.
+- **Humo en el repo:** `tests/manual/smoke_tanda4.cjs` (72) y `tests/manual/overflow_m05.cjs` (16), fuera de la suite.
+
+**Diferido, sin arreglar** (código anterior a esta tanda o decisiones de contenido):
+- `story.js` descarta una fecha de batalla posterior a la de hoy (cambiar de zona horaria puede perder una batalla ganada).
+- `check_district.mjs`: `FORBIDDEN` distingue mayúsculas en `Thor` y `Flash`; R7 admite coordenadas con coerción; una excepción devuelve solo R0 y descarta errores ya acumulados.
+- Premarca en *corregir*: Rita (M09 T14) no premarca su respuesta literal; Quima (M09 T09) y Mabel (M09 E002, opción incorrecta) premarcan con texto genérico; en *explicar*, un texto genérico premarca 2 puntos en M05 T08 y T21 y en M09 T17.
+- Nombres que riman con otros a distancia 1 que la regla fonética no ve (Lara/Laura, Vito/Fito, Mabel/Abel, Norma/Nora).
+- Interfaz: el HUD llega al 26 % a 320 px con 11 etiquetas largas; la etiqueta del portal (18 px en un arco de 16) se lee con ruido; el botón no lleva artículo; la celebración del 10.º no da un siguiente paso; el banner de derrota no nombra los temas de la criatura.
+- Rendimiento: atlas de personas (3 948 px, caben 10 personas más) y `indexOf` por cuadro en `frame()`: se resuelven con el atlas por distrito de M11; `nameClashes` y el bucle de `review_tanda2_gaps` son O(n²) y O(3^N).
